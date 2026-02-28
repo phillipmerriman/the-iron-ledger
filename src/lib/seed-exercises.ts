@@ -129,6 +129,21 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { name: 'Cool Down', exercise_type: 'cool_down', primary_muscle: 'full_body', equipment: 'bodyweight' },
 ]
 
+// Generate a deterministic UUID v4–shaped ID from a string so seed exercises
+// always get the same ID regardless of when they're created.
+function deterministicId(input: string): string {
+  let h = 0
+  for (let i = 0; i < input.length; i++) {
+    h = Math.imul(31, h) + input.charCodeAt(i) | 0
+  }
+  const hex = (v: number, len: number) => (v >>> 0).toString(16).padStart(len, '0')
+  const a = Math.abs(h)
+  const b = Math.abs(Math.imul(h, 0x5bd1e995))
+  const c = Math.abs(Math.imul(h, 0x27d4eb2d))
+  const d = Math.abs(Math.imul(h, 0x165667b1))
+  return `${hex(a, 8)}-${hex(b, 4)}-4${hex(c, 3)}-a${hex(d, 3)}-${hex(a ^ b, 6)}${hex(c ^ d, 6)}`
+}
+
 const SEED_KEY = 'fittrack:exercises_seeded'
 
 export function seedExercisesIfNeeded(userId: string) {
@@ -141,7 +156,7 @@ export function seedExercisesIfNeeded(userId: string) {
 
   for (const seed of SEED_EXERCISES) {
     rows.push({
-      id: crypto.randomUUID(),
+      id: deterministicId(`seed:${seed.name}`),
       user_id: userId,
       name: seed.name,
       exercise_type: seed.exercise_type,

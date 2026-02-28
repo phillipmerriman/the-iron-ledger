@@ -129,13 +129,17 @@ export default function WeeklyPlanPage() {
 
   function handleEntryDragStart(e: DragEvent, entryId: string, fromDate: string) {
     setDragSource({ type: 'entry', entryId, fromDate })
-    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData('text/plain', entryId)
   }
 
   function handleDayDragOver(e: DragEvent, dateKey: string) {
     e.preventDefault()
-    e.dataTransfer.dropEffect = dragSource?.type === 'entry' ? 'move' : 'copy'
+    if (dragSource?.type === 'entry') {
+      e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
+    } else {
+      e.dataTransfer.dropEffect = 'copy'
+    }
     setDropTarget(dateKey)
   }
 
@@ -153,8 +157,23 @@ export default function WeeklyPlanPage() {
     } else if (dragSource.type === 'template') {
       handleTemplateDrop(dateKey, dragSource.templateId)
     } else if (dragSource.type === 'entry') {
-      const dayEntries = getEntriesForDate(dateKey)
-      moveEntry(dragSource.entryId, dateKey, dayEntries.length)
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+drag = duplicate
+        const source = dateKeys.flatMap((dk) => getEntriesForDate(dk)).find((en) => en.id === dragSource.entryId)
+        if (source) {
+          addEntry(dateKey, source.exercise_id, {
+            sets: source.sets,
+            reps: source.reps,
+            rep_type: source.rep_type,
+            reps_right: source.reps_right,
+            weight: source.weight,
+            weight_unit: source.weight_unit,
+          })
+        }
+      } else {
+        const dayEntries = getEntriesForDate(dateKey)
+        moveEntry(dragSource.entryId, dateKey, dayEntries.length)
+      }
     }
     setDragSource(null)
   }

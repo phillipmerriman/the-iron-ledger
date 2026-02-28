@@ -56,6 +56,7 @@ export default function ProgramWeekGrid({
 
   function handleDayDragOver(e: DragEvent, dateKey: string) {
     e.preventDefault()
+    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
     setDropTarget(dateKey)
   }
 
@@ -75,13 +76,29 @@ export default function ProgramWeekGrid({
     } else if (e.dataTransfer.types.includes('application/x-pool')) {
       addEntry(dateKey, data)
     } else {
-      const dayEntries = getEntriesForDate(dateKey)
-      moveEntry(data, dateKey, dayEntries.length)
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+drag = duplicate
+        const allEntries = dateKeys.flatMap((dk) => getEntriesForDate(dk))
+        const source = allEntries.find((en) => en.id === data)
+        if (source) {
+          addEntry(dateKey, source.exercise_id, {
+            sets: source.sets,
+            reps: source.reps,
+            rep_type: source.rep_type,
+            reps_right: source.reps_right,
+            weight: source.weight,
+            weight_unit: source.weight_unit,
+          })
+        }
+      } else {
+        const dayEntries = getEntriesForDate(dateKey)
+        moveEntry(data, dateKey, dayEntries.length)
+      }
     }
   }
 
   function handleEntryDragStart(e: DragEvent, entryId: string) {
-    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData('text/plain', entryId)
   }
 

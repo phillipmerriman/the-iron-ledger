@@ -100,7 +100,7 @@ export default function WorkoutTemplateForm({
 
   // Drag to reorder entries
   function handleEntryDragStart(e: DragEvent, entryId: string) {
-    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData('text/plain', entryId)
     e.dataTransfer.setData('application/x-reorder', 'true')
     setReorderDragId(entryId)
@@ -115,6 +115,7 @@ export default function WorkoutTemplateForm({
     e.preventDefault()
     e.stopPropagation()
     if (reorderDragId) {
+      e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
       setReorderOverIdx(idx)
     }
   }
@@ -123,15 +124,27 @@ export default function WorkoutTemplateForm({
     e.preventDefault()
     e.stopPropagation()
     if (e.dataTransfer.types.includes('application/x-reorder') && reorderDragId) {
-      // Reorder
-      setEntries((prev) => {
-        const fromIdx = prev.findIndex((en) => en.id === reorderDragId)
-        if (fromIdx === -1 || fromIdx === targetIdx) return prev
-        const updated = [...prev]
-        const [moved] = updated.splice(fromIdx, 1)
-        updated.splice(targetIdx, 0, moved)
-        return updated.map((en, i) => ({ ...en, sort_order: i }))
-      })
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+drag = duplicate
+        setEntries((prev) => {
+          const source = prev.find((en) => en.id === reorderDragId)
+          if (!source) return prev
+          const clone: TemplateFormEntry = { ...source, id: crypto.randomUUID() }
+          const updated = [...prev]
+          updated.splice(targetIdx, 0, clone)
+          return updated.map((en, i) => ({ ...en, sort_order: i }))
+        })
+      } else {
+        // Reorder
+        setEntries((prev) => {
+          const fromIdx = prev.findIndex((en) => en.id === reorderDragId)
+          if (fromIdx === -1 || fromIdx === targetIdx) return prev
+          const updated = [...prev]
+          const [moved] = updated.splice(fromIdx, 1)
+          updated.splice(targetIdx, 0, moved)
+          return updated.map((en, i) => ({ ...en, sort_order: i }))
+        })
+      }
     } else if (e.dataTransfer.types.includes('application/x-pool')) {
       // Insert from pool at position
       const exerciseId = e.dataTransfer.getData('text/plain')
