@@ -1,11 +1,12 @@
 import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { format, isToday, isSameDay, differenceInWeeks, parseISO, startOfWeek } from 'date-fns'
-import { Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import type { Program, WorkoutSession } from '@/types/database'
 import { cn } from '@/lib/utils'
+import { getExerciseColorClasses } from '@/types/common'
 
 interface WeeklyCalendarProps {
   sessions: WorkoutSession[]
@@ -16,13 +17,27 @@ export default function WeeklyCalendar({ sessions, activeProgram }: WeeklyCalend
   const programStart = activeProgram?.start_date ? parseISO(activeProgram.start_date) : undefined
 
   // Figure out which week offset we're in relative to the program start
-  const currentWeekOffset = useMemo(() => {
+  const liveWeekOffset = useMemo(() => {
     if (!programStart) return 0
     return differenceInWeeks(
       startOfWeek(new Date(), { weekStartsOn: 0 }),
       startOfWeek(programStart, { weekStartsOn: 0 }),
     )
   }, [programStart])
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const weekDelta = Number(searchParams.get('week')) || 0
+  function setWeekDelta(update: number | ((prev: number) => number)) {
+    const next = typeof update === 'function' ? update(weekDelta) : update
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 0) params.delete('week')
+      else params.set('week', String(next))
+      return params
+    }, { replace: true })
+  }
+  const currentWeekOffset = liveWeekOffset + weekDelta
+  const isCurrentWeek = weekDelta === 0
 
   const { days, dateKeys, getEntriesForDate } = useWeeklyPlan({
     startDate: programStart,
@@ -31,8 +46,8 @@ export default function WeeklyCalendar({ sessions, activeProgram }: WeeklyCalend
   })
   const { exercises } = useExercises()
 
-  function getExerciseName(exerciseId: string) {
-    return exercises.find((e) => e.id === exerciseId)?.name ?? 'Unknown'
+  function getExercise(exerciseId: string) {
+    return exercises.find((e) => e.id === exerciseId)
   }
 
   function dayStatus(day: Date) {
@@ -47,19 +62,47 @@ export default function WeeklyCalendar({ sessions, activeProgram }: WeeklyCalend
     return 'none'
   }
 
-  const planLink = activeProgram ? `/plan/${activeProgram.id}` : '/plan'
+  const isWithinProgram = activeProgram && currentWeekOffset >= 0 && currentWeekOffset < activeProgram.weeks
+  const dashWeekParam = weekDelta !== 0 ? `&dashweek=${weekDelta}` : ''
+  const planLink = isWithinProgram
+    ? `/plan/${activeProgram.id}?from=dashboard&week=${currentWeekOffset}${dashWeekParam}`
+    : `/plan?from=dashboard${dashWeekParam}`
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-surface-700">
-          This Week
-          {activeProgram && (
-            <span className="ml-1.5 text-xs font-normal text-surface-400">
-              — {activeProgram.name} (wk {currentWeekOffset + 1}/{activeProgram.weeks})
-            </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setWeekDelta((d) => d - 1)}
+            className="rounded-lg p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <h3 className="text-sm font-semibold text-surface-700">
+            {isCurrentWeek ? 'This Week' : weekDelta === -1 ? 'Last Week' : weekDelta === 1 ? 'Next Week' : `${format(days[0], 'MMM d')} – ${format(days[6], 'MMM d')}`}
+            {activeProgram && currentWeekOffset >= 0 && currentWeekOffset < activeProgram.weeks && (
+              <span className="ml-1.5 text-xs font-normal text-surface-400">
+                — {activeProgram.name} (wk {currentWeekOffset + 1}/{activeProgram.weeks})
+              </span>
+            )}
+          </h3>
+          <button
+            onClick={() => setWeekDelta((d) => d + 1)}
+            className="rounded-lg p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+            aria-label="Next week"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          {!isCurrentWeek && (
+            <button
+              onClick={() => setWeekDelta(0)}
+              className="ml-1 rounded-lg px-2 py-0.5 text-[11px] font-medium text-primary-600 hover:bg-primary-50"
+            >
+              Today
+            </button>
           )}
-        </h3>
+        </div>
         <Link
           to={planLink}
           className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50"
@@ -108,15 +151,22 @@ export default function WeeklyCalendar({ sessions, activeProgram }: WeeklyCalend
               </div>
 
               <div className="flex flex-col gap-0.5">
-                {planned.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="truncate rounded bg-surface-100 px-1 py-0.5 text-[10px] leading-tight text-surface-600"
-                    title={getExerciseName(entry.exercise_id)}
-                  >
-                    {getExerciseName(entry.exercise_id)}
-                  </div>
-                ))}
+                {planned.map((entry) => {
+                  const ex = getExercise(entry.exercise_id)
+                  const color = getExerciseColorClasses(ex?.color ?? null)
+                  return (
+                    <div
+                      key={entry.id}
+                      className={cn(
+                        'truncate rounded px-1 py-0.5 text-[10px] leading-tight',
+                        ex?.color ? `${color.bg} ${color.text}` : 'bg-surface-100 text-surface-600',
+                      )}
+                      title={ex?.name ?? 'Unknown'}
+                    >
+                      {ex?.name ?? 'Unknown'}
+                    </div>
+                  )
+                })}
               </div>
 
               {planned.length === 0 && (

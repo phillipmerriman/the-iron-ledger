@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save } from 'lucide-react'
 import { format, isToday, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
@@ -25,6 +25,10 @@ function formatLabel(value: string) {
 
 export default function WeeklyPlanPage() {
   const { programId } = useParams<{ programId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const fromDashboard = searchParams.get('from') === 'dashboard'
+  const dashWeek = searchParams.get('dashweek')
+  const dashboardLink = dashWeek ? `/?week=${dashWeek}` : '/'
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { programs, loading: programsLoading } = usePrograms()
@@ -35,7 +39,16 @@ export default function WeeklyPlanPage() {
   const totalWeeks = program?.weeks ?? 1
   const programStart = program?.start_date ? parseISO(program.start_date) : new Date()
 
-  const [weekOffset, setWeekOffset] = useState(0)
+  const weekOffset = Number(searchParams.get('week')) || 0
+  function setWeekOffset(update: number | ((prev: number) => number)) {
+    const next = typeof update === 'function' ? update(weekOffset) : update
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 0) params.delete('week')
+      else params.set('week', String(next))
+      return params
+    }, { replace: true })
+  }
 
   const {
     days,
@@ -185,8 +198,8 @@ export default function WeeklyPlanPage() {
   if (programId && !program) {
     return (
       <div className="space-y-4">
-        <Link to="/programs" className="inline-flex items-center gap-1 text-sm text-primary-600">
-          <ArrowLeft className="h-4 w-4" /> Programs
+        <Link to={fromDashboard ? dashboardLink : '/programs'} className="inline-flex items-center gap-1 text-sm text-primary-600">
+          <ArrowLeft className="h-4 w-4" /> {fromDashboard ? 'Dashboard' : 'Programs'}
         </Link>
         <p className="text-surface-500">Program not found.</p>
       </div>
@@ -199,10 +212,10 @@ export default function WeeklyPlanPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link
-            to={program ? `/programs/${program.id}` : '/'}
+            to={fromDashboard ? dashboardLink : program ? `/programs/${program.id}` : '/'}
             className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-500"
           >
-            <ArrowLeft className="h-4 w-4" /> {program ? program.name : 'Dashboard'}
+            <ArrowLeft className="h-4 w-4" /> {fromDashboard ? 'Dashboard' : program ? program.name : 'Dashboard'}
           </Link>
           <h1 className="mt-1 text-2xl font-bold">
             {program ? `Plan: ${program.name}` : 'Plan Your Week'}
