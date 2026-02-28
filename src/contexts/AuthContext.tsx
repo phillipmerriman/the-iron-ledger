@@ -12,6 +12,7 @@ interface AuthState {
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: Error | null }>
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
+  updateProfile: (fields: Partial<Profile>) => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
@@ -25,6 +26,7 @@ const MOCK_PROFILE: Profile = {
   display_name: 'Dev User',
   avatar_url: null,
   unit_system: 'imperial',
+  preferred_weight_unit: 'lbs',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 }
@@ -91,13 +93,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null }
   }
 
+  async function updateProfile(fields: Partial<Profile>) {
+    if (!user) return
+    if (isDev) {
+      setProfile((prev) => prev ? { ...prev, ...fields } : prev)
+      return
+    }
+    const { data } = await supabase
+      .from('profiles')
+      .update(fields)
+      .eq('id', user.id)
+      .select()
+      .single()
+    if (data) setProfile(data)
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, signUp, signIn, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   )

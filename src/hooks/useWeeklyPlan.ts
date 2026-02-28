@@ -7,6 +7,7 @@ import {
   format,
 } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
+import type { RepType, WeightUnit } from '@/types/common'
 
 export interface PlannedEntry {
   id: string
@@ -15,13 +16,32 @@ export interface PlannedEntry {
   date: string        // YYYY-MM-DD
   exercise_id: string
   sort_order: number
+  sets: number | null
+  reps: number | null
+  rep_type: RepType
+  reps_right: number | null
+  weight: number | null
+  weight_unit: WeightUnit
 }
+
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 
 function loadAll(): PlannedEntry[] {
   const raw = localStorage.getItem(STORAGE_KEY)
-  return raw ? JSON.parse(raw) : []
+  if (!raw) return []
+  // Migrate old entries that lack new fields
+  const parsed = JSON.parse(raw) as PlannedEntry[]
+  return parsed.map((e) => ({
+    sets: null,
+    reps: null,
+    rep_type: 'single' as RepType,
+    reps_right: null,
+    weight: null,
+    weight_unit: 'lbs' as WeightUnit,
+    ...e,
+  }))
 }
 
 function saveAll(entries: PlannedEntry[]) {
@@ -71,7 +91,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       .sort((a, b) => a.sort_order - b.sort_order)
   }
 
-  function addEntry(dateKey: string, exerciseId: string) {
+  function addEntry(dateKey: string, exerciseId: string, presets?: PlannedEntryUpdate) {
     if (!user) return
     const dateEntries = entries.filter((e) => e.date === dateKey)
     const entry: PlannedEntry = {
@@ -81,11 +101,28 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       date: dateKey,
       exercise_id: exerciseId,
       sort_order: dateEntries.length,
+      sets: presets?.sets ?? 3,
+      reps: presets?.reps ?? 10,
+      rep_type: presets?.rep_type ?? 'single',
+      reps_right: presets?.reps_right ?? null,
+      weight: presets?.weight ?? null,
+      weight_unit: presets?.weight_unit ?? 'lbs',
     }
     const all = loadAll()
     all.push(entry)
     saveAll(all)
     setEntries((prev) => [...prev, entry])
+  }
+
+  function updateEntry(id: string, values: PlannedEntryUpdate) {
+    const all = loadAll()
+    const idx = all.findIndex((e) => e.id === id)
+    if (idx === -1) return
+    Object.assign(all[idx], values)
+    saveAll(all)
+    setEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, ...values } : e)),
+    )
   }
 
   function removeEntry(id: string) {
@@ -135,6 +172,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     weekEnd,
     getEntriesForDate,
     addEntry,
+    updateEntry,
     removeEntry,
     moveEntry,
     clearDate,

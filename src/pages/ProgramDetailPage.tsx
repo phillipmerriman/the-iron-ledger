@@ -1,9 +1,12 @@
 import { useState, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X } from 'lucide-react'
+import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react'
 import { parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
+import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
+import useWeeklyPlan from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import { cn } from '@/lib/utils'
@@ -17,6 +20,7 @@ export default function ProgramDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { programs, loading: programsLoading } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
+  const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
 
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
   const [creatingExercise, setCreatingExercise] = useState(false)
@@ -29,6 +33,16 @@ export default function ProgramDetailPage() {
   const filtered = activeExercises.filter((e) =>
     e.name.toLowerCase().includes(search.toLowerCase()),
   )
+
+  // We need a useWeeklyPlan instance to call addEntry for template drops.
+  // Since ProgramWeekGrid creates its own hook per week, we use a shared one at week 0
+  // just for the addEntry function (it writes to the global localStorage anyway).
+  const programStart = program ? parseISO(program.start_date) : new Date()
+  const { addEntry } = useWeeklyPlan({
+    startDate: programStart,
+    weekOffset: 0,
+    programId: id ?? null,
+  })
 
   async function handleCreateExercise(values: {
     name: string
@@ -54,6 +68,31 @@ export default function ProgramDetailPage() {
     e.dataTransfer.setData('application/x-pool', 'true')
   }
 
+  function handleTemplateDragStart(e: DragEvent, templateId: string) {
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('text/plain', templateId)
+    e.dataTransfer.setData('application/x-template', 'true')
+  }
+
+  function handleTemplateDrop(dateKey: string, templateId: string) {
+    const templateExercises = getExercisesForTemplate(templateId)
+    for (const tex of texs) {
+      const extras = parseExtras(tex.notes)
+      addEntry(dateKey, tex.exercise_id, {
+        sets: tex.target_sets,
+        reps: extras.rep_type === 'time' ? tex.target_duration_sec : tex.target_reps,
+        rep_type: extras.rep_type,
+        reps_right: extras.reps_right,
+        weight: tex.target_weight,
+        weight_unit: extras.weight_unit,
+      })
+    }
+  }
+
+  async function handleSaveDay(name: string, entries: PlannedEntry[]) {
+    await saveDay(name, entries)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -73,7 +112,6 @@ export default function ProgramDetailPage() {
     )
   }
 
-  const programStart = parseISO(program.start_date)
   const weeks = Array.from({ length: program.weeks }, (_, i) => i)
 
   return (
@@ -92,7 +130,7 @@ export default function ProgramDetailPage() {
           {program.is_active && <Badge variant="primary">Active</Badge>}
         </div>
         <p className="mt-2 text-sm text-surface-500">
-          Drag exercises from the pool into each day.
+          Drag exercises or saved workouts from the pool into each day.
         </p>
       </div>
 
@@ -110,73 +148,124 @@ export default function ProgramDetailPage() {
                 programId={program.id}
                 programStart={programStart}
                 exercises={exercises}
+                onSaveDay={handleSaveDay}
+                onTemplateDrop={handleTemplateDrop}
               />
             </div>
           ))}
         </div>
 
-        {/* Exercise pool — single sticky sidebar */}
+        {/* Sidebar pools */}
         <div className="w-56 shrink-0">
-          <div className="sticky top-6 rounded-xl border border-surface-200 bg-white">
-            <div className="border-b border-surface-100 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
-                  Exercise Pool
-                </h3>
-                <button
-                  onClick={() => setNewExerciseOpen(true)}
-                  className="rounded p-0.5 text-surface-400 hover:bg-primary-50 hover:text-primary-600"
-                  aria-label="New exercise"
-                  title="New exercise"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="relative mt-1.5">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded border border-surface-200 px-2 py-1 pr-6 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
-                {search && (
+          <div className="sticky top-6 space-y-3">
+            {/* Exercise pool */}
+            <div className="rounded-xl border border-surface-200 bg-white">
+              <div className="border-b border-surface-100 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
+                    Exercise Pool
+                  </h3>
                   <button
-                    type="button"
-                    onClick={() => setSearch('')}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600"
-                    aria-label="Clear search"
+                    onClick={() => setNewExerciseOpen(true)}
+                    className="rounded p-0.5 text-surface-400 hover:bg-primary-50 hover:text-primary-600"
+                    aria-label="New exercise"
+                    title="New exercise"
                   >
-                    <X className="h-3 w-3" />
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
-                )}
+                </div>
+                <div className="relative mt-1.5">
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded border border-surface-200 px-2 py-1 pr-6 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-[40vh] overflow-y-auto p-2">
+                <div className="space-y-1">
+                  {filtered.map((exercise) => {
+                    const poolColor = getExerciseColorClasses(exercise.color)
+                    return (
+                      <div
+                        key={exercise.id}
+                        draggable
+                        onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
+                        className={cn(
+                          'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
+                          exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                        )}
+                      >
+                        <p className={cn('text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
+                          {exercise.name}
+                        </p>
+                      </div>
+                    )
+                  })}
+                  {filtered.length === 0 && (
+                    <p className="py-4 text-center text-[11px] text-surface-400">
+                      {activeExercises.length === 0 ? 'Add exercises first' : 'No matches'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto p-2">
-              <div className="space-y-1">
-                {filtered.map((exercise) => {
-                  const poolColor = getExerciseColorClasses(exercise.color)
-                  return (
-                    <div
-                      key={exercise.id}
-                      draggable
-                      onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
-                      className={cn(
-                        'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
-                        exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
-                      )}
-                    >
-                      <p className={cn('text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
-                        {exercise.name}
-                      </p>
-                    </div>
-                  )
-                })}
-                {filtered.length === 0 && (
-                  <p className="py-4 text-center text-[11px] text-surface-400">
-                    {activeExercises.length === 0 ? 'Add exercises first' : 'No matches'}
-                  </p>
-                )}
+
+            {/* Saved Workouts pool */}
+            <div className="rounded-xl border border-surface-200 bg-white">
+              <div className="border-b border-surface-100 px-3 py-2">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
+                  Saved Workouts
+                </h3>
+              </div>
+              <div className="max-h-[30vh] overflow-y-auto p-2">
+                <div className="space-y-1">
+                  {templates.map((tmpl) => {
+                    const count = getExercisesForTemplate(tmpl.id).length
+                    return (
+                      <div
+                        key={tmpl.id}
+                        draggable
+                        onDragStart={(e) => handleTemplateDragStart(e, tmpl.id)}
+                        className="group flex items-center gap-1 rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate text-surface-800">
+                            {tmpl.name}
+                          </p>
+                          <p className="text-[10px] text-surface-400">
+                            {count} {count === 1 ? 'exercise' : 'exercises'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeTemplate(tmpl.id) }}
+                          className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
+                          aria-label="Delete template"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {templates.length === 0 && (
+                    <p className="py-4 text-center text-[11px] text-surface-400">
+                      Save a day to create a template
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

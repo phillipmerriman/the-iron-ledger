@@ -1,13 +1,17 @@
 import { useState, type DragEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save } from 'lucide-react'
 import { format, isToday, parseISO } from 'date-fns'
+import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
+import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import type { Exercise } from '@/types/database'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
-import { getExerciseColorClasses } from '@/types/common'
+import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
+import EntryDetailEditor from '@/components/programs/EntryDetailEditor'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
@@ -21,8 +25,11 @@ function formatLabel(value: string) {
 
 export default function WeeklyPlanPage() {
   const { programId } = useParams<{ programId: string }>()
+  const { profile } = useAuth()
+  const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { programs, loading: programsLoading } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
+  const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
 
   const program = programId ? programs.find((p) => p.id === programId) : null
   const totalWeeks = program?.weeks ?? 1
@@ -35,6 +42,7 @@ export default function WeeklyPlanPage() {
     dateKeys,
     getEntriesForDate,
     addEntry,
+    updateEntry,
     removeEntry,
     moveEntry,
     clearDate,
@@ -52,10 +60,14 @@ export default function WeeklyPlanPage() {
     e.name.toLowerCase().includes(search.toLowerCase()),
   )
 
+  // Editing state
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
+
   // Drag state
   const [dragSource, setDragSource] = useState<
     | { type: 'pool'; exerciseId: string }
     | { type: 'entry'; entryId: string; fromDate: string }
+    | { type: 'template'; templateId: string }
     | null
   >(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
@@ -96,6 +108,12 @@ export default function WeeklyPlanPage() {
     e.dataTransfer.setData('text/plain', exerciseId)
   }
 
+  function handleTemplateDragStart(e: DragEvent, templateId: string) {
+    setDragSource({ type: 'template', templateId })
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('text/plain', templateId)
+  }
+
   function handleEntryDragStart(e: DragEvent, entryId: string, fromDate: string) {
     setDragSource({ type: 'entry', entryId, fromDate })
     e.dataTransfer.effectAllowed = 'move'
@@ -104,7 +122,7 @@ export default function WeeklyPlanPage() {
 
   function handleDayDragOver(e: DragEvent, dateKey: string) {
     e.preventDefault()
-    e.dataTransfer.dropEffect = dragSource?.type === 'pool' ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = dragSource?.type === 'entry' ? 'move' : 'copy'
     setDropTarget(dateKey)
   }
 
@@ -119,6 +137,8 @@ export default function WeeklyPlanPage() {
 
     if (dragSource.type === 'pool') {
       addEntry(dateKey, dragSource.exerciseId)
+    } else if (dragSource.type === 'template') {
+      handleTemplateDrop(dateKey, dragSource.templateId)
     } else if (dragSource.type === 'entry') {
       const dayEntries = getEntriesForDate(dateKey)
       moveEntry(dragSource.entryId, dateKey, dayEntries.length)
@@ -126,9 +146,32 @@ export default function WeeklyPlanPage() {
     setDragSource(null)
   }
 
+  function handleTemplateDrop(dateKey: string, templateId: string) {
+    const exercises = getExercisesForTemplate(templateId)
+    for (const tex of exercises) {
+      const extras = parseExtras(tex.notes)
+      addEntry(dateKey, tex.exercise_id, {
+        sets: tex.target_sets,
+        reps: extras.rep_type === 'time' ? tex.target_duration_sec : tex.target_reps,
+        rep_type: extras.rep_type,
+        reps_right: extras.reps_right,
+        weight: tex.target_weight,
+        weight_unit: extras.weight_unit,
+      })
+    }
+  }
+
   function handleDragEnd() {
     setDragSource(null)
     setDropTarget(null)
+  }
+
+  function handleSaveDay(dateKey: string) {
+    const planned = getEntriesForDate(dateKey)
+    if (planned.length === 0) return
+    const name = window.prompt('Template name:')
+    if (!name?.trim()) return
+    saveDay(name.trim(), planned)
   }
 
   if (programsLoading || exercisesLoading) {
@@ -165,7 +208,7 @@ export default function WeeklyPlanPage() {
             {program ? `Plan: ${program.name}` : 'Plan Your Week'}
           </h1>
           <p className="text-sm text-surface-500">
-            Drag exercises from the pool into each day.
+            Drag exercises or saved workouts from the pool into each day.
           </p>
         </div>
       </div>
@@ -239,14 +282,24 @@ export default function WeeklyPlanPage() {
                     </span>
                   </div>
                   {planned.length > 0 && (
-                    <button
-                      onClick={() => clearDate(dateKey)}
-                      className="rounded p-0.5 text-surface-300 hover:bg-danger-50 hover:text-danger-500"
-                      aria-label="Clear day"
-                      title="Clear all"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <div className="flex gap-0.5">
+                      <button
+                        onClick={() => handleSaveDay(dateKey)}
+                        className="rounded p-0.5 text-surface-300 hover:bg-primary-50 hover:text-primary-500"
+                        aria-label="Save as template"
+                        title="Save as template"
+                      >
+                        <Save className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => clearDate(dateKey)}
+                        className="rounded p-0.5 text-surface-300 hover:bg-danger-50 hover:text-danger-500"
+                        aria-label="Clear day"
+                        title="Clear all"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -254,34 +307,48 @@ export default function WeeklyPlanPage() {
                   {planned.map((entry) => {
                     const ex = getExercise(entry.exercise_id)
                     const entryColor = getExerciseColorClasses(ex?.color ?? null)
+                    const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
                     return (
-                      <div
-                        key={entry.id}
-                        draggable
-                        onDragStart={(e) => handleEntryDragStart(e, entry.id, dateKey)}
-                        onDragEnd={handleDragEnd}
-                        className={cn(
-                          'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-grab active:cursor-grabbing',
-                          ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
-                        )}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className={cn('truncate font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
-                            {getExerciseName(entry.exercise_id)}
-                          </p>
-                          {ex && (
-                            <p className="truncate text-[10px] text-surface-400">
-                              {formatLabel(ex.primary_muscle)}
-                            </p>
+                      <div key={entry.id} className="relative">
+                        <div
+                          draggable
+                          onDragStart={(e) => handleEntryDragStart(e, entry.id, dateKey)}
+                          onDragEnd={handleDragEnd}
+                          onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
+                          className={cn(
+                            'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer',
+                            ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
                           )}
-                        </div>
-                        <button
-                          onClick={() => removeEntry(entry.id)}
-                          className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
-                          aria-label="Remove"
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <div className="min-w-0 flex-1">
+                            <p className={cn('truncate font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
+                              {getExerciseName(entry.exercise_id)}
+                            </p>
+                            <div className="mt-0.5 space-y-0 text-[10px] text-surface-500">
+                              {entry.sets != null && <p>Sets: {entry.sets}</p>}
+                              {repsDisplay && (
+                                <p>{entry.rep_type === 'time' ? 'Time' : 'Reps'}: {repsDisplay}</p>
+                              )}
+                              {(entry.weight_unit === 'bodyweight' || entry.weight != null) && (
+                                <p>{formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)}</p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeEntry(entry.id) }}
+                            className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
+                            aria-label="Remove"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {editingEntryId === entry.id && (
+                          <EntryDetailEditor
+                            entry={entry}
+                            onUpdate={updateEntry}
+                            onClose={() => setEditingEntryId(null)}
+                          />
+                        )}
                       </div>
                     )
                   })}
@@ -297,73 +364,123 @@ export default function WeeklyPlanPage() {
           })}
         </div>
 
-        {/* Exercise pool */}
+        {/* Sidebar pools */}
         <div className="w-56 shrink-0">
-          <div className="sticky top-6 rounded-xl border border-surface-200 bg-white">
-            <div className="border-b border-surface-100 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
-                  Exercise Pool
-                </h3>
-                <button
-                  onClick={() => setNewExerciseOpen(true)}
-                  className="rounded p-0.5 text-surface-400 hover:bg-primary-50 hover:text-primary-600"
-                  aria-label="New exercise"
-                  title="New exercise"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="relative mt-1.5">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded border border-surface-200 px-2 py-1 pr-6 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
-                {search && (
+          <div className="sticky top-6 space-y-3">
+            {/* Exercise pool */}
+            <div className="rounded-xl border border-surface-200 bg-white">
+              <div className="border-b border-surface-100 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
+                    Exercise Pool
+                  </h3>
                   <button
-                    type="button"
-                    onClick={() => setSearch('')}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600"
-                    aria-label="Clear search"
+                    onClick={() => setNewExerciseOpen(true)}
+                    className="rounded p-0.5 text-surface-400 hover:bg-primary-50 hover:text-primary-600"
+                    aria-label="New exercise"
+                    title="New exercise"
                   >
-                    <X className="h-3 w-3" />
+                    <Plus className="h-3.5 w-3.5" />
                   </button>
-                )}
+                </div>
+                <div className="relative mt-1.5">
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full rounded border border-surface-200 px-2 py-1 pr-6 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch('')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-[40vh] overflow-y-auto p-2">
+                <div className="space-y-1">
+                  {filtered.map((exercise) => {
+                    const poolColor = getExerciseColorClasses(exercise.color)
+                    return (
+                      <div
+                        key={exercise.id}
+                        draggable
+                        onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
+                        onDragEnd={handleDragEnd}
+                        className={cn(
+                          'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
+                          exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                        )}
+                      >
+                        <p className={cn('text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
+                          {exercise.name}
+                        </p>
+                        <div className="mt-0.5 flex gap-1">
+                          <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
+                          <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {filtered.length === 0 && (
+                    <p className="py-4 text-center text-[11px] text-surface-400">
+                      {activeExercises.length === 0 ? 'Add exercises first' : 'No matches'}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto p-2">
-              <div className="space-y-1">
-                {filtered.map((exercise) => {
-                  const poolColor = getExerciseColorClasses(exercise.color)
-                  return (
-                  <div
-                    key={exercise.id}
-                    draggable
-                    onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
-                    onDragEnd={handleDragEnd}
-                    className={cn(
-                      'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
-                      exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
-                    )}
-                  >
-                    <p className={cn('text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
-                      {exercise.name}
+
+            {/* Saved Workouts pool */}
+            <div className="rounded-xl border border-surface-200 bg-white">
+              <div className="border-b border-surface-100 px-3 py-2">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
+                  Saved Workouts
+                </h3>
+              </div>
+              <div className="max-h-[30vh] overflow-y-auto p-2">
+                <div className="space-y-1">
+                  {templates.map((tmpl) => {
+                    const count = getExercisesForTemplate(tmpl.id).length
+                    return (
+                      <div
+                        key={tmpl.id}
+                        draggable
+                        onDragStart={(e) => handleTemplateDragStart(e, tmpl.id)}
+                        onDragEnd={handleDragEnd}
+                        className="group flex items-center gap-1 rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate text-surface-800">
+                            {tmpl.name}
+                          </p>
+                          <p className="text-[10px] text-surface-400">
+                            {count} {count === 1 ? 'exercise' : 'exercises'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeTemplate(tmpl.id) }}
+                          className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
+                          aria-label="Delete template"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                  {templates.length === 0 && (
+                    <p className="py-4 text-center text-[11px] text-surface-400">
+                      Save a day to create a template
                     </p>
-                    <div className="mt-0.5 flex gap-1">
-                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
-                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
-                    </div>
-                  </div>
-                  )
-                })}
-                {filtered.length === 0 && (
-                  <p className="py-4 text-center text-[11px] text-surface-400">
-                    {activeExercises.length === 0 ? 'Add exercises first' : 'No matches'}
-                  </p>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>

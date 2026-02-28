@@ -59,3 +59,90 @@ export function getExerciseColorClasses(color: string | null) {
 export type UnitSystem = 'imperial' | 'metric'
 
 export type RecordType = 'max_weight' | 'max_reps' | 'max_volume' | 'max_duration'
+
+export type RepType = 'single' | 'left_right' | 'reverse_ladder' | 'double_reverse_ladder' | 'ladder' | 'double_ladder' | 'time'
+
+export type WeightUnit = 'lbs' | 'kg' | 'pood' | 'bodyweight'
+
+export const REP_TYPE_OPTIONS: { value: RepType; label: string }[] = [
+  { value: 'single', label: 'Single' },
+  { value: 'left_right', label: 'Left / Right' },
+  { value: 'reverse_ladder', label: 'Reverse Ladder' },
+  { value: 'double_reverse_ladder', label: 'Double Reverse Ladder' },
+  { value: 'ladder', label: 'Ladder' },
+  { value: 'double_ladder', label: 'Double Ladder' },
+  { value: 'time', label: 'Time' },
+]
+
+export const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
+  { value: 'lbs', label: 'lbs' },
+  { value: 'kg', label: 'kg' },
+  { value: 'pood', label: 'pood' },
+  { value: 'bodyweight', label: 'BW' },
+]
+
+export function formatReps(repType: RepType, reps: number | null, repsRight?: number | null): string {
+  if (reps == null) return ''
+
+  switch (repType) {
+    case 'single':
+      return `${reps}`
+    case 'left_right':
+      return `${reps}/${repsRight ?? reps}`
+    case 'reverse_ladder': {
+      const parts: number[] = []
+      for (let i = reps; i >= 1; i--) parts.push(i)
+      return parts.join('/')
+    }
+    case 'double_reverse_ladder': {
+      const parts: string[] = []
+      for (let i = reps; i >= 1; i--) parts.push(`${i}/${i}`)
+      return parts.join(', ')
+    }
+    case 'ladder': {
+      const up: number[] = []
+      for (let i = 1; i <= reps; i++) up.push(i)
+      const down: number[] = []
+      for (let i = reps - 1; i >= 1; i--) down.push(i)
+      return [...up, ...down].join('/')
+    }
+    case 'double_ladder': {
+      const up: string[] = []
+      for (let i = 1; i <= reps; i++) up.push(`${i}/${i}`)
+      const down: string[] = []
+      for (let i = reps - 1; i >= 1; i--) down.push(`${i}/${i}`)
+      return [...up, ...down].join(', ')
+    }
+    case 'time': {
+      const mins = Math.floor(reps / 60)
+      const secs = reps % 60
+      return `${mins}:${secs.toString().padStart(2, '0')}`
+    }
+    default:
+      return `${reps}`
+  }
+}
+
+/** Convert a weight value between units. Bodyweight is returned as-is. */
+export function convertWeight(value: number, from: WeightUnit, to: WeightUnit): number {
+  if (from === to || from === 'bodyweight' || to === 'bodyweight') return value
+  // Convert to lbs first, then to target
+  const toLbs: Record<string, number> = { lbs: 1, kg: 2.20462, pood: 36 }
+  const lbs = value * toLbs[from]
+  return lbs / toLbs[to]
+}
+
+/** Format weight with optional conversion parenthetical.
+ *  e.g. "2pood (72lbs)" when preferred differs, or just "72lbs" when same. */
+export function formatWeightWithConversion(
+  weight: number | null,
+  unit: WeightUnit,
+  preferredUnit: WeightUnit,
+): string {
+  if (unit === 'bodyweight') return 'BW'
+  if (weight == null) return ''
+  if (unit === preferredUnit) return `${weight}${unit}`
+  const converted = convertWeight(weight, unit, preferredUnit)
+  const rounded = Math.round(converted * 10) / 10
+  return `${weight}${unit} (${rounded}${preferredUnit})`
+}
