@@ -90,6 +90,7 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { name: 'Wrist Curl', exercise_type: 'strength', primary_muscle: 'forearms', equipment: 'dumbbell' },
   { name: 'Reverse Wrist Curl', exercise_type: 'strength', primary_muscle: 'forearms', equipment: 'dumbbell' },
   { name: 'Farmer\'s Walk', exercise_type: 'strength', primary_muscle: 'forearms', equipment: 'dumbbell' },
+  { name: 'Shin Box - Clean', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'upper_body', equipment: 'kettlebell' },
 
   // Full Body
   { name: 'C&P | Clean and Press', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },

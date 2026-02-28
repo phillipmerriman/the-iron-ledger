@@ -137,7 +137,7 @@ export default function EntryDetailEditor({
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-surface-500">Minutes</label>
+              <label className="text-[10px] font-medium text-surface-500">Minutes / Set</label>
               <input
                 type="number"
                 min={1}
