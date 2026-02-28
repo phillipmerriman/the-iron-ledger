@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useState, useEffect, type DragEvent } from 'react'
 import { X, Trash2, Save } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
@@ -18,6 +18,8 @@ interface ProgramWeekGridProps {
   onSaveDay?: (name: string, entries: PlannedEntry[]) => void
   /** Called when a template is dropped; parent resolves template exercises and calls addEntry */
   onTemplateDrop?: (dateKey: string, templateId: string) => void
+  /** Bump to trigger refetch (e.g. after external paste) */
+  revision?: number
 }
 
 export default function ProgramWeekGrid({
@@ -27,6 +29,7 @@ export default function ProgramWeekGrid({
   exercises,
   onSaveDay,
   onTemplateDrop,
+  revision,
 }: ProgramWeekGridProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
@@ -39,11 +42,14 @@ export default function ProgramWeekGrid({
     removeEntry,
     moveEntry,
     clearDate,
+    refetch,
   } = useWeeklyPlan({
     startDate: programStart,
     weekOffset,
     programId,
   })
+
+  useEffect(() => { refetch() }, [revision])
 
   // Drag state
   const [dropTarget, setDropTarget] = useState<string | null>(null)

@@ -1,12 +1,13 @@
 import { useState, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste } from 'lucide-react'
 import { parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
-import useWeeklyPlan from '@/hooks/useWeeklyPlan'
+import useWeeklyPlan, { loadWeekEntries, clearWeekEntries, pasteWeekEntries } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
+import { useAuth } from '@/contexts/AuthContext'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import { cn } from '@/lib/utils'
@@ -22,9 +23,12 @@ export default function ProgramDetailPage() {
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
 
+  const { user } = useAuth()
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
   const [creatingExercise, setCreatingExercise] = useState(false)
   const [search, setSearch] = useState('')
+  const [copiedWeek, setCopiedWeek] = useState<{ weekOffset: number; entries: (PlannedEntry & { dayIndex: number })[] } | null>(null)
+  const [revision, setRevision] = useState(0)
 
   const program = programs.find((p) => p.id === id)
   const loading = programsLoading || exercisesLoading
@@ -93,6 +97,27 @@ export default function ProgramDetailPage() {
     await saveDay(name, entries)
   }
 
+  function handleCopyWeek(weekOffset: number) {
+    if (!user || !program) return
+    const entries = loadWeekEntries(user.id, program.id, programStart, weekOffset)
+    setCopiedWeek({ weekOffset, entries })
+  }
+
+  function handlePasteWeek(targetWeekOffset: number) {
+    if (!user || !program || !copiedWeek) return
+    const targetEntries = loadWeekEntries(user.id, program.id, programStart, targetWeekOffset)
+    if (targetEntries.length > 0) {
+      const action = window.confirm(
+        `Week ${targetWeekOffset + 1} already has exercises.\n\nOK = Replace all exercises\nCancel = Add on top of existing`,
+      )
+      if (action) {
+        clearWeekEntries(user.id, program.id, programStart, targetWeekOffset)
+      }
+    }
+    pasteWeekEntries(user.id, program.id, programStart, targetWeekOffset, copiedWeek.entries)
+    setRevision((r) => r + 1)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -140,9 +165,31 @@ export default function ProgramDetailPage() {
         <div className="min-w-0 flex-1 space-y-2">
           {weeks.map((weekOffset) => (
             <div key={weekOffset} className="space-y-1">
-              <h2 className="text-lg font-semibold text-surface-800">
-                Week {weekOffset + 1}
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-surface-800">
+                  Week {weekOffset + 1}
+                  {copiedWeek?.weekOffset === weekOffset && (
+                    <span className="ml-2 text-xs font-normal text-primary-500">Copied</span>
+                  )}
+                </h2>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleCopyWeek(weekOffset)}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+                    title="Copy week"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy
+                  </button>
+                  <button
+                    onClick={() => handlePasteWeek(weekOffset)}
+                    disabled={!copiedWeek}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-surface-400 hover:bg-surface-100 hover:text-surface-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Paste week"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                  </button>
+                </div>
+              </div>
               <ProgramWeekGrid
                 weekOffset={weekOffset}
                 programId={program.id}
@@ -150,6 +197,7 @@ export default function ProgramDetailPage() {
                 exercises={exercises}
                 onSaveDay={handleSaveDay}
                 onTemplateDrop={handleTemplateDrop}
+                revision={revision}
               />
             </div>
           ))}

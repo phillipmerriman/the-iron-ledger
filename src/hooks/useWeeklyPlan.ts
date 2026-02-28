@@ -191,6 +191,97 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   }
 }
 
+/** Load all entries for a specific week of a program, tagged with day-of-week index */
+export function loadWeekEntries(
+  userId: string,
+  programId: string,
+  programStart: Date,
+  weekOffset: number,
+): (PlannedEntry & { dayIndex: number })[] {
+  const weekStart = startOfWeek(addWeeks(programStart, weekOffset), { weekStartsOn: 0 })
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const dateKeys = days.map((d) => format(d, 'yyyy-MM-dd'))
+
+  return loadAll()
+    .filter((e) => e.user_id === userId && e.program_id === programId && dateKeys.includes(e.date))
+    .map((e) => ({ ...e, dayIndex: dateKeys.indexOf(e.date) }))
+}
+
+/** Clear all entries for a specific week of a program */
+export function clearWeekEntries(
+  userId: string,
+  programId: string,
+  programStart: Date,
+  weekOffset: number,
+): void {
+  const weekStart = startOfWeek(addWeeks(programStart, weekOffset), { weekStartsOn: 0 })
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const dateKeys = new Set(days.map((d) => format(d, 'yyyy-MM-dd')))
+
+  const all = loadAll().filter(
+    (e) => !(e.user_id === userId && e.program_id === programId && dateKeys.has(e.date)),
+  )
+  saveAll(all)
+}
+
+/** Paste copied week entries into a target week */
+export function pasteWeekEntries(
+  userId: string,
+  programId: string,
+  programStart: Date,
+  targetWeekOffset: number,
+  copiedEntries: (PlannedEntry & { dayIndex: number })[],
+): void {
+  const weekStart = startOfWeek(addWeeks(programStart, targetWeekOffset), { weekStartsOn: 0 })
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const dateKeys = days.map((d) => format(d, 'yyyy-MM-dd'))
+
+  const all = loadAll()
+  const now = new Date().toISOString()
+
+  // Group by dayIndex to compute sort_order per day
+  const byDay = new Map<number, typeof copiedEntries>()
+  for (const entry of copiedEntries) {
+    const group = byDay.get(entry.dayIndex) ?? []
+    group.push(entry)
+    byDay.set(entry.dayIndex, group)
+  }
+
+  for (const [dayIndex, entries] of byDay) {
+    const targetDate = dateKeys[dayIndex]
+    if (!targetDate) continue
+    // Count existing entries for this date to set sort_order
+    const existingCount = all.filter(
+      (e) => e.user_id === userId && e.program_id === programId && e.date === targetDate,
+    ).length
+    const sorted = entries.sort((a, b) => a.sort_order - b.sort_order)
+    for (let i = 0; i < sorted.length; i++) {
+      const src = sorted[i]
+      all.push({
+        id: crypto.randomUUID(),
+        user_id: userId,
+        program_id: programId,
+        date: targetDate,
+        exercise_id: src.exercise_id,
+        sort_order: existingCount + i,
+        sets: src.sets,
+        reps: src.reps,
+        rep_type: src.rep_type,
+        reps_right: src.reps_right,
+        weight: src.weight,
+        weight_unit: src.weight_unit,
+        intensity: src.intensity,
+        notes: src.notes,
+      })
+    }
+  }
+
+  saveAll(all)
+}
+
 /** Load all entries for a given program across all weeks */
 export function loadProgramEntries(userId: string, programId: string): PlannedEntry[] {
   return loadAll().filter((e) => e.user_id === userId && e.program_id === programId)
