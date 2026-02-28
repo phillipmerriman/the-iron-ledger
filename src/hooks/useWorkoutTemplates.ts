@@ -122,6 +122,64 @@ export default function useWorkoutTemplates() {
     return data
   }
 
+  /** Update a template's name/description and replace all its exercises */
+  async function updateTemplate(
+    id: string,
+    fields: { name: string; description?: string },
+    newExercises: Omit<InsertDto<'workout_template_exercises'>, 'template_id'>[],
+  ) {
+    const now = new Date().toISOString()
+    if (isDev) {
+      // Update template row
+      const all = localDb.getAll('workout_templates')
+      const idx = all.findIndex((t) => t.id === id)
+      if (idx !== -1) {
+        all[idx] = { ...all[idx], name: fields.name, description: fields.description ?? null, updated_at: now }
+        localStorage.setItem('fittrack:workout_templates', JSON.stringify(all))
+      }
+      // Remove old exercises
+      const oldExs = localDb.getAll('workout_template_exercises').filter((e) => e.template_id === id)
+      for (const e of oldExs) localDb.remove('workout_template_exercises', e.id)
+      // Add new exercises
+      const addedExs: WorkoutTemplateExercise[] = []
+      for (const values of newExercises) {
+        const row: WorkoutTemplateExercise = {
+          id: crypto.randomUUID(),
+          template_id: id,
+          exercise_id: values.exercise_id,
+          sort_order: values.sort_order ?? 0,
+          target_sets: values.target_sets ?? null,
+          target_reps: values.target_reps ?? null,
+          target_weight: values.target_weight ?? null,
+          target_duration_sec: values.target_duration_sec ?? null,
+          rest_seconds: values.rest_seconds ?? null,
+          notes: values.notes ?? null,
+        }
+        localDb.insert('workout_template_exercises', row)
+        addedExs.push(row)
+      }
+      setTemplates((prev) => prev.map((t) => t.id === id ? { ...t, name: fields.name, description: fields.description ?? null, updated_at: now } : t))
+      setTemplateExercises((prev) => [...prev.filter((e) => e.template_id !== id), ...addedExs])
+    } else {
+      const { error } = await supabase
+        .from('workout_templates')
+        .update({ name: fields.name, description: fields.description ?? null, updated_at: now })
+        .eq('id', id)
+      if (error) throw error
+      // Remove old exercises and insert new
+      await supabase.from('workout_template_exercises').delete().eq('template_id', id)
+      if (newExercises.length > 0) {
+        const rows = newExercises.map((v) => ({ ...v, template_id: id }))
+        const { data, error: exErr } = await supabase.from('workout_template_exercises').insert(rows).select()
+        if (exErr) throw exErr
+        setTemplateExercises((prev) => [...prev.filter((e) => e.template_id !== id), ...(data ?? [])])
+      } else {
+        setTemplateExercises((prev) => prev.filter((e) => e.template_id !== id))
+      }
+      setTemplates((prev) => prev.map((t) => t.id === id ? { ...t, name: fields.name, description: fields.description ?? null, updated_at: now } : t))
+    }
+  }
+
   async function remove(id: string) {
     if (isDev) {
       const exs = localDb.getAll('workout_template_exercises').filter((e) => e.template_id === id)
@@ -170,6 +228,7 @@ export default function useWorkoutTemplates() {
     create,
     addExercise,
     remove,
+    updateTemplate,
     saveDay,
     parseExtras,
   }

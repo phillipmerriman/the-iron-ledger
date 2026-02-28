@@ -92,9 +92,9 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { name: 'Farmer\'s Walk', exercise_type: 'strength', primary_muscle: 'forearms', equipment: 'dumbbell' },
 
   // Full Body
-  { name: 'Clean and Press', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
+  { name: 'C&P | Clean and Press', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
   { name: 'Clean', exercise_rate: 'ballistic', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
-  { name: 'Turkish Get-Up', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
+  { name: 'TGU | Turkish Get-Up', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
   { name: 'Snatch', exercise_rate: 'ballistic', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'kettlebell' },
   { name: 'Burpee', exercise_rate: 'grind', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'bodyweight' },
   { name: 'Thruster', exercise_type: 'strength', primary_muscle: 'full_body', equipment: 'barbell' },

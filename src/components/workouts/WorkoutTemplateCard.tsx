@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import type { WorkoutTemplate, WorkoutTemplateExercise, Exercise } from '@/types/database'
 import { formatReps } from '@/types/common'
 import type { TemplateExerciseExtras } from '@/hooks/useWorkoutTemplates'
@@ -10,6 +10,7 @@ interface WorkoutTemplateCardProps {
   templateExercises: WorkoutTemplateExercise[]
   exercises: Exercise[]
   parseExtras: (notes: string | null) => TemplateExerciseExtras
+  onEdit: (template: WorkoutTemplate) => void
   onDelete: (id: string) => void
 }
 
@@ -18,6 +19,7 @@ export default function WorkoutTemplateCard({
   templateExercises,
   exercises,
   parseExtras,
+  onEdit,
   onDelete,
 }: WorkoutTemplateCardProps) {
   function getExerciseName(exerciseId: string) {
@@ -61,6 +63,14 @@ export default function WorkoutTemplateCard({
       </div>
 
       <div className="flex shrink-0 gap-1">
+        <button
+          onClick={() => onEdit(template)}
+          className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+          aria-label="Edit"
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
         <button
           onClick={() => onDelete(template.id)}
           className="rounded-lg p-1.5 text-surface-400 hover:bg-danger-50 hover:text-danger-600"

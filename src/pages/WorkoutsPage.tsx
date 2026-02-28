@@ -4,19 +4,21 @@ import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useExercises from '@/hooks/useExercises'
 import WorkoutTemplateCard from '@/components/workouts/WorkoutTemplateCard'
 import WorkoutTemplateForm from '@/components/workouts/WorkoutTemplateForm'
-import type { TemplateFormEntry } from '@/components/workouts/WorkoutTemplateForm'
+import type { TemplateFormEntry, WorkoutTemplateFormInitial } from '@/components/workouts/WorkoutTemplateForm'
+import type { WorkoutTemplate } from '@/types/database'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
 export default function WorkoutsPage() {
-  const { templates, loading: templatesLoading, getExercisesForTemplate, create, addExercise, remove, parseExtras } = useWorkoutTemplates()
+  const { templates, loading: templatesLoading, getExercisesForTemplate, create, addExercise, remove, updateTemplate, parseExtras } = useWorkoutTemplates()
   const { exercises, loading: exercisesLoading } = useExercises()
 
   const loading = templatesLoading || exercisesLoading
 
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState<WorkoutTemplate | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const filtered = useMemo(() => {
@@ -25,38 +27,80 @@ export default function WorkoutsPage() {
     return templates.filter((t) => t.name.toLowerCase().includes(q))
   }, [templates, search])
 
-  async function handleCreate(data: { name: string; description: string; entries: TemplateFormEntry[] }) {
+  function entriesToExerciseRows(entries: TemplateFormEntry[]) {
+    return entries.map((entry) => {
+      const extras = {
+        rep_type: entry.rep_type,
+        reps_right: entry.reps_right,
+        weight_unit: entry.weight_unit,
+        target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
+      }
+      return {
+        exercise_id: entry.exercise_id,
+        sort_order: entry.sort_order,
+        target_sets: entry.sets,
+        target_reps: entry.rep_type === 'time' ? null : entry.reps,
+        target_weight: entry.weight,
+        target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
+        rest_seconds: null,
+        notes: JSON.stringify(extras),
+      }
+    })
+  }
+
+  async function handleSubmit(data: { name: string; description: string; entries: TemplateFormEntry[] }) {
     setSubmitting(true)
     try {
-      const template = await create(data.name, data.description || undefined)
-      if (!template) return
-      for (const entry of data.entries) {
-        const extras = {
-          rep_type: entry.rep_type,
-          reps_right: entry.reps_right,
-          weight_unit: entry.weight_unit,
-          target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
+      if (editing) {
+        await updateTemplate(editing.id, { name: data.name, description: data.description || undefined }, entriesToExerciseRows(data.entries))
+      } else {
+        const template = await create(data.name, data.description || undefined)
+        if (!template) return
+        for (const row of entriesToExerciseRows(data.entries)) {
+          await addExercise(template.id, row)
         }
-        await addExercise(template.id, {
-          exercise_id: entry.exercise_id,
-          sort_order: entry.sort_order,
-          target_sets: entry.sets,
-          target_reps: entry.rep_type === 'time' ? null : entry.reps,
-          target_weight: entry.weight,
-          target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
-          rest_seconds: null,
-          notes: JSON.stringify(extras),
-        })
       }
-      setModalOpen(false)
+      closeModal()
     } finally {
       setSubmitting(false)
     }
   }
 
+  function openEdit(template: WorkoutTemplate) {
+    setEditing(template)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditing(null)
+  }
+
   async function handleDelete(id: string) {
     if (!confirm('Delete this workout template?')) return
     await remove(id)
+  }
+
+  function buildEditInitial(template: WorkoutTemplate): WorkoutTemplateFormInitial {
+    const texs = getExercisesForTemplate(template.id)
+    return {
+      name: template.name,
+      description: template.description ?? '',
+      entries: texs.map((te) => {
+        const extras = parseExtras(te.notes)
+        return {
+          id: te.id,
+          exercise_id: te.exercise_id,
+          sort_order: te.sort_order,
+          sets: te.target_sets,
+          reps: extras.rep_type === 'time' ? te.target_duration_sec : te.target_reps,
+          rep_type: extras.rep_type,
+          reps_right: extras.reps_right,
+          weight: te.target_weight,
+          weight_unit: extras.weight_unit,
+        }
+      }),
+    }
   }
 
   if (loading) {
@@ -117,18 +161,21 @@ export default function WorkoutsPage() {
               templateExercises={getExercisesForTemplate(template.id)}
               exercises={exercises}
               parseExtras={parseExtras}
+              onEdit={openEdit}
               onDelete={handleDelete}
             />
           ))}
         </div>
       )}
 
-      {/* Create modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Workout" size="xl">
+      {/* Create / Edit modal */}
+      <Modal open={modalOpen} onClose={closeModal} title={editing ? 'Edit Workout' : 'New Workout'} size="xl">
         <WorkoutTemplateForm
+          key={editing?.id ?? 'new'}
           exercises={exercises}
-          onSubmit={handleCreate}
-          onCancel={() => setModalOpen(false)}
+          initial={editing ? buildEditInitial(editing) : undefined}
+          onSubmit={handleSubmit}
+          onCancel={closeModal}
           submitting={submitting}
         />
       </Modal>

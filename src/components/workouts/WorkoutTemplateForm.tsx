@@ -1,5 +1,5 @@
-import { useState, type DragEvent } from 'react'
-import { X, Search } from 'lucide-react'
+import { useRef, useState, type DragEvent } from 'react'
+import { GripVertical, X, Search } from 'lucide-react'
 import type { Exercise } from '@/types/database'
 import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
 import type { RepType, WeightUnit } from '@/types/common'
@@ -22,8 +22,15 @@ export interface TemplateFormEntry {
   weight_unit: WeightUnit
 }
 
+export interface WorkoutTemplateFormInitial {
+  name: string
+  description: string
+  entries: TemplateFormEntry[]
+}
+
 interface WorkoutTemplateFormProps {
   exercises: Exercise[]
+  initial?: WorkoutTemplateFormInitial
   onSubmit: (data: { name: string; description: string; entries: TemplateFormEntry[] }) => void
   onCancel: () => void
   submitting?: boolean
@@ -31,6 +38,7 @@ interface WorkoutTemplateFormProps {
 
 export default function WorkoutTemplateForm({
   exercises,
+  initial,
   onSubmit,
   onCancel,
   submitting,
@@ -38,12 +46,15 @@ export default function WorkoutTemplateForm({
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
 
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [entries, setEntries] = useState<TemplateFormEntry[]>([])
+  const [name, setName] = useState(initial?.name ?? '')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [entries, setEntries] = useState<TemplateFormEntry[]>(initial?.entries ?? [])
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [reorderDragId, setReorderDragId] = useState<string | null>(null)
+  const [reorderOverIdx, setReorderOverIdx] = useState<number | null>(null)
+  const dragCounterRef = useRef(0)
 
   const activeExercises = exercises.filter((e) => !e.is_archived)
   const filtered = activeExercises.filter((e) =>
@@ -84,20 +95,91 @@ export default function WorkoutTemplateForm({
   function handlePoolDragStart(e: DragEvent, exerciseId: string) {
     e.dataTransfer.effectAllowed = 'copy'
     e.dataTransfer.setData('text/plain', exerciseId)
+    e.dataTransfer.setData('application/x-pool', 'true')
+  }
+
+  // Drag to reorder entries
+  function handleEntryDragStart(e: DragEvent, entryId: string) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', entryId)
+    e.dataTransfer.setData('application/x-reorder', 'true')
+    setReorderDragId(entryId)
+  }
+
+  function handleEntryDragEnd() {
+    setReorderDragId(null)
+    setReorderOverIdx(null)
+  }
+
+  function handleEntryDragOver(e: DragEvent, idx: number) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (reorderDragId) {
+      setReorderOverIdx(idx)
+    }
+  }
+
+  function handleEntryDrop(e: DragEvent, targetIdx: number) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('application/x-reorder') && reorderDragId) {
+      // Reorder
+      setEntries((prev) => {
+        const fromIdx = prev.findIndex((en) => en.id === reorderDragId)
+        if (fromIdx === -1 || fromIdx === targetIdx) return prev
+        const updated = [...prev]
+        const [moved] = updated.splice(fromIdx, 1)
+        updated.splice(targetIdx, 0, moved)
+        return updated.map((en, i) => ({ ...en, sort_order: i }))
+      })
+    } else if (e.dataTransfer.types.includes('application/x-pool')) {
+      // Insert from pool at position
+      const exerciseId = e.dataTransfer.getData('text/plain')
+      if (exerciseId) {
+        const entry: TemplateFormEntry = {
+          id: crypto.randomUUID(),
+          exercise_id: exerciseId,
+          sort_order: targetIdx,
+          sets: 3,
+          reps: 10,
+          rep_type: 'single',
+          reps_right: null,
+          weight: null,
+          weight_unit: 'lbs',
+        }
+        setEntries((prev) => {
+          const updated = [...prev]
+          updated.splice(targetIdx, 0, entry)
+          return updated.map((en, i) => ({ ...en, sort_order: i }))
+        })
+      }
+    }
+    setReorderDragId(null)
+    setReorderOverIdx(null)
+    setDragOver(false)
   }
 
   function handleDayDragOver(e: DragEvent) {
     e.preventDefault()
+    dragCounterRef.current++
     setDragOver(true)
   }
 
   function handleDayDragLeave() {
-    setDragOver(false)
+    dragCounterRef.current--
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0
+      setDragOver(false)
+      setReorderOverIdx(null)
+    }
   }
 
   function handleDayDrop(e: DragEvent) {
     e.preventDefault()
+    dragCounterRef.current = 0
     setDragOver(false)
+    setReorderOverIdx(null)
+    if (e.dataTransfer.types.includes('application/x-reorder')) return // handled by entry drop
     const exerciseId = e.dataTransfer.getData('text/plain')
     if (exerciseId) addExercise(exerciseId)
   }
@@ -163,19 +245,38 @@ export default function WorkoutTemplateForm({
             </div>
           ) : (
             <div className="space-y-1.5">
-              {entries.map((entry) => {
+              {entries.map((entry, idx) => {
                 const ex = getExercise(entry.exercise_id)
                 const entryColor = getExerciseColorClasses(ex?.color ?? null)
                 const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
+                const isDragging = reorderDragId === entry.id
                 return (
-                  <div key={entry.id} className="relative">
+                  <div
+                    key={entry.id}
+                    className="relative"
+                    onDragOver={(e) => handleEntryDragOver(e, idx)}
+                    onDrop={(e) => handleEntryDrop(e, idx)}
+                  >
+                    {reorderOverIdx === idx && reorderDragId && reorderDragId !== entry.id && (
+                      <div className="absolute -top-1 left-0 right-0 h-0.5 rounded bg-primary-500" />
+                    )}
                     <div
+                      draggable
+                      onDragStart={(e) => handleEntryDragStart(e, entry.id)}
+                      onDragEnd={handleEntryDragEnd}
                       onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                       className={cn(
-                        'group flex items-start gap-1 rounded-lg border p-2 text-xs shadow-sm cursor-pointer',
+                        'group flex items-start gap-1 rounded-lg border p-2 text-xs shadow-sm cursor-pointer transition-opacity',
                         ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
+                        isDragging && 'opacity-30',
                       )}
                     >
+                      <div
+                        className="shrink-0 cursor-grab pt-0.5 text-surface-300 active:cursor-grabbing"
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <GripVertical className="h-3 w-3" />
+                      </div>
                       <div className="min-w-0 flex-1">
                         <p className={cn('truncate font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
                           {ex?.name ?? 'Unknown'}
@@ -275,7 +376,7 @@ export default function WorkoutTemplateForm({
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button onClick={handleSubmit} disabled={submitting || !name.trim()}>
-          {submitting ? 'Creating...' : 'Create'}
+          {submitting ? (initial ? 'Saving...' : 'Creating...') : (initial ? 'Save' : 'Create')}
         </Button>
       </div>
     </div>
