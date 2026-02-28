@@ -58,7 +58,9 @@ export default function ProgramWeekGrid({
 
   function handleDayDragOver(e: DragEvent, dateKey: string) {
     e.preventDefault()
-    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
+    const isFromPool = e.dataTransfer.types.includes('application/x-pool')
+    const isFromTemplate = e.dataTransfer.types.includes('application/x-template')
+    e.dataTransfer.dropEffect = (isFromPool || isFromTemplate || e.ctrlKey || e.metaKey) ? 'copy' : 'move'
     setDropTarget(dateKey)
   }
 
