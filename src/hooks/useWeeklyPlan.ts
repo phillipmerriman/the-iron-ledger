@@ -55,6 +55,8 @@ interface UseWeeklyPlanOptions {
   weekOffset?: number
   /** Scope entries to a specific program */
   programId?: string | null
+  /** Also include entries with no program (program_id: null) when programId is set */
+  includeUnscoped?: boolean
 }
 
 export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
@@ -63,6 +65,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     startDate = new Date(),
     weekOffset = 0,
     programId = null,
+    includeUnscoped = false,
   } = options
 
   const [entries, setEntries] = useState<PlannedEntry[]>([])
@@ -78,10 +81,12 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       (e) =>
         e.user_id === user.id &&
         dateKeys.includes(e.date) &&
-        (programId ? e.program_id === programId : true),
+        (programId
+          ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
+          : true),
     )
     setEntries(all)
-  }, [user, dateKeys.join(','), programId])
+  }, [user, dateKeys.join(','), programId, includeUnscoped])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -183,4 +188,12 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
 /** Load all entries for a given program across all weeks */
 export function loadProgramEntries(userId: string, programId: string): PlannedEntry[] {
   return loadAll().filter((e) => e.user_id === userId && e.program_id === programId)
+}
+
+/** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
+export function loadUserEntries(userId: string, programId?: string | null): PlannedEntry[] {
+  return loadAll().filter((e) =>
+    e.user_id === userId &&
+    (programId ? (e.program_id === programId || e.program_id == null) : true),
+  )
 }

@@ -84,6 +84,7 @@ export default function WeeklyPlanPage() {
     | null
   >(null)
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const [reorderOverId, setReorderOverId] = useState<string | null>(null)
 
   // New exercise modal
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
@@ -150,6 +151,7 @@ export default function WeeklyPlanPage() {
   function handleDayDrop(e: DragEvent, dateKey: string) {
     e.preventDefault()
     setDropTarget(null)
+    setReorderOverId(null)
     if (!dragSource) return
 
     if (dragSource.type === 'pool') {
@@ -157,8 +159,9 @@ export default function WeeklyPlanPage() {
     } else if (dragSource.type === 'template') {
       handleTemplateDrop(dateKey, dragSource.templateId)
     } else if (dragSource.type === 'entry') {
+      // Dropped on the day container (not on a specific entry) — append at end
+      const dayEntries = getEntriesForDate(dateKey)
       if (e.ctrlKey || e.metaKey) {
-        // Ctrl+drag = duplicate
         const source = dateKeys.flatMap((dk) => getEntriesForDate(dk)).find((en) => en.id === dragSource.entryId)
         if (source) {
           addEntry(dateKey, source.exercise_id, {
@@ -171,7 +174,6 @@ export default function WeeklyPlanPage() {
           })
         }
       } else {
-        const dayEntries = getEntriesForDate(dateKey)
         moveEntry(dragSource.entryId, dateKey, dayEntries.length)
       }
     }
@@ -196,6 +198,40 @@ export default function WeeklyPlanPage() {
   function handleDragEnd() {
     setDragSource(null)
     setDropTarget(null)
+    setReorderOverId(null)
+  }
+
+  function handleEntryDragOver(e: DragEvent, entryId: string) {
+    if (dragSource?.type !== 'entry') return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
+    setReorderOverId(entryId)
+  }
+
+  function handleEntryDrop(e: DragEvent, dateKey: string, targetIdx: number) {
+    if (dragSource?.type !== 'entry') return
+    e.preventDefault()
+    e.stopPropagation()
+    setDropTarget(null)
+    setReorderOverId(null)
+
+    if (e.ctrlKey || e.metaKey) {
+      const source = dateKeys.flatMap((dk) => getEntriesForDate(dk)).find((en) => en.id === dragSource.entryId)
+      if (source) {
+        addEntry(dateKey, source.exercise_id, {
+          sets: source.sets,
+          reps: source.reps,
+          rep_type: source.rep_type,
+          reps_right: source.reps_right,
+          weight: source.weight,
+          weight_unit: source.weight_unit,
+        })
+      }
+    } else {
+      moveEntry(dragSource.entryId, dateKey, targetIdx)
+    }
+    setDragSource(null)
   }
 
   function handleSaveDay(dateKey: string) {
@@ -336,20 +372,30 @@ export default function WeeklyPlanPage() {
                 </div>
 
                 <div className="flex flex-1 flex-col gap-1 p-1.5">
-                  {planned.map((entry) => {
+                  {planned.map((entry, idx) => {
                     const ex = getExercise(entry.exercise_id)
                     const entryColor = getExerciseColorClasses(ex?.color ?? null)
                     const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
+                    const isDraggedEntry = dragSource?.type === 'entry' && dragSource.entryId === entry.id
                     return (
-                      <div key={entry.id} className="relative">
+                      <div
+                        key={entry.id}
+                        className="relative"
+                        onDragOver={(e) => handleEntryDragOver(e, entry.id)}
+                        onDrop={(e) => handleEntryDrop(e, dateKey, idx)}
+                      >
+                        {reorderOverId === entry.id && dragSource?.type === 'entry' && dragSource.entryId !== entry.id && (
+                          <div className="absolute -top-1 left-0 right-0 h-0.5 rounded bg-primary-500" />
+                        )}
                         <div
                           draggable
                           onDragStart={(e) => handleEntryDragStart(e, entry.id, dateKey)}
                           onDragEnd={handleDragEnd}
                           onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                           className={cn(
-                            'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer',
+                            'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
                             ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
+                            isDraggedEntry && 'opacity-30',
                           )}
                         >
                           <div className="min-w-0 flex-1">

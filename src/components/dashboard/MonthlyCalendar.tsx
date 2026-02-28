@@ -12,20 +12,30 @@ import {
   addMonths,
   subMonths,
 } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { loadProgramEntries } from '@/hooks/useWeeklyPlan'
+import { ChevronLeft, ChevronRight, Check, Undo2, Trash2 } from 'lucide-react'
+import { loadUserEntries } from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
+import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Program, WorkoutSession } from '@/types/database'
+import type { Program, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
 import { cn } from '@/lib/utils'
+import Modal from '@/components/ui/Modal'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
 
 interface MonthlyCalendarProps {
   sessions: WorkoutSession[]
   activeProgram?: Program | null
+  onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
+  onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
+  onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ sessions, activeProgram }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSession, onCreateSession, onDeleteSession }: MonthlyCalendarProps) {
   const { user } = useAuth()
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -33,12 +43,19 @@ export default function MonthlyCalendar({ sessions, activeProgram }: MonthlyCale
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
 
-  // Load all planned entries for the active program
-  const plannedDates = useMemo(() => {
-    if (!activeProgram || !user) return new Set<string>()
-    const entries = loadProgramEntries(user.id, activeProgram.id)
-    return new Set(entries.map((e) => e.date))
+  const { exercises } = useExercises()
+  const { profile } = useAuth()
+  const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
+
+  // Load all planned entries (scoped to active program if one exists)
+  const plannedEntries = useMemo(() => {
+    if (!user) return [] as PlannedEntry[]
+    return loadUserEntries(user.id, activeProgram?.id ?? null)
   }, [activeProgram, user])
+
+  const plannedDates = useMemo(() => {
+    return new Set(plannedEntries.map((e) => e.date))
+  }, [plannedEntries])
 
   function hasWorkout(day: Date) {
     return sessions.some((s) => isSameDay(new Date(s.started_at), day))
@@ -53,6 +70,48 @@ export default function MonthlyCalendar({ sessions, activeProgram }: MonthlyCale
   function isPlanned(day: Date) {
     return plannedDates.has(format(day, 'yyyy-MM-dd'))
   }
+
+  function getSessionsForDay(day: Date) {
+    return sessions.filter((s) => isSameDay(new Date(s.started_at), day))
+  }
+
+  function getPlannedForDay(day: Date) {
+    const dateKey = format(day, 'yyyy-MM-dd')
+    return plannedEntries.filter((e) => e.date === dateKey).sort((a, b) => a.sort_order - b.sort_order)
+  }
+
+  function getExerciseName(exerciseId: string) {
+    return exercises.find((e) => e.id === exerciseId)?.name ?? 'Unknown'
+  }
+
+  function getExercise(exerciseId: string) {
+    return exercises.find((e) => e.id === exerciseId)
+  }
+
+  async function handleToggleComplete(session: WorkoutSession) {
+    if (!onUpdateSession) return
+    if (session.completed_at) {
+      await onUpdateSession(session.id, { completed_at: null })
+    } else {
+      await onUpdateSession(session.id, { completed_at: new Date().toISOString() })
+    }
+  }
+
+  async function handleMarkDayComplete(day: Date) {
+    if (!onCreateSession) return
+    const planned = getPlannedForDay(day)
+    const names = planned.map((e) => getExerciseName(e.exercise_id))
+    const sessionName = names.length > 0 ? names.join(', ') : 'Workout'
+    const dayStr = format(day, 'yyyy-MM-dd')
+    await onCreateSession({
+      name: sessionName,
+      started_at: `${dayStr}T09:00:00.000Z`,
+      completed_at: `${dayStr}T10:00:00.000Z`,
+    })
+  }
+
+  const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
+  const dayPlanned = selectedDay ? getPlannedForDay(selectedDay) : []
 
   return (
     <div>
@@ -93,25 +152,31 @@ export default function MonthlyCalendar({ sessions, activeProgram }: MonthlyCale
           const worked = hasWorkout(day)
           const completed = isCompleted(day)
           const planned = isPlanned(day)
+          const isSelected = selectedDay && isSameDay(day, selectedDay)
 
           return (
             <div
               key={day.toISOString()}
               className="flex flex-col items-center justify-center py-1"
             >
-              <div
+              <button
+                type="button"
+                onClick={() => inMonth && setSelectedDay(day)}
                 className={cn(
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors',
+                  inMonth && 'cursor-pointer hover:bg-surface-100',
                   !inMonth && 'text-surface-300',
                   inMonth && !worked && !planned && 'text-surface-600',
                   today && !worked && !planned && 'ring-2 ring-primary-400 ring-offset-1',
-                  completed && 'bg-primary-500 text-white',
-                  worked && !completed && 'bg-warning-500/20 text-warning-600',
-                  planned && !worked && inMonth && 'bg-primary-100 text-primary-700',
+                  completed && 'bg-primary-500 text-white hover:bg-primary-600',
+                  worked && !completed && 'bg-warning-500/20 text-warning-600 hover:bg-warning-500/30',
+                  planned && !worked && inMonth && 'bg-primary-100 text-primary-700 hover:bg-primary-200',
+                  isSelected && 'ring-2 ring-primary-500 ring-offset-1',
                 )}
+                disabled={!inMonth}
               >
                 {format(day, 'd')}
-              </div>
+              </button>
               {/* Dot indicator for planned days */}
               {planned && !worked && inMonth && (
                 <div className="mt-0.5 h-1 w-1 rounded-full bg-primary-400" />
@@ -138,6 +203,116 @@ export default function MonthlyCalendar({ sessions, activeProgram }: MonthlyCale
           </div>
         )}
       </div>
+
+      {/* Day detail popup */}
+      <Modal
+        open={!!selectedDay}
+        onClose={() => setSelectedDay(null)}
+        title={selectedDay ? format(selectedDay, 'EEEE, MMM d') : ''}
+      >
+        {daySessions.length === 0 && dayPlanned.length === 0 ? (
+          <p className="py-4 text-center text-sm text-surface-400">No workouts on this day</p>
+        ) : (
+          <div className="space-y-4">
+            {/* Workout sessions */}
+            {daySessions.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500">Workouts</h4>
+                {daySessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center justify-between rounded-lg border border-surface-200 p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-surface-900">{session.name}</p>
+                      <p className="mt-0.5 text-xs text-surface-400">
+                        Started {format(new Date(session.started_at), 'h:mm a')}
+                        {session.completed_at && (
+                          <> — Completed {format(new Date(session.completed_at), 'h:mm a')}</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="ml-3 flex items-center gap-2">
+                      <Badge variant={session.completed_at ? 'primary' : 'warning'}>
+                        {session.completed_at ? 'Completed' : 'In Progress'}
+                      </Badge>
+                      {onUpdateSession && (
+                        <Button
+                          size="sm"
+                          variant={session.completed_at ? 'ghost' : 'primary'}
+                          onClick={() => handleToggleComplete(session)}
+                        >
+                          {session.completed_at ? (
+                            <><Undo2 className="h-3.5 w-3.5" /> Undo</>
+                          ) : (
+                            <><Check className="h-3.5 w-3.5" /> Complete</>
+                          )}
+                        </Button>
+                      )}
+                      {onDeleteSession && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onDeleteSession(session.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-danger-500" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Planned exercises */}
+            {dayPlanned.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500">Planned</h4>
+                <div className="space-y-1">
+                  {dayPlanned.map((entry) => {
+                    const ex = getExercise(entry.exercise_id)
+                    const color = getExerciseColorClasses(ex?.color ?? null)
+                    const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
+                    return (
+                      <div
+                        key={entry.id}
+                        className={cn(
+                          'rounded-lg border p-2 text-sm',
+                          ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                        )}
+                      >
+                        <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
+                          {getExerciseName(entry.exercise_id)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-surface-500">
+                          {[
+                            entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,
+                            repsDisplay && `${repsDisplay}`,
+                            entry.weight_unit === 'bodyweight'
+                              ? 'BW'
+                              : entry.weight != null
+                                ? formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)
+                                : null,
+                          ].filter(Boolean).join(' × ')}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+                {onCreateSession && selectedDay && !hasWorkout(selectedDay) && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleMarkDayComplete(selectedDay)}
+                    className="mt-2 w-full"
+                  >
+                    <Check className="h-3.5 w-3.5" /> Mark Day Complete
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

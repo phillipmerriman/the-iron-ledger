@@ -18,7 +18,7 @@ import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
 export default function DashboardPage() {
-  const { sessions, loading: workoutsLoading } = useWorkouts()
+  const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
   const { programs, loading: programsLoading } = usePrograms()
 
   const loading = workoutsLoading || programsLoading
@@ -129,7 +129,7 @@ export default function DashboardPage() {
           <WeeklyCalendar sessions={sessions} activeProgram={activeProgram} />
         </Card>
         <Card>
-          <MonthlyCalendar sessions={sessions} activeProgram={activeProgram} />
+          <MonthlyCalendar sessions={sessions} activeProgram={activeProgram} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
         </Card>
       </div>
     </div>

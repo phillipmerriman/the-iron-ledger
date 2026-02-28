@@ -43,6 +43,7 @@ export default function WeeklyCalendar({ sessions, activeProgram }: WeeklyCalend
     startDate: programStart,
     weekOffset: currentWeekOffset,
     programId: activeProgram?.id ?? null,
+    includeUnscoped: true,
   })
   const { exercises } = useExercises()
 

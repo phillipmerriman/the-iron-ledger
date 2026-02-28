@@ -47,6 +47,8 @@ export default function ProgramWeekGrid({
 
   // Drag state
   const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const [reorderOverId, setReorderOverId] = useState<string | null>(null)
+  const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null)
   // Editing state
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
 
@@ -67,6 +69,7 @@ export default function ProgramWeekGrid({
   function handleDayDrop(e: DragEvent, dateKey: string) {
     e.preventDefault()
     setDropTarget(null)
+    setReorderOverId(null)
 
     const data = e.dataTransfer.getData('text/plain')
     if (!data) return
@@ -76,8 +79,9 @@ export default function ProgramWeekGrid({
     } else if (e.dataTransfer.types.includes('application/x-pool')) {
       addEntry(dateKey, data)
     } else {
+      // Dropped on day container (not on a specific entry) — append at end
+      const dayEntries = getEntriesForDate(dateKey)
       if (e.ctrlKey || e.metaKey) {
-        // Ctrl+drag = duplicate
         const allEntries = dateKeys.flatMap((dk) => getEntriesForDate(dk))
         const source = allEntries.find((en) => en.id === data)
         if (source) {
@@ -91,15 +95,55 @@ export default function ProgramWeekGrid({
           })
         }
       } else {
-        const dayEntries = getEntriesForDate(dateKey)
         moveEntry(data, dateKey, dayEntries.length)
       }
+      setDraggingEntryId(null)
     }
   }
 
   function handleEntryDragStart(e: DragEvent, entryId: string) {
     e.dataTransfer.effectAllowed = 'copyMove'
     e.dataTransfer.setData('text/plain', entryId)
+    setDraggingEntryId(entryId)
+  }
+
+  function handleEntryDragEnd() {
+    setDraggingEntryId(null)
+    setReorderOverId(null)
+  }
+
+  function handleEntryDragOver(e: DragEvent, entryId: string) {
+    if (!draggingEntryId) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? 'copy' : 'move'
+    setReorderOverId(entryId)
+  }
+
+  function handleEntryDrop(e: DragEvent, dateKey: string, targetIdx: number) {
+    if (!draggingEntryId) return
+    e.preventDefault()
+    e.stopPropagation()
+    setDropTarget(null)
+    setReorderOverId(null)
+
+    if (e.ctrlKey || e.metaKey) {
+      const allEntries = dateKeys.flatMap((dk) => getEntriesForDate(dk))
+      const source = allEntries.find((en) => en.id === draggingEntryId)
+      if (source) {
+        addEntry(dateKey, source.exercise_id, {
+          sets: source.sets,
+          reps: source.reps,
+          rep_type: source.rep_type,
+          reps_right: source.reps_right,
+          weight: source.weight,
+          weight_unit: source.weight_unit,
+        })
+      }
+    } else {
+      moveEntry(draggingEntryId, dateKey, targetIdx)
+    }
+    setDraggingEntryId(null)
   }
 
   function handleSaveDay(dateKey: string) {
@@ -175,7 +219,7 @@ export default function ProgramWeekGrid({
             </div>
 
             <div className="flex flex-col gap-1 p-1.5">
-              {planned.map((entry) => {
+              {planned.map((entry, idx) => {
                 const ex = getExercise(entry.exercise_id)
                 const entryColor = getExerciseColorClasses(ex?.color ?? null)
                 const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
@@ -183,14 +227,21 @@ export default function ProgramWeekGrid({
                   <div
                     key={entry.id}
                     className="relative"
+                    onDragOver={(e) => handleEntryDragOver(e, entry.id)}
+                    onDrop={(e) => handleEntryDrop(e, dateKey, idx)}
                   >
+                    {reorderOverId === entry.id && draggingEntryId && draggingEntryId !== entry.id && (
+                      <div className="absolute -top-1 left-0 right-0 h-0.5 rounded bg-primary-500" />
+                    )}
                     <div
                       draggable
                       onDragStart={(e) => handleEntryDragStart(e, entry.id)}
+                      onDragEnd={handleEntryDragEnd}
                       onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                       className={cn(
-                        'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer',
+                        'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
                         ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
+                        draggingEntryId === entry.id && 'opacity-30',
                       )}
                     >
                       <div className="min-w-0 flex-1">
