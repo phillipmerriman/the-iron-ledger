@@ -240,7 +240,7 @@ export default function ProgramWeekGrid({
                       onDragStart={(e) => handleEntryDragStart(e, entry.id)}
                       onDragEnd={handleEntryDragEnd}
                       onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
-                      title={entry.notes || undefined}
+                      title={[ex?.name, entry.notes].filter(Boolean).join('\n') || undefined}
                       className={cn(
                         'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
                         ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
