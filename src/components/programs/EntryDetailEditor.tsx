@@ -20,6 +20,7 @@ export default function EntryDetailEditor({
   const [repsRight, setRepsRight] = useState(entry.reps_right ?? '')
   const [weight, setWeight] = useState(entry.weight ?? '')
   const [weightUnit, setWeightUnit] = useState<WeightUnit>(entry.weight_unit)
+  const [intensity, setIntensity] = useState<'light' | 'heavy' | null>(entry.intensity ?? null)
 
   // Time fields (derived from reps stored as total seconds)
   const [timeMin, setTimeMin] = useState(() =>
@@ -54,6 +55,7 @@ export default function EntryDetailEditor({
       reps_right: repsRight === '' ? null : Number(repsRight),
       weight: weightUnit === 'bodyweight' ? null : (weight === '' ? null : Number(weight)),
       weight_unit: weightUnit,
+      intensity,
     })
     onClose()
   }
@@ -202,6 +204,29 @@ export default function EntryDetailEditor({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Intensity */}
+        <div>
+          <label className="text-[10px] font-medium text-surface-500">Intensity</label>
+          <div className="flex gap-1">
+            {(['light', 'heavy'] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setIntensity(intensity === opt ? null : opt)}
+                className={`flex-1 rounded border px-2 py-1 text-xs font-medium capitalize transition-colors ${
+                  intensity === opt
+                    ? opt === 'light'
+                      ? 'border-info-500 bg-info-500/10 text-info-600'
+                      : 'border-danger-500 bg-danger-500/10 text-danger-600'
+                    : 'border-surface-200 text-surface-400 hover:border-surface-300'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
           </div>
         </div>
 

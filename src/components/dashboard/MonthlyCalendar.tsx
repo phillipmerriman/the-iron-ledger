@@ -281,9 +281,21 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                           ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
                         )}
                       >
-                        <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
-                          {getExerciseName(entry.exercise_id)}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
+                            {getExerciseName(entry.exercise_id)}
+                          </p>
+                          {entry.intensity && (
+                            <span className={cn(
+                              'rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase',
+                              entry.intensity === 'light'
+                                ? 'bg-info-500/10 text-info-600'
+                                : 'bg-danger-500/10 text-danger-600',
+                            )}>
+                              {entry.intensity}
+                            </span>
+                          )}
+                        </div>
                         <p className="mt-0.5 text-xs text-surface-500">
                           {[
                             entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,

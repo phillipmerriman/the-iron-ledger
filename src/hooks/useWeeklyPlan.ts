@@ -22,9 +22,10 @@ export interface PlannedEntry {
   reps_right: number | null
   weight: number | null
   weight_unit: WeightUnit
+  intensity: 'light' | 'heavy' | null
 }
 
-export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit'>>
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 
@@ -40,6 +41,7 @@ function loadAll(): PlannedEntry[] {
     reps_right: null,
     weight: null,
     weight_unit: 'lbs' as WeightUnit,
+    intensity: null,
     ...e,
   }))
 }
@@ -112,6 +114,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       reps_right: presets?.reps_right ?? null,
       weight: presets?.weight ?? null,
       weight_unit: presets?.weight_unit ?? 'lbs',
+      intensity: presets?.intensity ?? null,
     }
     const all = loadAll()
     all.push(entry)

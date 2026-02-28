@@ -403,6 +403,15 @@ export default function WeeklyPlanPage() {
                               {getExerciseName(entry.exercise_id)}
                             </p>
                             <div className="mt-0.5 space-y-0 text-[10px] text-surface-500">
+                              {entry.intensity && (
+                                <span className={`inline-block rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase ${
+                                  entry.intensity === 'light'
+                                    ? 'bg-info-500/10 text-info-600'
+                                    : 'bg-danger-500/10 text-danger-600'
+                                }`}>
+                                  {entry.intensity}
+                                </span>
+                              )}
                               {entry.sets != null && <p>Sets: {entry.sets}</p>}
                               {repsDisplay && (
                                 <p>{entry.rep_type === 'time' ? 'Time: ' : entry.rep_type === 'reps_per_minute' ? '' : 'Reps: '}{repsDisplay}</p>
