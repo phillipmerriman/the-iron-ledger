@@ -13,6 +13,7 @@ import ProgramDetailPage from '@/pages/ProgramDetailPage'
 import RecordsPage from '@/pages/RecordsPage'
 import BodyPage from '@/pages/BodyPage'
 import SettingsPage from '@/pages/SettingsPage'
+import DataPage from '@/pages/DataPage'
 import WeeklyPlanPage from '@/pages/WeeklyPlanPage'
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="plan/:programId" element={<WeeklyPlanPage />} />
               <Route path="records" element={<RecordsPage />} />
               <Route path="body" element={<BodyPage />} />
+              <Route path="data" element={<DataPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

@@ -6,6 +6,7 @@ import {
   CalendarRange,
   Trophy,
   Scale,
+  Database,
   Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,6 +18,7 @@ const links = [
   { to: '/programs', label: 'Programs', icon: CalendarRange },
   { to: '/records', label: 'Records', icon: Trophy },
   { to: '/body', label: 'Body', icon: Scale },
+  { to: '/data', label: 'Data', icon: Database },
   { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 

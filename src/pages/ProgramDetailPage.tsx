@@ -146,7 +146,8 @@ export default function ProgramDetailPage() {
         <Link to="/programs" className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-500">
           <ArrowLeft className="h-4 w-4" /> Programs
         </Link>
-        <h1 className="mt-1 text-2xl font-bold">{program.name}</h1>
+        <h1 className="mt-1 text-2xl font-bold">Program Designer</h1>
+        <p className="text-sm font-medium text-surface-600">{program.name}</p>
         {program.description && (
           <p className="mt-0.5 text-sm text-surface-500">{program.description}</p>
         )}

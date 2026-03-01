@@ -6,6 +6,37 @@ interface SeedExercise {
   exercise_rate?: ExerciseRate
   primary_muscle: MuscleGroup
   equipment: Equipment
+  color?: string
+}
+
+const MUSCLE_COLOR_MAP: Record<string, string> = {
+  chest: 'red',
+  back: 'blue',
+  shoulders: 'purple',
+  biceps: 'violet',
+  triceps: 'indigo',
+  forearms: 'slate',
+  core: 'yellow',
+  quads: 'green',
+  hamstrings: 'teal',
+  glutes: 'lime',
+  calves: 'pink',
+  full_body: 'amber',
+  upper_body: 'rose',
+  lower_body: 'green',
+  other: 'slate',
+}
+
+const TYPE_COLOR_MAP: Record<string, string> = {
+  warm_up: 'orange',
+  cool_down: 'cyan',
+  cardio: 'teal',
+  flexibility: 'violet',
+}
+
+function getDefaultColor(exercise: SeedExercise): string {
+  if (exercise.color) return exercise.color
+  return TYPE_COLOR_MAP[exercise.exercise_type] ?? MUSCLE_COLOR_MAP[exercise.primary_muscle] ?? 'slate'
 }
 
 export const SEED_EXERCISES: SeedExercise[] = [
@@ -164,6 +195,7 @@ export function seedExercisesIfNeeded(userId: string) {
       exercise_rate: seed.exercise_rate ?? null,
       primary_muscle: seed.primary_muscle,
       equipment: seed.equipment,
+      color: getDefaultColor(seed),
       notes: null,
       is_archived: false,
       created_at: now,
@@ -174,4 +206,37 @@ export function seedExercisesIfNeeded(userId: string) {
   localStorage.setItem(`${PREFIX}exercises`, JSON.stringify(rows))
   localStorage.setItem(SEED_KEY, 'true')
   return true
+}
+
+const COLOR_MIGRATION_KEY = 'fittrack:exercises_colors_migrated'
+
+export function migrateExerciseColors() {
+  if (localStorage.getItem(COLOR_MIGRATION_KEY)) return false
+
+  const PREFIX = 'fittrack:'
+  const raw = localStorage.getItem(`${PREFIX}exercises`)
+  if (!raw) {
+    localStorage.setItem(COLOR_MIGRATION_KEY, 'true')
+    return false
+  }
+
+  const rows = JSON.parse(raw) as Array<{
+    color: string | null
+    exercise_type: string
+    primary_muscle: string
+  }>
+
+  let changed = false
+  for (const row of rows) {
+    if (!row.color) {
+      row.color = TYPE_COLOR_MAP[row.exercise_type] ?? MUSCLE_COLOR_MAP[row.primary_muscle] ?? 'slate'
+      changed = true
+    }
+  }
+
+  if (changed) {
+    localStorage.setItem(`${PREFIX}exercises`, JSON.stringify(rows))
+  }
+  localStorage.setItem(COLOR_MIGRATION_KEY, 'true')
+  return changed
 }

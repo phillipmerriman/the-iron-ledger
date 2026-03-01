@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase, isDev } from '@/lib/supabase'
-import { seedExercisesIfNeeded } from '@/lib/seed-exercises'
+import { seedExercisesIfNeeded, migrateExerciseColors } from '@/lib/seed-exercises'
 import type { Profile } from '@/types/database'
 
 interface AuthState {
@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isDev) {
       seedExercisesIfNeeded(MOCK_USER.id)
+      migrateExerciseColors()
       return
     }
 
