@@ -9,6 +9,7 @@ import {
   isSameMonth,
   isSameDay,
   isToday,
+  isFuture,
   addMonths,
   subMonths,
 } from 'date-fns'
@@ -112,6 +113,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
 
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
   const dayPlanned = selectedDay ? getPlannedForDay(selectedDay) : []
+  const isFutureDay = selectedDay ? isFuture(selectedDay) : false
 
   return (
     <div>
@@ -236,7 +238,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                       <Badge variant={session.completed_at ? 'primary' : 'warning'}>
                         {session.completed_at ? 'Completed' : 'In Progress'}
                       </Badge>
-                      {onUpdateSession && (
+                      {onUpdateSession && (session.completed_at || !isFutureDay) && (
                         <Button
                           size="sm"
                           variant={session.completed_at ? 'ghost' : 'primary'}
@@ -311,7 +313,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                     )
                   })}
                 </div>
-                {onCreateSession && selectedDay && !hasWorkout(selectedDay) && (
+                {onCreateSession && selectedDay && !hasWorkout(selectedDay) && !isFutureDay && (
                   <Button
                     size="sm"
                     onClick={() => handleMarkDayComplete(selectedDay)}
