@@ -26,7 +26,7 @@ export interface PlannedEntry {
   notes: string | null
 }
 
-export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes'>>
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 

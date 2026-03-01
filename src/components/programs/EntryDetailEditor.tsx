@@ -1,19 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
+import type { Exercise } from '@/types/database'
 import type { RepType, WeightUnit } from '@/types/common'
 import { REP_TYPE_OPTIONS, WEIGHT_UNIT_OPTIONS } from '@/types/common'
 
 interface EntryDetailEditorProps {
   entry: PlannedEntry
+  exerciseName?: string
+  exercises?: Exercise[]
   onUpdate: (id: string, values: PlannedEntryUpdate) => void
   onClose: () => void
 }
 
 export default function EntryDetailEditor({
   entry,
+  exerciseName,
+  exercises,
   onUpdate,
   onClose,
 }: EntryDetailEditorProps) {
+  const [exerciseId, setExerciseId] = useState(entry.exercise_id)
   const [sets, setSets] = useState(entry.sets ?? '')
   const [repType, setRepType] = useState<RepType>(entry.rep_type)
   const [reps, setReps] = useState(entry.reps ?? '')
@@ -50,6 +56,7 @@ export default function EntryDetailEditor({
         : reps === '' ? null : Number(reps)
 
     onUpdate(entry.id, {
+      exercise_id: exerciseId,
       sets: sets === '' ? null : Number(sets),
       reps: resolvedReps,
       rep_type: repType,
@@ -72,6 +79,22 @@ export default function EntryDetailEditor({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="space-y-2">
+        {exercises && exercises.length > 0 ? (
+          <div className="border-b border-surface-100 pb-1.5">
+            <label className="text-[10px] font-medium text-surface-500">Exercise</label>
+            <select
+              value={exerciseId}
+              onChange={(e) => setExerciseId(e.target.value)}
+              className={inputClass}
+            >
+              {exercises.filter((ex) => !ex.is_archived).map((ex) => (
+                <option key={ex.id} value={ex.id}>{ex.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : exerciseName ? (
+          <p className="truncate border-b border-surface-100 pb-1.5 text-xs font-semibold text-surface-800">{exerciseName}</p>
+        ) : null}
         {/* Sets */}
         <div>
           <label className="text-[10px] font-medium text-surface-500">Sets</label>

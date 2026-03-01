@@ -11,15 +11,26 @@ export interface TemplateExerciseExtras {
   reps_right: number | null
   weight_unit: WeightUnit
   target_duration_sec: number | null
+  intensity: 'light' | 'heavy' | null
+  user_notes: string | null
+}
+
+const EXTRAS_DEFAULTS: TemplateExerciseExtras = {
+  rep_type: 'single',
+  reps_right: null,
+  weight_unit: 'lbs',
+  target_duration_sec: null,
+  intensity: null,
+  user_notes: null,
 }
 
 /** Parse extra fields stored as JSON in the notes column */
 function parseExtras(notes: string | null): TemplateExerciseExtras {
-  if (!notes) return { rep_type: 'single', reps_right: null, weight_unit: 'lbs', target_duration_sec: null }
+  if (!notes) return { ...EXTRAS_DEFAULTS }
   try {
-    return { rep_type: 'single', reps_right: null, weight_unit: 'lbs', target_duration_sec: null, ...JSON.parse(notes) }
+    return { ...EXTRAS_DEFAULTS, ...JSON.parse(notes) }
   } catch {
-    return { rep_type: 'single', reps_right: null, weight_unit: 'lbs', target_duration_sec: null }
+    return { ...EXTRAS_DEFAULTS }
   }
 }
 
@@ -204,6 +215,8 @@ export default function useWorkoutTemplates() {
         reps_right: entry.reps_right,
         weight_unit: entry.weight_unit,
         target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
+        intensity: entry.intensity ?? null,
+        user_notes: entry.notes ?? null,
       }
       await addExercise(template.id, {
         exercise_id: entry.exercise_id,

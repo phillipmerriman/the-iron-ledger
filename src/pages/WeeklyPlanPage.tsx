@@ -433,6 +433,8 @@ export default function WeeklyPlanPage() {
                         {editingEntryId === entry.id && (
                           <EntryDetailEditor
                             entry={entry}
+                            exerciseName={getExerciseName(entry.exercise_id)}
+                            exercises={exercises}
                             onUpdate={updateEntry}
                             onClose={() => setEditingEntryId(null)}
                           />

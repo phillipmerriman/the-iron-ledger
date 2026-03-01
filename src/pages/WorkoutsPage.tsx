@@ -34,6 +34,8 @@ export default function WorkoutsPage() {
         reps_right: entry.reps_right,
         weight_unit: entry.weight_unit,
         target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
+        intensity: entry.intensity ?? null,
+        user_notes: entry.notes ?? null,
       }
       return {
         exercise_id: entry.exercise_id,
@@ -98,6 +100,8 @@ export default function WorkoutsPage() {
           reps_right: extras.reps_right,
           weight: te.target_weight,
           weight_unit: extras.weight_unit,
+          intensity: extras.intensity ?? null,
+          notes: extras.user_notes ?? null,
         }
       }),
     }

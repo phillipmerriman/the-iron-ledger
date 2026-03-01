@@ -287,6 +287,8 @@ export default function ProgramWeekGrid({
                     {editingEntryId === entry.id && (
                       <EntryDetailEditor
                         entry={entry}
+                        exerciseName={ex?.name ?? 'Unknown'}
+                        exercises={exercises}
                         onUpdate={updateEntry}
                         onClose={() => setEditingEntryId(null)}
                       />

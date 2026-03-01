@@ -20,6 +20,8 @@ export interface TemplateFormEntry {
   reps_right: number | null
   weight: number | null
   weight_unit: WeightUnit
+  intensity: 'light' | 'heavy' | null
+  notes: string | null
 }
 
 export interface WorkoutTemplateFormInitial {
@@ -72,6 +74,8 @@ export default function WorkoutTemplateForm({
       reps_right: null,
       weight: null,
       weight_unit: 'lbs',
+      intensity: null,
+      notes: null,
     }
     setEntries((prev) => [...prev, entry])
   }
@@ -159,6 +163,8 @@ export default function WorkoutTemplateForm({
           reps_right: null,
           weight: null,
           weight_unit: 'lbs',
+          intensity: null,
+          notes: null,
         }
         setEntries((prev) => {
           const updated = [...prev]
@@ -315,6 +321,8 @@ export default function WorkoutTemplateForm({
                     {editingEntryId === entry.id && (
                       <EntryDetailEditor
                         entry={toPlannedEntry(entry)}
+                        exerciseName={ex?.name ?? 'Unknown'}
+                        exercises={exercises}
                         onUpdate={updateEntry}
                         onClose={() => setEditingEntryId(null)}
                       />
