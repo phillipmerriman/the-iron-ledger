@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import ProgramWeekGrid from '@/components/programs/ProgramWeekGrid'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import Modal from '@/components/ui/Modal'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 
@@ -29,6 +30,7 @@ export default function ProgramDetailPage() {
   const [search, setSearch] = useState('')
   const [copiedWeek, setCopiedWeek] = useState<{ weekOffset: number; entries: (PlannedEntry & { dayIndex: number })[] } | null>(null)
   const [revision, setRevision] = useState(0)
+  const [pasteConfirm, setPasteConfirm] = useState<{ targetWeekOffset: number } | null>(null)
 
   const program = programs.find((p) => p.id === id)
   const loading = programsLoading || exercisesLoading
@@ -107,12 +109,17 @@ export default function ProgramDetailPage() {
     if (!user || !program || !copiedWeek) return
     const targetEntries = loadWeekEntries(user.id, program.id, programStart, targetWeekOffset)
     if (targetEntries.length > 0) {
-      const action = window.confirm(
-        `Week ${targetWeekOffset + 1} already has exercises.\n\nOK = Replace all exercises\nCancel = Add on top of existing`,
-      )
-      if (action) {
-        clearWeekEntries(user.id, program.id, programStart, targetWeekOffset)
-      }
+      setPasteConfirm({ targetWeekOffset })
+      return
+    }
+    pasteWeekEntries(user.id, program.id, programStart, targetWeekOffset, copiedWeek.entries)
+    setRevision((r) => r + 1)
+  }
+
+  function doPaste(targetWeekOffset: number, replace: boolean) {
+    if (!user || !program || !copiedWeek) return
+    if (replace) {
+      clearWeekEntries(user.id, program.id, programStart, targetWeekOffset)
     }
     pasteWeekEntries(user.id, program.id, programStart, targetWeekOffset, copiedWeek.entries)
     setRevision((r) => r + 1)
@@ -329,6 +336,26 @@ export default function ProgramDetailPage() {
           loading={creatingExercise}
         />
       </Modal>
+
+      {/* Paste week confirm */}
+      <ConfirmDialog
+        open={pasteConfirm !== null}
+        onClose={() => setPasteConfirm(null)}
+        title="Paste Week"
+        message={`Week ${(pasteConfirm?.targetWeekOffset ?? 0) + 1} already has exercises. What would you like to do?`}
+        actions={[
+          {
+            label: 'Add to existing',
+            variant: 'secondary',
+            onClick: () => { if (pasteConfirm) doPaste(pasteConfirm.targetWeekOffset, false) },
+          },
+          {
+            label: 'Replace all',
+            variant: 'danger',
+            onClick: () => { if (pasteConfirm) doPaste(pasteConfirm.targetWeekOffset, true) },
+          },
+        ]}
+      />
     </div>
   )
 }
