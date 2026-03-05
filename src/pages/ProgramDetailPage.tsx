@@ -154,15 +154,15 @@ export default function ProgramDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Programs
         </Link>
         <h1 className="mt-1 text-2xl font-bold">Program Designer</h1>
-        <p className="text-sm font-medium text-surface-600">{program.name}</p>
-        {program.description && (
-          <p className="mt-0.5 text-sm text-surface-500">{program.description}</p>
-        )}
-        <div className="mt-2 flex gap-1.5">
-          <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
-          {program.is_active && <Badge variant="primary">Active</Badge>}
+        <p className="mt-1 font-display text-lg font-semibold text-surface-800">{program.name}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          {program.description && (
+            <p className="text-surface-500"><span className="font-medium text-surface-600">Description:</span> {program.description}</p>
+          )}
+          <span className="text-surface-500"><span className="font-medium text-surface-600">Length:</span> {program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</span>
+          {program.is_active ? <Badge variant="primary">Active</Badge> : <Badge>Inactive</Badge>}
         </div>
-        <p className="mt-2 text-sm text-surface-500">
+        <p className="mt-2 text-xs text-surface-400">
           Drag exercises or saved workouts from the pool into each day.
         </p>
       </div>
