@@ -1,30 +1,22 @@
 import { useState, useRef, useEffect, type DragEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Sun, CloudSun, Moon, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
-import { format, isToday, parseISO } from 'date-fns'
+import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
-import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
-import type { Exercise } from '@/types/database'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
-import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
-import EntryDetailEditor from '@/components/programs/EntryDetailEditor'
+import { getExerciseColorClasses } from '@/types/common'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
+import PlannerDayColumn from '@/components/planner/PlannerDayColumn'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
-
-const SESSION_ICONS: Record<Session, typeof Sun> = {
-  morning: Sun,
-  noon: CloudSun,
-  night: Moon,
-}
 
 function formatLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -82,52 +74,6 @@ export default function WeeklyPlanPage() {
     e.name.toLowerCase().includes(search.toLowerCase()),
   )
 
-  // Editing state
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
-
-  // Collapse state for sessions — tracks manually toggled sections
-  const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set())
-  const [manualExpanded, setManualExpanded] = useState<Set<string>>(new Set())
-
-  function isSessionCollapsed(dateKey: string, session: Session, isEmpty: boolean) {
-    const key = `${dateKey}-${session}`
-    if (isEmpty) return !manualExpanded.has(key)
-    return manualCollapsed.has(key)
-  }
-
-  function toggleSession(dateKey: string, session: Session, isEmpty: boolean) {
-    const key = `${dateKey}-${session}`
-    if (isEmpty) {
-      setManualExpanded((prev) => {
-        const next = new Set(prev)
-        if (next.has(key)) next.delete(key)
-        else next.add(key)
-        return next
-      })
-    } else {
-      setManualCollapsed((prev) => {
-        const next = new Set(prev)
-        if (next.has(key)) next.delete(key)
-        else next.add(key)
-        return next
-      })
-    }
-  }
-
-  function expandSession(dateKey: string, session: Session) {
-    const key = `${dateKey}-${session}`
-    setManualCollapsed((prev) => {
-      const next = new Set(prev)
-      next.delete(key)
-      return next
-    })
-    setManualExpanded((prev) => {
-      const next = new Set(prev)
-      next.add(key)
-      return next
-    })
-  }
-
   // Drag state
   const [dragSource, setDragSource] = useState<
     | { type: 'pool'; exerciseId: string }
@@ -178,14 +124,6 @@ export default function WeeklyPlanPage() {
     }
   }
 
-  function getExerciseName(exerciseId: string) {
-    return exercises.find((e) => e.id === exerciseId)?.name ?? 'Unknown'
-  }
-
-  function getExercise(exerciseId: string): Exercise | undefined {
-    return exercises.find((e) => e.id === exerciseId)
-  }
-
   function handlePoolDragStart(e: DragEvent, exerciseId: string) {
     setDragSource({ type: 'pool', exerciseId })
     e.dataTransfer.effectAllowed = 'copy'
@@ -224,9 +162,6 @@ export default function WeeklyPlanPage() {
     setDropTarget(null)
     setReorderOverId(null)
     if (!dragSource) return
-
-    // Auto-expand the target section
-    expandSession(dateKey, session)
 
     if (dragSource.type === 'pool') {
       addEntry(dateKey, dragSource.exerciseId, undefined, session)
@@ -463,37 +398,32 @@ export default function WeeklyPlanPage() {
         <div className="grid flex-1 grid-cols-7 gap-2">
           {days.map((day, i) => {
             const dateKey = dateKeys[i]
-            const today = isToday(day)
             const allPlanned = getEntriesForDate(dateKey)
 
             return (
-              <div
+              <PlannerDayColumn
                 key={dateKey}
-                className={cn(
-                  'flex min-h-[300px] flex-col rounded-xl border-2 border-dashed transition-colors',
-                  today ? 'border-primary-300 bg-primary-50/20' : 'border-surface-200 bg-white',
-                )}
-              >
-                <div
-                  className={cn(
-                    'flex items-center justify-between rounded-t-lg px-2 py-1.5',
-                    today ? 'bg-primary-100/50' : 'bg-surface-50',
-                  )}
-                >
-                  <div>
-                    <span
-                      className={cn(
-                        'text-xs font-bold',
-                        today ? 'text-primary-700' : 'text-surface-600',
-                      )}
-                    >
-                      {format(day, 'EEE')}
-                    </span>
-                    <span className="ml-1 text-[11px] text-surface-400">
-                      {format(day, 'M/d')}
-                    </span>
-                  </div>
-                  {(allPlanned.length > 0 || clipboard) && (
+                day={day}
+                dateKey={dateKey}
+                exercises={exercises}
+                preferredUnit={preferredUnit}
+                getEntriesForDate={getEntriesForDate}
+                getEntriesForDateSession={getEntriesForDateSession}
+                onUpdateEntry={updateEntry}
+                onRemoveEntry={removeEntry}
+                onSessionDragOver={handleSessionDragOver}
+                onSessionDragLeave={handleSessionDragLeave}
+                onSessionDrop={handleSessionDrop}
+                onEntryDragStart={handleEntryDragStart}
+                onEntryDragEnd={handleDragEnd}
+                onEntryDragOver={handleEntryDragOver}
+                onEntryDrop={handleEntryDrop}
+                dropTarget={dropTarget}
+                reorderOverId={reorderOverId}
+                isDragging={(id) => dragSource?.type === 'entry' && dragSource.entryId === id}
+                minHeight="300px"
+                headerActions={
+                  (allPlanned.length > 0 || clipboard) ? (
                     <div className="relative">
                       <button
                         onClick={() => setOpenMenu(openMenu === `day-${dateKey}` ? null : `day-${dateKey}`)}
@@ -529,173 +459,43 @@ export default function WeeklyPlanPage() {
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Session sections */}
-                <div className="flex flex-1 flex-col">
-                  {SESSIONS.map((session, sIdx) => {
-                    const sessionEntries = getEntriesForDateSession(dateKey, session)
-                    const isEmpty = sessionEntries.length === 0
-                    const collapsed = isSessionCollapsed(dateKey, session, isEmpty)
-                    const isOver = dropTarget?.dateKey === dateKey && dropTarget?.session === session
-                    const Icon = SESSION_ICONS[session]
-
-                    return (
-                      <div key={session} className={cn(sIdx > 0 && 'border-t border-surface-100')}>
-                        {/* Section header */}
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-surface-400">
-                          <button
-                            type="button"
-                            onClick={() => toggleSession(dateKey, session, isEmpty)}
-                            className="flex items-center gap-1 hover:text-surface-600 transition-colors"
-                          >
-                            <ChevronRight className={cn('h-2.5 w-2.5 transition-transform', !collapsed && 'rotate-90')} />
-                            <Icon className="h-2.5 w-2.5" />
-                            <span>{SESSION_LABELS[session]}</span>
-                          </button>
+                  ) : undefined
+                }
+                sessionActions={(dk, session, sessionEntries) =>
+                  (sessionEntries.length > 0 || clipboard) ? (
+                    <div className="relative ml-auto">
+                      <button
+                        onClick={() => setOpenMenu(openMenu === `ses-${dk}-${session}` ? null : `ses-${dk}-${session}`)}
+                        className="rounded p-0.5 text-surface-300 hover:text-surface-500"
+                      >
+                        <MoreHorizontal className="h-2.5 w-2.5" />
+                      </button>
+                      {openMenu === `ses-${dk}-${session}` && (
+                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
                           {sessionEntries.length > 0 && (
-                            <span className="text-surface-300">{sessionEntries.length}</span>
+                            <button onClick={() => { handleCopySession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                              <Copy className="h-3.5 w-3.5" /> Copy
+                            </button>
                           )}
-                          {(sessionEntries.length > 0 || clipboard) && (
-                            <div className="relative ml-auto">
-                              <button
-                                onClick={() => setOpenMenu(openMenu === `ses-${dateKey}-${session}` ? null : `ses-${dateKey}-${session}`)}
-                                className="rounded p-0.5 text-surface-300 hover:text-surface-500"
-                              >
-                                <MoreHorizontal className="h-2.5 w-2.5" />
+                          {clipboard && (
+                            <button onClick={() => { handlePasteSession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                              <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                            </button>
+                          )}
+                          {sessionEntries.length > 0 && (
+                            <>
+                              <div className="my-1 border-t border-surface-100" />
+                              <button onClick={() => { clearSession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                                <Trash2 className="h-3.5 w-3.5" /> Clear
                               </button>
-                              {openMenu === `ses-${dateKey}-${session}` && (
-                                <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
-                                  {sessionEntries.length > 0 && (
-                                    <button onClick={() => { handleCopySession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
-                                      <Copy className="h-3.5 w-3.5" /> Copy
-                                    </button>
-                                  )}
-                                  {clipboard && (
-                                    <button onClick={() => { handlePasteSession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
-                                      <ClipboardPaste className="h-3.5 w-3.5" /> Paste
-                                    </button>
-                                  )}
-                                  {sessionEntries.length > 0 && (
-                                    <>
-                                      <div className="my-1 border-t border-surface-100" />
-                                      <button onClick={() => { clearSession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
-                                        <Trash2 className="h-3.5 w-3.5" /> Clear
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                            </>
                           )}
                         </div>
-
-                        {/* Section body */}
-                        {!collapsed && (
-                          <div
-                            onDragOver={(e) => handleSessionDragOver(e, dateKey, session)}
-                            onDragLeave={handleSessionDragLeave}
-                            onDrop={(e) => handleSessionDrop(e, dateKey, session)}
-                            className={cn(
-                              'flex flex-col gap-1 px-1.5 pb-1 min-h-[24px] transition-colors rounded-sm',
-                              isOver && 'bg-primary-50/60',
-                            )}
-                          >
-                            {sessionEntries.map((entry, idx) => {
-                              const ex = getExercise(entry.exercise_id)
-                              const entryColor = getExerciseColorClasses(ex?.color ?? null)
-                              const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
-                              const isDraggedEntry = dragSource?.type === 'entry' && dragSource.entryId === entry.id
-                              return (
-                                <div
-                                  key={entry.id}
-                                  className="relative"
-                                  onDragOver={(e) => handleEntryDragOver(e, entry.id)}
-                                  onDrop={(e) => handleEntryDrop(e, dateKey, idx, session)}
-                                >
-                                  {reorderOverId === entry.id && dragSource?.type === 'entry' && dragSource.entryId !== entry.id && (
-                                    <div className="absolute -top-1 left-0 right-0 h-0.5 rounded bg-primary-500" />
-                                  )}
-                                  <div
-                                    draggable
-                                    onDragStart={(e) => handleEntryDragStart(e, entry.id, dateKey)}
-                                    onDragEnd={handleDragEnd}
-                                    onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
-                                    title={[getExerciseName(entry.exercise_id), entry.notes].filter(Boolean).join('\n') || undefined}
-                                    className={cn(
-                                      'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
-                                      ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
-                                      isDraggedEntry && 'opacity-30',
-                                    )}
-                                  >
-                                    <div className="min-w-0 flex-1">
-                                      <p className={cn('font-display truncate font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
-                                        {getExerciseName(entry.exercise_id)}
-                                      </p>
-                                      <div className="mt-0.5 space-y-0 text-[10px] text-surface-500">
-                                        {entry.intensity && (
-                                          <span className={`inline-block rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase ${
-                                            entry.intensity === 'light'
-                                              ? 'bg-info-500/10 text-info-600'
-                                              : 'bg-danger-500/10 text-danger-600'
-                                          }`}>
-                                            {entry.intensity}
-                                          </span>
-                                        )}
-                                        {entry.sets != null && <p>Sets: {entry.sets}</p>}
-                                        {repsDisplay && (
-                                          <p>{entry.rep_type === 'time' ? 'Time: ' : entry.rep_type === 'reps_per_minute' ? '' : 'Reps: '}{repsDisplay}</p>
-                                        )}
-                                        {(entry.weight_unit === 'bodyweight' || entry.weight != null) && (
-                                          <p>{formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)}</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); removeEntry(entry.id) }}
-                                      className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
-                                      aria-label="Remove"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                  </div>
-                                  {editingEntryId === entry.id && (
-                                    <EntryDetailEditor
-                                      entry={entry}
-                                      exerciseName={getExerciseName(entry.exercise_id)}
-                                      exercises={exercises}
-                                      onUpdate={updateEntry}
-                                      onClose={() => setEditingEntryId(null)}
-                                    />
-                                  )}
-                                </div>
-                              )
-                            })}
-
-                            {isEmpty && (
-                              <span className="py-1 text-center text-[10px] text-surface-300">Drop here</span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Collapsed drop zone */}
-                        {collapsed && (
-                          <div
-                            onDragOver={(e) => { e.preventDefault(); handleSessionDragOver(e, dateKey, session) }}
-                            onDragLeave={handleSessionDragLeave}
-                            onDrop={(e) => handleSessionDrop(e, dateKey, session)}
-                            className={cn(
-                              'mx-1 h-1 rounded transition-colors',
-                              isOver && 'bg-primary-300',
-                            )}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+                      )}
+                    </div>
+                  ) : null
+                }
+              />
             )
           })}
         </div>
