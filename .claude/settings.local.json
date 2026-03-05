@@ -7,7 +7,8 @@
       "Bash(npm install @supabase/supabase-js react-router-dom recharts date-fns lucide-react)",
       "Bash(npm install -D tailwindcss @tailwindcss/vite)",
       "Bash(npx tsc --noEmit)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(npx tsc --noEmit --pretty)"
     ]
   }
 }

@@ -1,6 +1,6 @@
-import { useState, type DragEvent } from 'react'
+import { useState, useRef, useEffect, type DragEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Sun, CloudSun, Moon } from 'lucide-react'
+import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Sun, CloudSun, Moon, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
 import { format, isToday, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
@@ -67,6 +67,7 @@ export default function WeeklyPlanPage() {
     removeEntry,
     moveEntry,
     clearDate,
+    clearSession,
   } = useWeeklyPlan({
     startDate: programStart,
     weekOffset,
@@ -140,6 +141,24 @@ export default function WeeklyPlanPage() {
   // New exercise modal
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
   const [creatingExercise, setCreatingExercise] = useState(false)
+
+  // Clipboard for copy/paste
+  const [clipboard, setClipboard] = useState<{ type: 'day'; dateKey: string; entries: PlannedEntry[] } | { type: 'session'; dateKey: string; session: Session; entries: PlannedEntry[] } | null>(null)
+
+  // Context menu state
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!openMenu) return
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMenu])
 
   async function handleCreateExercise(values: {
     name: string
@@ -296,6 +315,52 @@ export default function WeeklyPlanPage() {
     saveDay(name.trim(), planned)
   }
 
+  function handleCopyDay(dateKey: string) {
+    const entries = getEntriesForDate(dateKey)
+    if (entries.length === 0) return
+    setClipboard({ type: 'day', dateKey, entries })
+  }
+
+  function handlePasteDay(dateKey: string) {
+    if (!clipboard) return
+    const entries = clipboard.entries
+    for (const entry of entries) {
+      const targetSession = clipboard.type === 'session' ? clipboard.session : entry.session
+      addEntry(dateKey, entry.exercise_id, {
+        sets: entry.sets,
+        reps: entry.reps,
+        rep_type: entry.rep_type,
+        reps_right: entry.reps_right,
+        weight: entry.weight,
+        weight_unit: entry.weight_unit,
+        intensity: entry.intensity,
+        notes: entry.notes,
+      }, targetSession)
+    }
+  }
+
+  function handleCopySession(dateKey: string, session: Session) {
+    const entries = getEntriesForDateSession(dateKey, session)
+    if (entries.length === 0) return
+    setClipboard({ type: 'session', dateKey, session, entries })
+  }
+
+  function handlePasteSession(dateKey: string, session: Session) {
+    if (!clipboard) return
+    for (const entry of clipboard.entries) {
+      addEntry(dateKey, entry.exercise_id, {
+        sets: entry.sets,
+        reps: entry.reps,
+        rep_type: entry.rep_type,
+        reps_right: entry.reps_right,
+        weight: entry.weight,
+        weight_unit: entry.weight_unit,
+        intensity: entry.intensity,
+        notes: entry.notes,
+      }, session)
+    }
+  }
+
   if (programsLoading || exercisesLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -428,24 +493,41 @@ export default function WeeklyPlanPage() {
                       {format(day, 'M/d')}
                     </span>
                   </div>
-                  {allPlanned.length > 0 && (
-                    <div className="flex gap-0.5">
+                  {(allPlanned.length > 0 || clipboard) && (
+                    <div className="relative">
                       <button
-                        onClick={() => handleSaveDay(dateKey)}
-                        className="rounded p-0.5 text-surface-300 hover:bg-primary-50 hover:text-primary-500"
-                        aria-label="Save as template"
-                        title="Save as template"
+                        onClick={() => setOpenMenu(openMenu === `day-${dateKey}` ? null : `day-${dateKey}`)}
+                        className="rounded p-0.5 text-surface-300 hover:bg-surface-100 hover:text-surface-500"
                       >
-                        <Save className="h-3 w-3" />
+                        <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        onClick={() => clearDate(dateKey)}
-                        className="rounded p-0.5 text-surface-300 hover:bg-danger-50 hover:text-danger-500"
-                        aria-label="Clear day"
-                        title="Clear all"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      {openMenu === `day-${dateKey}` && (
+                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                          {allPlanned.length > 0 && (
+                            <>
+                              <button onClick={() => { handleCopyDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                                <Copy className="h-3.5 w-3.5" /> Copy Day
+                              </button>
+                              <button onClick={() => { handleSaveDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                                <Save className="h-3.5 w-3.5" /> Save as Template
+                              </button>
+                            </>
+                          )}
+                          {clipboard && (
+                            <button onClick={() => { handlePasteDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                              <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                            </button>
+                          )}
+                          {allPlanned.length > 0 && (
+                            <>
+                              <div className="my-1 border-t border-surface-100" />
+                              <button onClick={() => { clearDate(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                                <Trash2 className="h-3.5 w-3.5" /> Clear Day
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -462,18 +544,52 @@ export default function WeeklyPlanPage() {
                     return (
                       <div key={session} className={cn(sIdx > 0 && 'border-t border-surface-100')}>
                         {/* Section header */}
-                        <button
-                          type="button"
-                          onClick={() => toggleSession(dateKey, session, isEmpty)}
-                          className="flex w-full items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-surface-400 hover:text-surface-600 transition-colors"
-                        >
-                          <ChevronRight className={cn('h-2.5 w-2.5 transition-transform', !collapsed && 'rotate-90')} />
-                          <Icon className="h-2.5 w-2.5" />
-                          <span>{SESSION_LABELS[session]}</span>
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-surface-400">
+                          <button
+                            type="button"
+                            onClick={() => toggleSession(dateKey, session, isEmpty)}
+                            className="flex items-center gap-1 hover:text-surface-600 transition-colors"
+                          >
+                            <ChevronRight className={cn('h-2.5 w-2.5 transition-transform', !collapsed && 'rotate-90')} />
+                            <Icon className="h-2.5 w-2.5" />
+                            <span>{SESSION_LABELS[session]}</span>
+                          </button>
                           {sessionEntries.length > 0 && (
-                            <span className="ml-auto text-surface-300">{sessionEntries.length}</span>
+                            <span className="text-surface-300">{sessionEntries.length}</span>
                           )}
-                        </button>
+                          {(sessionEntries.length > 0 || clipboard) && (
+                            <div className="relative ml-auto">
+                              <button
+                                onClick={() => setOpenMenu(openMenu === `ses-${dateKey}-${session}` ? null : `ses-${dateKey}-${session}`)}
+                                className="rounded p-0.5 text-surface-300 hover:text-surface-500"
+                              >
+                                <MoreHorizontal className="h-2.5 w-2.5" />
+                              </button>
+                              {openMenu === `ses-${dateKey}-${session}` && (
+                                <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                                  {sessionEntries.length > 0 && (
+                                    <button onClick={() => { handleCopySession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                                      <Copy className="h-3.5 w-3.5" /> Copy
+                                    </button>
+                                  )}
+                                  {clipboard && (
+                                    <button onClick={() => { handlePasteSession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                                      <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                                    </button>
+                                  )}
+                                  {sessionEntries.length > 0 && (
+                                    <>
+                                      <div className="my-1 border-t border-surface-100" />
+                                      <button onClick={() => { clearSession(dateKey, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                                        <Trash2 className="h-3.5 w-3.5" /> Clear
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Section body */}
                         {!collapsed && (

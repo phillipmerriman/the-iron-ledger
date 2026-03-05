@@ -257,8 +257,8 @@ export default function ProgramWeekGrid({
                     <button
                       onClick={() => handleSaveDay(dateKey)}
                       className="rounded p-0.5 text-surface-300 hover:bg-primary-50 hover:text-primary-500"
-                      aria-label="Save as template"
-                      title="Save as template"
+                      aria-label="Save as workout"
+                      title="Save as workout"
                     >
                       <Save className="h-3 w-3" />
                     </button>

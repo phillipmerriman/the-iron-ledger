@@ -195,6 +195,15 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     setEntries((prev) => prev.filter((e) => e.date !== dateKey))
   }
 
+  function clearSession(dateKey: string, session: Session) {
+    if (!user) return
+    const all = loadAll().filter(
+      (e) => !(e.date === dateKey && e.session === session && e.user_id === user.id && (programId ? e.program_id === programId : true)),
+    )
+    saveAll(all)
+    setEntries((prev) => prev.filter((e) => !(e.date === dateKey && e.session === session)))
+  }
+
   return {
     entries,
     days,
@@ -208,6 +217,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     removeEntry,
     moveEntry,
     clearDate,
+    clearSession,
     refetch: fetch,
   }
 }
