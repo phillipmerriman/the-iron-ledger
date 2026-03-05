@@ -169,7 +169,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                   inMonth && 'cursor-pointer hover:bg-surface-100',
                   !inMonth && 'text-surface-300',
                   inMonth && !worked && !planned && 'text-surface-600',
-                  today && !worked && !planned && 'ring-2 ring-primary-400 ring-offset-1',
+                  today && 'border-2 border-primary-400 font-bold',
                   completed && 'bg-primary-500 text-white hover:bg-primary-600',
                   worked && !completed && 'bg-warning-500/20 text-warning-600 hover:bg-warning-500/30',
                   planned && !worked && inMonth && 'bg-primary-100 text-primary-700 hover:bg-primary-200',
@@ -179,10 +179,12 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
               >
                 {format(day, 'd')}
               </button>
-              {/* Dot indicator for planned days */}
-              {planned && !worked && inMonth && (
+              {/* Checkmark for completed, dot for planned */}
+              {completed && inMonth ? (
+                <Check className="mt-0.5 h-2.5 w-2.5 text-primary-500" strokeWidth={3} />
+              ) : planned && !worked && inMonth ? (
                 <div className="mt-0.5 h-1 w-1 rounded-full bg-primary-400" />
-              )}
+              ) : null}
             </div>
           )
         })}
