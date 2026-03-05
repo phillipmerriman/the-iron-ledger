@@ -39,17 +39,20 @@ export default function EntryDetailEditor({
     repType === 'time' && entry.reps != null ? entry.reps % 60 : 0,
   )
 
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        handleSave()
+  function setRef(node: HTMLDivElement | null) {
+    ref.current = node
+    if (node) {
+      const rect = node.getBoundingClientRect()
+      if (rect.bottom > window.innerHeight - 8) {
+        node.style.top = 'auto'
+        node.style.bottom = '100%'
+        node.style.marginTop = '0'
+        node.style.marginBottom = '4px'
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  })
+  }
 
   function handleSave() {
     const resolvedReps =
@@ -72,12 +75,22 @@ export default function EntryDetailEditor({
     onClose()
   }
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        handleSave()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  })
+
   const inputClass =
     'w-full rounded border border-surface-200 px-2 py-1 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
 
   return (
     <div
-      ref={ref}
+      ref={setRef}
       className="absolute left-0 top-full z-20 mt-1 w-52 rounded-lg border border-surface-200 bg-white p-2 shadow-lg"
       onClick={(e) => e.stopPropagation()}
     >

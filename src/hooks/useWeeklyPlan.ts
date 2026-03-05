@@ -105,9 +105,10 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   useEffect(() => { fetch() }, [fetch])
 
   function getEntriesForDate(dateKey: string) {
+    const sessionOrder = { morning: 0, noon: 1, night: 2 }
     return entries
       .filter((e) => e.date === dateKey)
-      .sort((a, b) => a.sort_order - b.sort_order)
+      .sort((a, b) => (sessionOrder[a.session] - sessionOrder[b.session]) || (a.sort_order - b.sort_order))
   }
 
   function getEntriesForDateSession(dateKey: string, session: Session) {

@@ -16,7 +16,7 @@ interface ModalProps {
 }
 
 export default function Modal({ open, onClose, title, size = 'md', children }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
+  const backdropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -30,24 +30,26 @@ export default function Modal({ open, onClose, title, size = 'md', children }: M
   if (!open) return null
 
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
-    >
-      <div className={`flex w-full ${sizeClasses[size]} max-h-[90vh] flex-col rounded-xl bg-white p-6 shadow-xl`}>
-        <div className="mb-4 flex shrink-0 items-center justify-between">
-          <h2 className="text-lg font-semibold text-surface-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {children}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+      <div
+        ref={backdropRef}
+        className="flex min-h-full items-center justify-center p-4"
+        onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
+      >
+        <div className={`flex w-full ${sizeClasses[size]} max-h-[85vh] flex-col rounded-xl bg-white p-6 shadow-xl`}>
+          <div className="mb-4 flex shrink-0 items-center justify-between">
+            <h2 className="text-lg font-semibold text-surface-900">{title}</h2>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {children}
+          </div>
         </div>
       </div>
     </div>

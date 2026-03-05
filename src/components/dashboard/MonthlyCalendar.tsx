@@ -14,7 +14,7 @@ import {
   subMonths,
 } from 'date-fns'
 import { ChevronLeft, ChevronRight, Check, Undo2, Trash2 } from 'lucide-react'
-import { loadUserEntries } from '@/hooks/useWeeklyPlan'
+import { loadUserEntries, SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
@@ -78,7 +78,8 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
 
   function getPlannedForDay(day: Date) {
     const dateKey = format(day, 'yyyy-MM-dd')
-    return plannedEntries.filter((e) => e.date === dateKey).sort((a, b) => a.sort_order - b.sort_order)
+    const sessionOrder = { morning: 0, noon: 1, night: 2 }
+    return plannedEntries.filter((e) => e.date === dateKey).sort((a, b) => (sessionOrder[a.session] - sessionOrder[b.session]) || (a.sort_order - b.sort_order))
   }
 
   function getExerciseName(exerciseId: string) {
@@ -282,55 +283,74 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
               <div className="space-y-2">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-surface-500">Planned</h4>
                 <div className="space-y-1">
-                  {dayPlanned.map((entry) => {
-                    const ex = getExercise(entry.exercise_id)
-                    const color = getExerciseColorClasses(ex?.color ?? null)
-                    const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
-                    const vol = dayCompleted
-                      ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
-                      : 0
-                    return (
-                      <div
-                        key={entry.id}
-                        className={cn(
-                          'rounded-lg border p-2 text-sm',
-                          ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                  {(() => {
+                    const sessionGroups = SESSIONS
+                      .map((s) => ({ session: s, entries: dayPlanned.filter((e) => e.session === s) }))
+                      .filter((g) => g.entries.length > 0)
+                    return sessionGroups.map((group, gi) => (
+                      <div key={group.session}>
+                        {gi > 0 && (
+                          <div className="my-2 flex items-center gap-2">
+                            <div className="h-px flex-1 bg-surface-200" />
+                            <span className="text-[10px] font-medium text-surface-400">{SESSION_LABELS[group.session]}</span>
+                            <div className="h-px flex-1 bg-surface-200" />
+                          </div>
                         )}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
-                            {getExerciseName(entry.exercise_id)}
-                          </p>
-                          {entry.intensity && (
-                            <span className={cn(
-                              'rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase',
-                              entry.intensity === 'light'
-                                ? 'bg-info-500/10 text-info-600'
-                                : 'bg-danger-500/10 text-danger-600',
-                            )}>
-                              {entry.intensity}
-                            </span>
-                          )}
-                          {vol > 0 && (
-                            <span className="ml-auto text-xs font-semibold text-primary-600">
-                              {vol.toLocaleString()} {preferredUnit}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-xs text-surface-500">
-                          {[
-                            entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,
-                            repsDisplay && `${repsDisplay}`,
-                            entry.weight_unit === 'bodyweight'
-                              ? 'BW'
-                              : entry.weight != null
-                                ? formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)
-                                : null,
-                          ].filter(Boolean).join(' × ')}
-                        </p>
+                        {sessionGroups.length > 1 && gi === 0 && (
+                          <div className="mb-1 text-[10px] font-medium text-surface-400">{SESSION_LABELS[group.session]}</div>
+                        )}
+                        {group.entries.map((entry) => {
+                          const ex = getExercise(entry.exercise_id)
+                          const color = getExerciseColorClasses(ex?.color ?? null)
+                          const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
+                          const vol = dayCompleted
+                            ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+                            : 0
+                          return (
+                            <div
+                              key={entry.id}
+                              className={cn(
+                                'rounded-lg border p-2 text-sm',
+                                ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                              )}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
+                                  {getExerciseName(entry.exercise_id)}
+                                </p>
+                                {entry.intensity && (
+                                  <span className={cn(
+                                    'rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase',
+                                    entry.intensity === 'light'
+                                      ? 'bg-info-500/10 text-info-600'
+                                      : 'bg-danger-500/10 text-danger-600',
+                                  )}>
+                                    {entry.intensity}
+                                  </span>
+                                )}
+                                {vol > 0 && (
+                                  <span className="ml-auto text-xs font-semibold text-primary-600">
+                                    {vol.toLocaleString()} {preferredUnit}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-xs text-surface-500">
+                                {[
+                                  entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,
+                                  repsDisplay && `${repsDisplay}`,
+                                  entry.weight_unit === 'bodyweight'
+                                    ? 'BW'
+                                    : entry.weight != null
+                                      ? formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)
+                                      : null,
+                                ].filter(Boolean).join(' × ')}
+                              </p>
+                            </div>
+                          )
+                        })}
                       </div>
-                    )
-                  })}
+                    ))
+                  })()}
                 </div>
                 {dayCompleted && (() => {
                   const dayTotal = dayPlanned.reduce((sum, entry) =>
