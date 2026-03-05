@@ -184,11 +184,13 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
               >
                 {format(day, 'd')}
               </button>
-              {/* Checkmark for completed, dot for planned */}
+              {/* Checkmark for completed, dot for planned, Rest for empty days */}
               {completed && inMonth ? (
                 <Check className="mt-0.5 h-2.5 w-2.5 text-primary-500" strokeWidth={3} />
               ) : planned && !worked && inMonth ? (
                 <div className="mt-0.5 h-1 w-1 rounded-full bg-primary-400" />
+              ) : inMonth && !worked ? (
+                <span className="mt-0.5 text-[8px] font-medium text-surface-300">Rest</span>
               ) : null}
             </div>
           )
