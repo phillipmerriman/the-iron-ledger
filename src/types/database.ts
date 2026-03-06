@@ -33,6 +33,7 @@ export interface Database {
           preferred_weight_unit?: 'lbs' | 'kg' | 'pood'
           updated_at?: string
         }
+        Relationships: []
       }
       exercises: {
         Row: {
@@ -74,6 +75,7 @@ export interface Database {
           is_archived?: boolean
           updated_at?: string
         }
+        Relationships: []
       }
       workout_templates: {
         Row: {
@@ -97,6 +99,7 @@ export interface Database {
           description?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
       workout_template_exercises: {
         Row: {
@@ -134,6 +137,7 @@ export interface Database {
           rest_seconds?: number | null
           notes?: string | null
         }
+        Relationships: []
       }
       workout_sessions: {
         Row: {
@@ -169,6 +173,7 @@ export interface Database {
           total_weight_moved?: string | null
           notes?: string | null
         }
+        Relationships: []
       }
       workout_sets: {
         Row: {
@@ -210,6 +215,7 @@ export interface Database {
           is_warmup?: boolean
           notes?: string | null
         }
+        Relationships: []
       }
       programs: {
         Row: {
@@ -242,6 +248,7 @@ export interface Database {
           is_active?: boolean
           updated_at?: string
         }
+        Relationships: []
       }
       program_days: {
         Row: {
@@ -267,6 +274,7 @@ export interface Database {
           name?: string
           sort_order?: number
         }
+        Relationships: []
       }
       program_day_exercises: {
         Row: {
@@ -304,6 +312,7 @@ export interface Database {
           rest_seconds?: number | null
           notes?: string | null
         }
+        Relationships: []
       }
       personal_records: {
         Row: {
@@ -333,6 +342,7 @@ export interface Database {
           achieved_at?: string
           set_id?: string | null
         }
+        Relationships: []
       }
       body_measurements: {
         Row: {
@@ -359,6 +369,7 @@ export interface Database {
           body_fat_pct?: number | null
           notes?: string | null
         }
+        Relationships: []
       }
       planned_entries: {
         Row: {
@@ -412,6 +423,7 @@ export interface Database {
           intensity?: 'light' | 'heavy' | null
           notes?: string | null
         }
+        Relationships: []
       }
     }
   }

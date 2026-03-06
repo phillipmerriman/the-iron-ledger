@@ -8,7 +8,7 @@ export default function SettingsPage() {
   const { profile, updateProfile } = useAuth()
 
   function handleWeightUnitChange(value: string) {
-    updateProfile({ preferred_weight_unit: value as WeightUnit })
+    updateProfile({ preferred_weight_unit: value as 'lbs' | 'kg' | 'pood' })
   }
 
   return (
