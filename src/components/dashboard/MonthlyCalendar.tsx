@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import WorkoutCompleteModal from './WorkoutCompleteModal'
 
 interface MonthlyCalendarProps {
   sessions: WorkoutSession[]
@@ -37,6 +38,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
   const { user } = useAuth()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -96,6 +98,13 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
       await onUpdateSession(session.id, { completed_at: null })
     } else {
       await onUpdateSession(session.id, { completed_at: new Date().toISOString() })
+      if (selectedDay) {
+        const planned = getPlannedForDay(selectedDay)
+        if (planned.length > 0) {
+          setSelectedDay(null)
+          setCompleteModal({ dayLabel: format(selectedDay, 'EEEE, MMM d'), entries: planned })
+        }
+      }
     }
   }
 
@@ -113,6 +122,8 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
       completed_at: `${dayStr}T10:00:00.000Z`,
       total_weight_moved: totalWeight > 0 ? `${totalWeight.toLocaleString()} ${preferredUnit}` : null,
     })
+    setSelectedDay(null)
+    setCompleteModal({ dayLabel: format(day, 'EEEE, MMM d'), entries: planned })
   }
 
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
@@ -379,6 +390,15 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
           </div>
         )}
       </Modal>
+
+      <WorkoutCompleteModal
+        open={!!completeModal}
+        onClose={() => setCompleteModal(null)}
+        dayLabel={completeModal?.dayLabel ?? ''}
+        entries={completeModal?.entries ?? []}
+        exercises={exercises}
+        preferredUnit={preferredUnit}
+      />
     </div>
   )
 }

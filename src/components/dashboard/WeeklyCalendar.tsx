@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import WorkoutCompleteModal from './WorkoutCompleteModal'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 
 interface WeeklyCalendarProps {
   sessions: WorkoutSession[]
@@ -24,6 +26,7 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
   const programStart = activeProgram?.start_date ? parseISO(activeProgram.start_date) : undefined
 
   // Figure out which week offset we're in relative to the program start
@@ -87,6 +90,14 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
       await onUpdateSession(session.id, { completed_at: null })
     } else {
       await onUpdateSession(session.id, { completed_at: new Date().toISOString() })
+      if (selectedDay) {
+        const dateKey = format(selectedDay, 'yyyy-MM-dd')
+        const planned = getEntriesForDate(dateKey)
+        if (planned.length > 0) {
+          setSelectedDay(null)
+          setCompleteModal({ dayLabel: format(selectedDay, 'EEEE, MMM d'), entries: planned })
+        }
+      }
     }
   }
 
@@ -105,6 +116,8 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
       completed_at: `${dayStr}T10:00:00.000Z`,
       total_weight_moved: totalWeight > 0 ? `${totalWeight.toLocaleString()} ${preferredUnit}` : null,
     })
+    setSelectedDay(null)
+    setCompleteModal({ dayLabel: format(day, 'EEEE, MMM d'), entries: planned })
   }
 
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
@@ -442,6 +455,15 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
           </div>
         )}
       </Modal>
+
+      <WorkoutCompleteModal
+        open={!!completeModal}
+        onClose={() => setCompleteModal(null)}
+        dayLabel={completeModal?.dayLabel ?? ''}
+        entries={completeModal?.entries ?? []}
+        exercises={exercises}
+        preferredUnit={preferredUnit}
+      />
     </div>
   )
 }
