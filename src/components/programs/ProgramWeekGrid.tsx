@@ -46,7 +46,7 @@ export default function ProgramWeekGrid({
     programId,
   })
 
-  useEffect(() => { refetch() }, [revision])
+  useEffect(() => { refetch() }, [revision, refetch])
 
   // Drag state
   const [dropTarget, setDropTarget] = useState<{ dateKey: string; session: Session } | null>(null)
