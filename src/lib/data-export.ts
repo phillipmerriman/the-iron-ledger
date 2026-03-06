@@ -624,9 +624,39 @@ export async function importData(userId: string, rawData: ExportData, selectedCa
     }
 
     // 2. Exercises first (other tables depend on exercise_id)
+    //    If exercises category is checked, import all of them.
+    //    If unchecked, auto-import any exercises referenced by other selected categories
+    //    that don't already exist in the DB.
     if (include('exercises') && c.exercises) {
       result.exercises = await supabaseUpsert('exercises', c.exercises as unknown as Record<string, unknown>[], userId)
       for (const ex of c.exercises) knownExerciseIds.add(ex.id)
+    } else if (c.exercises?.length) {
+      // Collect exercise IDs needed by other selected categories
+      const neededIds = new Set<string>()
+      if (include('workout_templates') && c.workout_template_exercises) {
+        for (const te of c.workout_template_exercises) neededIds.add(te.exercise_id)
+      }
+      if (include('workout_sessions') && c.workout_sets) {
+        for (const s of c.workout_sets) neededIds.add(s.exercise_id)
+      }
+      if (include('programs') && c.program_day_exercises) {
+        for (const de of c.program_day_exercises) neededIds.add(de.exercise_id)
+      }
+      if (include('weekly_plans') && c.weekly_plans) {
+        for (const e of c.weekly_plans) neededIds.add(e.exercise_id)
+      }
+      if (include('personal_records') && c.personal_records) {
+        for (const r of c.personal_records) neededIds.add(r.exercise_id)
+      }
+      // Filter to exercises that are in the import file but missing from the DB
+      const missingExercises = c.exercises.filter(
+        (ex) => neededIds.has(ex.id) && !knownExerciseIds.has(ex.id),
+      )
+      if (missingExercises.length > 0) {
+        const added = await supabaseUpsert('exercises', missingExercises as unknown as Record<string, unknown>[], userId)
+        result.exercises = added
+        for (const ex of missingExercises) knownExerciseIds.add(ex.id)
+      }
     }
 
     // 3. Templates
