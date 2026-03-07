@@ -663,7 +663,12 @@ export async function importData(userId: string, rawData: ExportData, selectedCa
     if (include('workout_templates') && c.workout_templates) {
       result.workout_templates = await supabaseUpsert('workout_templates', c.workout_templates as unknown as Record<string, unknown>[], userId)
       for (const t of c.workout_templates) knownTemplateIds.add(t.id)
+      for (const t of c.workout_templates) knownTemplateIds.add(t.id)
       if (c.workout_template_exercises) {
+        const valid = c.workout_template_exercises.filter(
+          (te) => knownTemplateIds.has(te.template_id) && knownExerciseIds.has(te.exercise_id),
+        )
+        result.workout_template_exercises = await supabaseUpsertNoUser('workout_template_exercises', valid as unknown as Record<string, unknown>[])
         const valid = c.workout_template_exercises.filter(
           (te) => knownTemplateIds.has(te.template_id) && knownExerciseIds.has(te.exercise_id),
         )
@@ -692,12 +697,17 @@ export async function importData(userId: string, rawData: ExportData, selectedCa
     if (include('programs') && c.programs) {
       result.programs = await supabaseUpsert('programs', c.programs as unknown as Record<string, unknown>[], userId)
       for (const p of c.programs) knownProgramIds.add(p.id)
+      for (const p of c.programs) knownProgramIds.add(p.id)
       if (c.program_days) {
         const validDays = c.program_days.filter((d) => knownProgramIds.has(d.program_id))
         result.program_days = await supabaseUpsertNoUser('program_days', validDays as unknown as Record<string, unknown>[])
         for (const d of validDays) knownDayIds.add(d.id)
       }
       if (c.program_day_exercises) {
+        const valid = c.program_day_exercises.filter(
+          (de) => knownDayIds.has(de.program_day_id) && knownExerciseIds.has(de.exercise_id),
+        )
+        result.program_day_exercises = await supabaseUpsertNoUser('program_day_exercises', valid as unknown as Record<string, unknown>[])
         const valid = c.program_day_exercises.filter(
           (de) => knownDayIds.has(de.program_day_id) && knownExerciseIds.has(de.exercise_id),
         )
