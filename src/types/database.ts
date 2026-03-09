@@ -371,12 +371,57 @@ export interface Database {
         }
         Relationships: []
       }
+      timers: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      timer_intervals: {
+        Row: {
+          id: string
+          timer_id: string
+          name: string
+          duration_sec: number
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          timer_id: string
+          name: string
+          duration_sec: number
+          sort_order?: number
+        }
+        Update: {
+          timer_id?: string
+          name?: string
+          duration_sec?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       planned_entries: {
         Row: {
           id: string
           user_id: string
           program_id: string | null
           exercise_id: string
+          timer_id: string | null
           date: string
           session: 'morning' | 'noon' | 'night'
           sort_order: number
@@ -395,6 +440,7 @@ export interface Database {
           user_id: string
           program_id?: string | null
           exercise_id: string
+          timer_id?: string | null
           date: string
           session?: 'morning' | 'noon' | 'night'
           sort_order?: number
@@ -411,6 +457,7 @@ export interface Database {
         Update: {
           program_id?: string | null
           exercise_id?: string
+          timer_id?: string | null
           date?: string
           session?: 'morning' | 'noon' | 'night'
           sort_order?: number
@@ -458,3 +505,5 @@ export type ProgramDayExercise = Tables<'program_day_exercises'>
 export type PersonalRecord = Tables<'personal_records'>
 export type BodyMeasurement = Tables<'body_measurements'>
 export type PlannedEntryRow = Tables<'planned_entries'>
+export type Timer = Tables<'timers'>
+export type TimerInterval = Tables<'timer_intervals'>

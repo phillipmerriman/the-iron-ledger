@@ -11,6 +11,8 @@ export type {
   ProgramDayExercise,
   PersonalRecord,
   BodyMeasurement,
+  Timer,
+  TimerInterval,
   Tables,
   InsertDto,
   UpdateDto,

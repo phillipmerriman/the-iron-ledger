@@ -4,6 +4,7 @@ import { format, isToday } from 'date-fns'
 import type { PlannedEntry, PlannedEntryUpdate, Session } from '@/hooks/useWeeklyPlan'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
+import type { TimerWithIntervals } from '@/hooks/useTimers'
 import type { WeightUnit } from '@/types/common'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
 import EntryDetailEditor from '@/components/programs/EntryDetailEditor'
@@ -19,6 +20,7 @@ export interface PlannerDayColumnProps {
   day: Date
   dateKey: string
   exercises: Exercise[]
+  timers?: TimerWithIntervals[]
   preferredUnit: WeightUnit
 
   // Data access
@@ -57,6 +59,7 @@ export default function PlannerDayColumn({
   day,
   dateKey,
   exercises,
+  timers,
   preferredUnit,
   getEntriesForDateSession,
   onUpdateEntry,
@@ -322,6 +325,7 @@ export default function PlannerDayColumn({
                               entry={entry}
                               exerciseName={getExerciseName(entry.exercise_id)}
                               exercises={exercises}
+                              timers={timers}
                               onUpdate={onUpdateEntry}
                               onClose={() => setEditingEntryId(null)}
                             />

@@ -35,9 +35,10 @@ export interface PlannedEntry {
   weight_unit: WeightUnit
   intensity: 'light' | 'heavy' | null
   notes: string | null
+  timer_id: string | null
 }
 
-export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session'>>
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session' | 'timer_id'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 
@@ -61,6 +62,7 @@ function loadAll(): PlannedEntry[] {
     weight_unit: e.weight_unit ?? 'lbs',
     intensity: e.intensity ?? null,
     notes: e.notes ?? null,
+    timer_id: (e as Record<string, unknown>).timer_id as string | null ?? null,
   }))
 }
 
@@ -167,6 +169,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       weight_unit: presets?.weight_unit ?? 'lbs',
       intensity: presets?.intensity ?? null,
       notes: presets?.notes ?? null,
+      timer_id: presets?.timer_id ?? null,
     }
 
     if (isDev) {
@@ -190,6 +193,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         weight_unit: entry.weight_unit,
         intensity: entry.intensity,
         notes: entry.notes,
+        timer_id: entry.timer_id,
       })
       if (error) throw error
     }
@@ -439,6 +443,7 @@ export async function pasteWeekEntries(
           weight_unit: src.weight_unit,
           intensity: src.intensity,
           notes: src.notes,
+          timer_id: (src as PlannedEntry).timer_id ?? null,
         })
       }
     }
@@ -490,6 +495,7 @@ export async function pasteWeekEntries(
         weight_unit: src.weight_unit,
         intensity: src.intensity,
         notes: src.notes,
+        timer_id: (src as PlannedEntry).timer_id ?? null,
       })
     }
   }

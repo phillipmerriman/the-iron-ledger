@@ -5,6 +5,7 @@ import { parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
+import useTimers from '@/hooks/useTimers'
 import useWeeklyPlan, { loadWeekEntries, clearWeekEntries, pasteWeekEntries } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import { useAuth } from '@/contexts/AuthContext'
@@ -23,6 +24,7 @@ export default function ProgramDetailPage() {
   const { programs, loading: programsLoading } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
+  const { timers } = useTimers()
 
   const { user } = useAuth()
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
@@ -203,6 +205,7 @@ export default function ProgramDetailPage() {
                 programId={program.id}
                 programStart={programStart}
                 exercises={exercises}
+                timers={timers}
                 onSaveDay={handleSaveDay}
                 onTemplateDrop={handleTemplateDrop}
                 revision={revision}

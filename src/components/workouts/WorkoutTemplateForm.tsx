@@ -23,6 +23,7 @@ export interface TemplateFormEntry {
   intensity: 'light' | 'heavy' | null
   notes: string | null
   session?: Session
+  timer_id?: string | null
 }
 
 export interface WorkoutTemplateFormInitial {
@@ -221,6 +222,7 @@ export default function WorkoutTemplateForm({
       program_id: null,
       date: '',
       session: entry.session ?? 'morning',
+      timer_id: entry.timer_id ?? null,
     }
   }
 

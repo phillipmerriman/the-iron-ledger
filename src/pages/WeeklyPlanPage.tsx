@@ -8,6 +8,7 @@ import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
+import useTimers from '@/hooks/useTimers'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
@@ -33,6 +34,7 @@ export default function WeeklyPlanPage() {
   const { programs, loading: programsLoading } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
+  const { timers } = useTimers()
 
   const program = programId ? programs.find((p) => p.id === programId) : null
   const totalWeeks = program?.weeks ?? 1
@@ -406,6 +408,7 @@ export default function WeeklyPlanPage() {
                 day={day}
                 dateKey={dateKey}
                 exercises={exercises}
+                timers={timers}
                 preferredUnit={preferredUnit}
                 getEntriesForDate={getEntriesForDate}
                 getEntriesForDateSession={getEntriesForDateSession}

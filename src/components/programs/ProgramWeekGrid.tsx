@@ -3,6 +3,7 @@ import { Trash2, Save } from 'lucide-react'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
+import type { TimerWithIntervals } from '@/hooks/useTimers'
 import { useAuth } from '@/contexts/AuthContext'
 import PlannerDayColumn from '@/components/planner/PlannerDayColumn'
 
@@ -11,6 +12,7 @@ interface ProgramWeekGridProps {
   programId: string
   programStart: Date
   exercises: Exercise[]
+  timers?: TimerWithIntervals[]
   onSaveDay?: (name: string, entries: PlannedEntry[]) => void
   /** Called when a template is dropped; parent resolves template exercises and calls addEntry */
   onTemplateDrop?: (dateKey: string, templateId: string, session: Session) => void
@@ -23,6 +25,7 @@ export default function ProgramWeekGrid({
   programId,
   programStart,
   exercises,
+  timers,
   onSaveDay,
   onTemplateDrop,
   revision,
@@ -167,6 +170,7 @@ export default function ProgramWeekGrid({
             day={day}
             dateKey={dateKey}
             exercises={exercises}
+            timers={timers}
             preferredUnit={preferredUnit}
             getEntriesForDate={getEntriesForDate}
             getEntriesForDateSession={getEntriesForDateSession}
