@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase, isDev } from '@/lib/supabase'
-import { seedExercisesIfNeeded, migrateExerciseColors } from '@/lib/seed-exercises'
+import { seedExercisesIfNeeded, seedExercisesSupabase, migrateExerciseColors } from '@/lib/seed-exercises'
 import type { Profile } from '@/types/database'
 
 interface AuthState {
@@ -78,6 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .single()
     setProfile(data)
     setLoading(false)
+    // Seed default exercises for new users (no-ops if already seeded)
+    seedExercisesSupabase(userId)
   }
 
   async function signUp(email: string, password: string, displayName: string) {

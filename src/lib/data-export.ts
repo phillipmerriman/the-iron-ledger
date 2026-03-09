@@ -303,6 +303,73 @@ export function getImportSummary(data: ExportData): ImportSummary {
   }
 }
 
+/** Check for exercises in the import file that share a name with existing exercises. */
+export async function findDuplicateExerciseNames(
+  userId: string,
+  data: ExportData,
+): Promise<string[]> {
+  const incoming = data.categories.exercises
+  if (!incoming?.length) return []
+
+  if (isDev) {
+    const existing = localDb.getAll('exercises').filter((e) => e.user_id === userId)
+    const existingNames = new Set(existing.map((e) => e.name.toLowerCase()))
+    return [...new Set(incoming.filter((e) => existingNames.has(e.name.toLowerCase())).map((e) => e.name))]
+  }
+
+  const { data: existing } = await supabase
+    .from('exercises')
+    .select('name')
+    .eq('user_id', userId)
+  const existingNames = new Set((existing ?? []).map((e) => e.name.toLowerCase()))
+  return [...new Set(incoming.filter((e) => existingNames.has(e.name.toLowerCase())).map((e) => e.name))]
+}
+
+/** Remove exercises (and their dependents) whose names match the given list. */
+export function stripDuplicateExercises(data: ExportData, duplicateNames: string[]): ExportData {
+  if (!data.categories.exercises || duplicateNames.length === 0) return data
+  const dupeSet = new Set(duplicateNames.map((n) => n.toLowerCase()))
+  const removedIds = new Set<string>()
+  const keptExercises = data.categories.exercises.filter((e) => {
+    if (dupeSet.has(e.name.toLowerCase())) {
+      removedIds.add(e.id)
+      return false
+    }
+    return true
+  })
+
+  const out: ExportData = { ...data, categories: { ...data.categories, exercises: keptExercises } }
+
+  // Filter child tables that reference removed exercise IDs
+  if (out.categories.workout_template_exercises) {
+    out.categories.workout_template_exercises = out.categories.workout_template_exercises.filter(
+      (te) => !removedIds.has(te.exercise_id),
+    )
+  }
+  if (out.categories.workout_sets) {
+    out.categories.workout_sets = out.categories.workout_sets.filter(
+      (s) => !removedIds.has(s.exercise_id),
+    )
+  }
+  if (out.categories.program_day_exercises) {
+    out.categories.program_day_exercises = out.categories.program_day_exercises.filter(
+      (de) => !removedIds.has(de.exercise_id),
+    )
+  }
+  if (out.categories.weekly_plans) {
+    out.categories.weekly_plans = out.categories.weekly_plans.filter(
+      (e) => !removedIds.has(e.exercise_id),
+    )
+  }
+  if (out.categories.personal_records) {
+    out.categories.personal_records = out.categories.personal_records.filter(
+      (r) => !removedIds.has(r.exercise_id),
+    )
+  }
+
+  return out
+}
+
 /** Returns the CategoryKeys that have data in the export file */
 export function getAvailableImportCategories(data: ExportData): CategoryKey[] {
   const c = data.categories
@@ -366,108 +433,71 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   body_measurements: ['id', 'user_id', 'measured_at', 'weight', 'body_fat_pct', 'notes', 'created_at'],
 }
 
+/** Remove columns not present in the Supabase table schema. */
 function stripExtraColumns(table: string, rows: Record<string, unknown>[]): Record<string, unknown>[] {
   const allowed = TABLE_COLUMNS[table]
   if (!allowed) return rows
-  return rows.map((row) => {
-    const clean: Record<string, unknown> = {}
-    for (const key of Object.keys(row)) {
-      if (allowed.has(key)) clean[key] = row[key]
+  const allowedSet = new Set(allowed)
+  return rows.map((r) => {
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(r)) {
+      if (allowedSet.has(key)) out[key] = r[key]
     }
-    return clean
+    return out
   })
 }
 
+// Valid UUID v4 regex
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+/** All fields across import data that hold an ID or FK reference. */
+const ID_FIELDS = ['id', 'user_id', 'exercise_id', 'template_id', 'session_id', 'program_id', 'program_day_id', 'set_id', 'timer_id']
+
 /**
- * Remap any non-standard IDs in the export data to valid v4 UUIDs,
- * preserving all internal foreign-key references between tables.
+ * Walk every row in every category of the import data and replace any invalid
+ * UUID with a valid v4 UUID. The same bad ID always maps to the same new UUID
+ * so FK references are preserved.
  */
 function remapIds(data: ExportData): ExportData {
-  const idMap = new Map<string, string>()
+  const map = new Map<string, string>()
 
-  function remap(id: string | null | undefined): string | null | undefined {
-    if (id == null) return id
-    if (UUID_RE.test(id)) return id
-    if (!idMap.has(id)) idMap.set(id, crypto.randomUUID())
-    return idMap.get(id)!
+  function remap(val: unknown): unknown {
+    if (typeof val !== 'string' || !val) return val
+    if (UUID_RE.test(val)) return val // already valid
+    if (!map.has(val)) map.set(val, crypto.randomUUID())
+    return map.get(val)!
+  }
+
+  function processRows(rows: Record<string, unknown>[] | undefined): Record<string, unknown>[] | undefined {
+    if (!rows) return rows
+    return rows.map((row) => {
+      const out: Record<string, unknown> = { ...row }
+      for (const field of ID_FIELDS) {
+        if (field in out && out[field] != null) {
+          out[field] = remap(out[field])
+        }
+      }
+      return out
+    })
   }
 
   const c = data.categories
-  const out: ExportData = { ...data, categories: {} }
-
-  if (c.exercises) {
-    out.categories.exercises = c.exercises.map((r) => ({ ...r, id: remap(r.id)! }))
+  return {
+    ...data,
+    categories: {
+      exercises: processRows(c.exercises as unknown as Record<string, unknown>[]) as unknown as Exercise[] | undefined,
+      workout_templates: processRows(c.workout_templates as unknown as Record<string, unknown>[]) as unknown as WorkoutTemplate[] | undefined,
+      workout_template_exercises: processRows(c.workout_template_exercises as unknown as Record<string, unknown>[]) as unknown as WorkoutTemplateExercise[] | undefined,
+      workout_sessions: processRows(c.workout_sessions as unknown as Record<string, unknown>[]) as unknown as WorkoutSession[] | undefined,
+      workout_sets: processRows(c.workout_sets as unknown as Record<string, unknown>[]) as unknown as WorkoutSet[] | undefined,
+      programs: processRows(c.programs as unknown as Record<string, unknown>[]) as unknown as Program[] | undefined,
+      program_days: processRows(c.program_days as unknown as Record<string, unknown>[]) as unknown as ProgramDay[] | undefined,
+      program_day_exercises: processRows(c.program_day_exercises as unknown as Record<string, unknown>[]) as unknown as ProgramDayExercise[] | undefined,
+      weekly_plans: processRows(c.weekly_plans as unknown as Record<string, unknown>[]) as unknown as PlannedEntry[] | undefined,
+      personal_records: processRows(c.personal_records as unknown as Record<string, unknown>[]) as unknown as PersonalRecord[] | undefined,
+      body_measurements: processRows(c.body_measurements as unknown as Record<string, unknown>[]) as unknown as BodyMeasurement[] | undefined,
+    },
   }
-  if (c.workout_templates) {
-    out.categories.workout_templates = c.workout_templates.map((r) => ({ ...r, id: remap(r.id)! }))
-  }
-  if (c.workout_template_exercises) {
-    out.categories.workout_template_exercises = c.workout_template_exercises.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      template_id: remap(r.template_id)!,
-      exercise_id: remap(r.exercise_id)!,
-    }))
-  }
-  if (c.workout_sessions) {
-    const templateIds = new Set(c.workout_templates?.map((t) => t.id) ?? [])
-    out.categories.workout_sessions = c.workout_sessions.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      template_id: r.template_id && templateIds.has(r.template_id) ? remap(r.template_id)! : null,
-    }))
-  }
-  if (c.workout_sets) {
-    out.categories.workout_sets = c.workout_sets.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      session_id: remap(r.session_id)!,
-      exercise_id: remap(r.exercise_id)!,
-    }))
-  }
-  if (c.programs) {
-    out.categories.programs = c.programs.map((r) => ({ ...r, id: remap(r.id)! }))
-  }
-  if (c.program_days) {
-    out.categories.program_days = c.program_days.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      program_id: remap(r.program_id)!,
-    }))
-  }
-  if (c.program_day_exercises) {
-    out.categories.program_day_exercises = c.program_day_exercises.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      program_day_id: remap(r.program_day_id)!,
-      exercise_id: remap(r.exercise_id)!,
-    }))
-  }
-  if (c.weekly_plans) {
-    const programIds = new Set(c.programs?.map((p) => p.id) ?? [])
-    out.categories.weekly_plans = c.weekly_plans.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      exercise_id: remap(r.exercise_id)!,
-      program_id: r.program_id && programIds.has(r.program_id) ? remap(r.program_id)! : null,
-    }))
-  }
-  if (c.personal_records) {
-    const setIds = new Set(c.workout_sets?.map((s) => s.id) ?? [])
-    out.categories.personal_records = c.personal_records.map((r) => ({
-      ...r,
-      id: remap(r.id)!,
-      exercise_id: remap(r.exercise_id)!,
-      set_id: r.set_id && setIds.has(r.set_id) ? remap(r.set_id)! : null,
-    }))
-  }
-  if (c.body_measurements) {
-    out.categories.body_measurements = c.body_measurements.map((r) => ({ ...r, id: remap(r.id)! }))
-  }
-
-  return out
 }
 
 /** Upsert rows into a Supabase table, stamping user_id on each row. */
@@ -477,7 +507,8 @@ async function supabaseUpsert(
   userId: string,
 ): Promise<number> {
   if (incoming.length === 0) return 0
-  const rows = stripExtraColumns(table, incoming.map((r) => ({ ...r, user_id: userId })))
+  const stripped = stripExtraColumns(table, incoming)
+  const rows = stripped.map((r) => ({ ...r, user_id: userId }))
   const { error } = await supabase.from(table).upsert(rows as never, { onConflict: 'id' })
   if (error) throw error
   return rows.length
@@ -489,16 +520,26 @@ async function supabaseUpsertNoUser(
   incoming: Record<string, unknown>[],
 ): Promise<number> {
   if (incoming.length === 0) return 0
-  const rows = stripExtraColumns(table, incoming)
-  const { error } = await supabase.from(table).upsert(rows as never, { onConflict: 'id' })
+  const stripped = stripExtraColumns(table, incoming)
+  const { error } = await supabase.from(table).upsert(stripped as never, { onConflict: 'id' })
   if (error) throw error
-  return incoming.length
+  return stripped.length
 }
 
-export async function importData(userId: string, data: ExportData, selectedCategories?: CategoryKey[]): Promise<ImportSummary> {
-  // Remap invalid IDs to proper UUIDs for Supabase, preserving cross-references
-  if (!isDev) data = remapIds(data)
-  const c = data.categories
+/** Fetch existing IDs from a Supabase table for a given user. */
+async function fetchExistingIds(table: TableName, userId: string): Promise<Set<string>> {
+  const { data: rows } = await supabase.from(table).select('id').eq('user_id', userId)
+  return new Set((rows ?? []).map((r: { id: string }) => r.id))
+}
+
+/** Fetch existing IDs from a child table (no user_id filter, by parent FK). */
+async function fetchChildIds(table: TableName, fkColumn: string, parentIds: string[]): Promise<Set<string>> {
+  if (parentIds.length === 0) return new Set()
+  const { data: rows } = await supabase.from(table).select('id').in(fkColumn, parentIds)
+  return new Set((rows ?? []).map((r: { id: string }) => r.id))
+}
+
+export async function importData(userId: string, rawData: ExportData, selectedCategories?: CategoryKey[]): Promise<ImportSummary> {
   const sel = selectedCategories ? new Set(selectedCategories) : null
   const include = (key: CategoryKey) => !sel || sel.has(key)
   const result: ImportSummary = {
@@ -514,6 +555,11 @@ export async function importData(userId: string, data: ExportData, selectedCateg
     personal_records: 0,
     body_measurements: 0,
   }
+
+  // Remap any invalid UUIDs across ALL categories (even unchecked ones)
+  // so FK references stay consistent
+  const data = remapIds(rawData)
+  const c = data.categories
 
   if (isDev) {
     // Local-storage path (unchanged)
@@ -567,34 +613,55 @@ export async function importData(userId: string, data: ExportData, selectedCateg
       result.body_measurements = upsertRows('body_measurements', c.body_measurements, userId)
     }
   } else {
-    // Supabase path — insert in FK-safe order.
-    // Build a set of known exercise IDs (from import + already in DB).
-    const knownExerciseIds = new Set<string>()
-    const knownTemplateIds = new Set<string>()
-    const knownSessionIds = new Set<string>()
-    const knownSetIds = new Set<string>()
-    const knownProgramIds = new Set<string>()
-    const knownDayIds = new Set<string>()
+    // Supabase path — FK-safe ordering with dangling FK filtering
 
-    // Fetch existing IDs from Supabase so we know what FKs are valid
-    const [{ data: existingEx }, { data: existingTpl }, { data: existingSes }, { data: existingPrg }] = await Promise.all([
-      supabase.from('exercises').select('id').eq('user_id', userId),
-      supabase.from('workout_templates').select('id').eq('user_id', userId),
-      supabase.from('workout_sessions').select('id').eq('user_id', userId),
-      supabase.from('programs').select('id').eq('user_id', userId),
-    ])
-    for (const r of existingEx ?? []) knownExerciseIds.add(r.id)
-    for (const r of existingTpl ?? []) knownTemplateIds.add(r.id)
-    for (const r of existingSes ?? []) knownSessionIds.add(r.id)
-    for (const r of existingPrg ?? []) knownProgramIds.add(r.id)
-
-    // 1. Exercises (no FKs)
-    if (include('exercises') && c.exercises) {
-      result.exercises = await supabaseUpsert('exercises', c.exercises as unknown as Record<string, unknown>[], userId)
-      for (const e of c.exercises) knownExerciseIds.add(e.id)
+    // 1. Gather known IDs from DB so we can validate FKs for unchecked categories
+    const knownExerciseIds = await fetchExistingIds('exercises', userId)
+    const knownTemplateIds = await fetchExistingIds('workout_templates', userId)
+    const knownSessionIds = await fetchExistingIds('workout_sessions', userId)
+    const knownProgramIds = await fetchExistingIds('programs', userId)
+    let knownDayIds: Set<string> = new Set()
+    if (knownProgramIds.size > 0) {
+      knownDayIds = await fetchChildIds('program_days', 'program_id', [...knownProgramIds])
     }
 
-    // 2. Workout templates (no FKs)
+    // 2. Exercises first (other tables depend on exercise_id)
+    //    If exercises category is checked, import all of them.
+    //    If unchecked, auto-import any exercises referenced by other selected categories
+    //    that don't already exist in the DB.
+    if (include('exercises') && c.exercises) {
+      result.exercises = await supabaseUpsert('exercises', c.exercises as unknown as Record<string, unknown>[], userId)
+      for (const ex of c.exercises) knownExerciseIds.add(ex.id)
+    } else if (c.exercises?.length) {
+      // Collect exercise IDs needed by other selected categories
+      const neededIds = new Set<string>()
+      if (include('workout_templates') && c.workout_template_exercises) {
+        for (const te of c.workout_template_exercises) neededIds.add(te.exercise_id)
+      }
+      if (include('workout_sessions') && c.workout_sets) {
+        for (const s of c.workout_sets) neededIds.add(s.exercise_id)
+      }
+      if (include('programs') && c.program_day_exercises) {
+        for (const de of c.program_day_exercises) neededIds.add(de.exercise_id)
+      }
+      if (include('weekly_plans') && c.weekly_plans) {
+        for (const e of c.weekly_plans) neededIds.add(e.exercise_id)
+      }
+      if (include('personal_records') && c.personal_records) {
+        for (const r of c.personal_records) neededIds.add(r.exercise_id)
+      }
+      // Filter to exercises that are in the import file but missing from the DB
+      const missingExercises = c.exercises.filter(
+        (ex) => neededIds.has(ex.id) && !knownExerciseIds.has(ex.id),
+      )
+      if (missingExercises.length > 0) {
+        const added = await supabaseUpsert('exercises', missingExercises as unknown as Record<string, unknown>[], userId)
+        result.exercises = added
+        for (const ex of missingExercises) knownExerciseIds.add(ex.id)
+      }
+    }
+
+    // 3. Templates
     if (include('workout_templates') && c.workout_templates) {
       result.workout_templates = await supabaseUpsert('workout_templates', c.workout_templates as unknown as Record<string, unknown>[], userId)
       for (const t of c.workout_templates) knownTemplateIds.add(t.id)
@@ -606,27 +673,31 @@ export async function importData(userId: string, data: ExportData, selectedCateg
       }
     }
 
-    // 3. Workout sessions (FK: template_id nullable)
+    // 4. Sessions
     if (include('workout_sessions') && c.workout_sessions) {
-      result.workout_sessions = await supabaseUpsert('workout_sessions', c.workout_sessions as unknown as Record<string, unknown>[], userId)
+      // Null out template_id if the referenced template doesn't exist
+      const sessions = c.workout_sessions.map((s) => ({
+        ...s,
+        template_id: s.template_id && knownTemplateIds.has(s.template_id) ? s.template_id : null,
+      }))
+      result.workout_sessions = await supabaseUpsert('workout_sessions', sessions as unknown as Record<string, unknown>[], userId)
       for (const s of c.workout_sessions) knownSessionIds.add(s.id)
       if (c.workout_sets) {
         const valid = c.workout_sets.filter(
           (s) => knownSessionIds.has(s.session_id) && knownExerciseIds.has(s.exercise_id),
         )
         result.workout_sets = await supabaseUpsertNoUser('workout_sets', valid as unknown as Record<string, unknown>[])
-        for (const s of valid) knownSetIds.add(s.id)
       }
     }
 
-    // 4. Programs (no FKs)
+    // 5. Programs
     if (include('programs') && c.programs) {
       result.programs = await supabaseUpsert('programs', c.programs as unknown as Record<string, unknown>[], userId)
       for (const p of c.programs) knownProgramIds.add(p.id)
       if (c.program_days) {
-        const valid = c.program_days.filter((d) => knownProgramIds.has(d.program_id))
-        result.program_days = await supabaseUpsertNoUser('program_days', valid as unknown as Record<string, unknown>[])
-        for (const d of valid) knownDayIds.add(d.id)
+        const validDays = c.program_days.filter((d) => knownProgramIds.has(d.program_id))
+        result.program_days = await supabaseUpsertNoUser('program_days', validDays as unknown as Record<string, unknown>[])
+        for (const d of validDays) knownDayIds.add(d.id)
       }
       if (c.program_day_exercises) {
         const valid = c.program_day_exercises.filter(
@@ -636,19 +707,29 @@ export async function importData(userId: string, data: ExportData, selectedCateg
       }
     }
 
-    // 5. Weekly plans (FK: exercise_id required, program_id nullable)
+    // 6. Weekly plans (planned_entries)
     if (include('weekly_plans') && c.weekly_plans) {
-      const valid = c.weekly_plans.filter((e) => knownExerciseIds.has(e.exercise_id))
+      const valid = c.weekly_plans
+        .filter((e) => knownExerciseIds.has(e.exercise_id))
+        .map((e) => ({
+          ...e,
+          program_id: e.program_id && knownProgramIds.has(e.program_id) ? e.program_id : null,
+        }))
       result.weekly_plans = await supabaseUpsert('planned_entries', valid as unknown as Record<string, unknown>[], userId)
     }
 
-    // 6. Personal records (FK: exercise_id required, set_id nullable)
+    // 7. Personal records
     if (include('personal_records') && c.personal_records) {
-      const valid = c.personal_records.filter((r) => knownExerciseIds.has(r.exercise_id))
+      const valid = c.personal_records
+        .filter((r) => knownExerciseIds.has(r.exercise_id))
+        .map((r) => ({
+          ...r,
+          set_id: r.set_id ? null : null, // set_id FK is fragile; null it out
+        }))
       result.personal_records = await supabaseUpsert('personal_records', valid as unknown as Record<string, unknown>[], userId)
     }
 
-    // 7. Body measurements (no FKs beyond user_id)
+    // 8. Body measurements (no FKs to worry about)
     if (include('body_measurements') && c.body_measurements) {
       result.body_measurements = await supabaseUpsert('body_measurements', c.body_measurements as unknown as Record<string, unknown>[], userId)
     }

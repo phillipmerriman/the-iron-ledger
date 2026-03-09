@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase'
 import type { ExerciseType, MuscleGroup, Equipment, ExerciseRate } from '@/types/common'
 
 interface SeedExercise {
@@ -205,6 +206,48 @@ export function seedExercisesIfNeeded(userId: string) {
 
   localStorage.setItem(`${PREFIX}exercises`, JSON.stringify(rows))
   localStorage.setItem(SEED_KEY, 'true')
+  return true
+}
+
+let seedingPromise: Promise<boolean> | null = null
+
+export function seedExercisesSupabase(userId: string): Promise<boolean> {
+  // Deduplicate concurrent calls — return the same promise if already in-flight
+  if (!seedingPromise) {
+    seedingPromise = doSeedExercises(userId).finally(() => { seedingPromise = null })
+  }
+  return seedingPromise
+}
+
+async function doSeedExercises(userId: string): Promise<boolean> {
+  // If user already has exercises, skip seeding
+  const { count } = await supabase
+    .from('exercises')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+  if (count && count > 0) return false
+
+  const now = new Date().toISOString()
+  const rows = SEED_EXERCISES.map((seed) => ({
+    user_id: userId,
+    name: seed.name,
+    exercise_type: seed.exercise_type,
+    exercise_rate: seed.exercise_rate ?? null,
+    primary_muscle: seed.primary_muscle,
+    equipment: seed.equipment,
+    color: getDefaultColor(seed),
+    notes: null,
+    is_archived: false,
+    created_at: now,
+    updated_at: now,
+  }))
+
+  const { error } = await supabase.from('exercises').insert(rows)
+  if (error) {
+    console.error('Failed to seed exercises:', error)
+    return false
+  }
+
   return true
 }
 

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import type { PlannedEntry, PlannedEntryUpdate, Session } from '@/hooks/useWeeklyPlan'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
@@ -44,19 +45,41 @@ export default function EntryDetailEditor({
   )
 
   const ref = useRef<HTMLDivElement | null>(null)
+  const anchorRef = useRef<HTMLDivElement | null>(null)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
-  function setRef(node: HTMLDivElement | null) {
-    ref.current = node
-    if (node) {
-      const rect = node.getBoundingClientRect()
-      if (rect.bottom > window.innerHeight - 8) {
-        node.style.top = 'auto'
-        node.style.bottom = '100%'
-        node.style.marginTop = '0'
-        node.style.marginBottom = '4px'
-      }
+  const reposition = useCallback(() => {
+    const anchor = anchorRef.current
+    const popup = ref.current
+    if (!anchor) return
+    const rect = anchor.getBoundingClientRect()
+    const popupH = popup?.offsetHeight ?? 300
+    const popupW = 208 // w-52
+    const maxH = window.innerHeight - 16
+    let top = rect.bottom + 4
+    let left = rect.left
+    // Flip above if it would overflow below and there's more room above
+    if (top + popupH > window.innerHeight - 8 && rect.top - popupH > 8) {
+      top = rect.top - Math.min(popupH, maxH) - 4
     }
-  }
+    // Clamp top to stay within viewport
+    if (top + Math.min(popupH, maxH) > window.innerHeight - 8) {
+      top = window.innerHeight - Math.min(popupH, maxH) - 8
+    }
+    if (top < 8) top = 8
+    // Clamp left so it doesn't go off-screen right
+    if (left + popupW > window.innerWidth - 8) {
+      left = window.innerWidth - popupW - 8
+    }
+    if (left < 8) left = 8
+    setPos({ top, left })
+  }, [])
+
+  // Reposition once on mount, then again after first render so ref.current has actual height
+  useEffect(() => {
+    reposition()
+    requestAnimationFrame(reposition)
+  }, [reposition])
 
   function handleSave() {
     const resolvedReps =
@@ -94,9 +117,13 @@ export default function EntryDetailEditor({
     'w-full rounded border border-surface-200 px-2 py-1 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
 
   return (
+    <>
+    <div ref={anchorRef} className="h-0 w-0" />
+    {createPortal(
     <div
-      ref={setRef}
-      className="absolute left-0 top-full z-20 mt-1 w-52 rounded-lg border border-surface-200 bg-white p-2 shadow-lg"
+      ref={ref}
+      className="fixed z-50 w-52 max-h-[calc(100vh-16px)] overflow-y-auto rounded-lg border border-surface-200 bg-white p-2 shadow-lg"
+      style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden', top: 0, left: 0 }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="space-y-2">
@@ -327,6 +354,9 @@ export default function EntryDetailEditor({
           Done
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
+    )}
+    </>
   )
 }

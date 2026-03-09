@@ -9,7 +9,7 @@ export default function Header() {
       {/* Mobile logo — hidden on md+ where sidebar shows it */}
       <div className="flex items-center gap-2 md:hidden">
         <Dumbbell className="h-5 w-5 text-primary-600" />
-        <span className="font-bold text-surface-900">FitTrack</span>
+        <span className="font-bold text-surface-900">Iron Ledger</span>
       </div>
 
       {/* Spacer on desktop */}
