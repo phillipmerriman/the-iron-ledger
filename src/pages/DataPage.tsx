@@ -10,6 +10,8 @@ import {
   parseImportFile,
   getImportSummary,
   getAvailableImportCategories,
+  findDuplicateExerciseNames,
+  stripDuplicateExercises,
   importData,
   type CategoryKey,
   type ExportData,
@@ -31,6 +33,8 @@ export default function DataPage() {
   const [importCategories, setImportCategories] = useState<CategoryKey[]>([])
   const [importError, setImportError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<ImportSummary | null>(null)
+  const [duplicateNames, setDuplicateNames] = useState<string[]>([])
+  const [importing, setImporting] = useState(false)
 
   function toggleCategory(key: CategoryKey) {
     setSelectedCategories((prev) =>
@@ -79,13 +83,42 @@ export default function DataPage() {
 
   async function handleImport() {
     if (!user || !importFile || importCategories.length === 0) return
+    setImporting(true)
     try {
-      const result = await importData(user.id, importFile, importCategories)
-      setImportResult(result)
-      setImportFile(null)
+      // Check for duplicate exercise names if exercises are being imported
+      if (importCategories.includes('exercises') && importFile.categories.exercises?.length) {
+        const dupes = await findDuplicateExerciseNames(user.id, importFile)
+        if (dupes.length > 0) {
+          setDuplicateNames(dupes)
+          setImporting(false)
+          return
+        }
+      }
+      await runImport(importFile)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Import failed')
     }
+    setImporting(false)
+  }
+
+  async function handleDuplicateChoice(allowDuplicates: boolean) {
+    if (!user || !importFile) return
+    setDuplicateNames([])
+    setImporting(true)
+    try {
+      const data = allowDuplicates ? importFile : stripDuplicateExercises(importFile, duplicateNames)
+      await runImport(data)
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed')
+    }
+    setImporting(false)
+  }
+
+  async function runImport(data: ExportData) {
+    if (!user) return
+    const result = await importData(user.id, data, importCategories)
+    setImportResult(result)
+    setImportFile(null)
   }
 
   function handleCancelImport() {
@@ -93,6 +126,8 @@ export default function DataPage() {
     setImportFileName('')
     setImportError(null)
     setImportResult(null)
+    setDuplicateNames([])
+    setImporting(false)
   }
 
   const importSummary = importFile ? getImportSummary(importFile) : null
@@ -231,11 +266,50 @@ export default function DataPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleImport}
-                  disabled={importCategories.length === 0}
+                  disabled={importCategories.length === 0 || importing}
                   className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" />
-                  Import
+                  {importing ? 'Importing...' : 'Import'}
+                </button>
+                <button
+                  onClick={handleCancelImport}
+                  className="rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Duplicate prompt */}
+          {duplicateNames.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-medium">
+                    {duplicateNames.length} exercise{duplicateNames.length > 1 ? 's' : ''} already exist{duplicateNames.length === 1 ? 's' : ''}
+                  </p>
+                  <ul className="mt-1 list-disc pl-4 text-xs">
+                    {duplicateNames.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDuplicateChoice(false)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  Skip Duplicates
+                </button>
+                <button
+                  onClick={() => handleDuplicateChoice(true)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-surface-300 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-50"
+                >
+                  Import All
                 </button>
                 <button
                   onClick={handleCancelImport}
