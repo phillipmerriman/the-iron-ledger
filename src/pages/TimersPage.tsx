@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Plus, Trash2, GripVertical, Pencil, X, Clock, Copy } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Pencil, X, Clock, Copy, Play } from 'lucide-react'
 import useTimers, { type TimerWithIntervals } from '@/hooks/useTimers'
+import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
@@ -28,6 +29,9 @@ function totalDuration(intervals: { duration_sec: number }[]): number {
 
 export default function TimersPage() {
   const { timers, loading, create, update, remove } = useTimers()
+
+  // Runner state
+  const [runningTimer, setRunningTimer] = useState<TimerWithIntervals | null>(null)
 
   // Editor state
   const [editing, setEditing] = useState<string | null>(null) // timer id or 'new'
@@ -284,12 +288,28 @@ export default function TimersPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-3 border-t border-surface-100 pt-2 text-xs text-surface-400">
-              {timer.intervals.length} interval{timer.intervals.length !== 1 ? 's' : ''} &middot; {formatDuration(totalDuration(timer.intervals))} total
+            <div className="mt-3 flex items-center justify-between border-t border-surface-100 pt-2">
+              <span className="text-xs text-surface-400">
+                {timer.intervals.length} interval{timer.intervals.length !== 1 ? 's' : ''} &middot; {formatDuration(totalDuration(timer.intervals))} total
+              </span>
+              <button
+                onClick={() => setRunningTimer(timer)}
+                className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+              >
+                <Play className="h-3 w-3" /> Start
+              </button>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Timer runner modal */}
+      {runningTimer && (
+        <TimerRunnerModal
+          timer={runningTimer}
+          onClose={() => setRunningTimer(null)}
+        />
+      )}
     </div>
   )
 }
