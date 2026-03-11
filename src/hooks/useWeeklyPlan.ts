@@ -200,6 +200,58 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     setEntries((prev) => [...prev, entry])
   }
 
+  async function addEntries(dateKey: string, items: { exerciseId: string; presets?: PlannedEntryUpdate }[], session: Session = 'morning') {
+    if (!user || items.length === 0) return
+    const existing = entries.filter((e) => e.date === dateKey && e.session === session)
+    const newEntries: PlannedEntry[] = items.map((item, i) => ({
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      program_id: programId,
+      date: dateKey,
+      session,
+      exercise_id: item.exerciseId,
+      sort_order: existing.length + i,
+      sets: item.presets?.sets ?? 3,
+      reps: item.presets?.reps ?? 10,
+      rep_type: item.presets?.rep_type ?? 'single',
+      reps_right: item.presets?.reps_right ?? null,
+      weight: item.presets?.weight ?? null,
+      weight_unit: item.presets?.weight_unit ?? 'lbs',
+      intensity: item.presets?.intensity ?? null,
+      notes: item.presets?.notes ?? null,
+      timer_id: item.presets?.timer_id ?? null,
+    }))
+
+    if (isDev) {
+      const all = loadAll()
+      all.push(...newEntries)
+      saveAll(all)
+    } else {
+      const { error } = await supabase.from('planned_entries').insert(
+        newEntries.map((e) => ({
+          id: e.id,
+          user_id: e.user_id,
+          program_id: e.program_id,
+          date: e.date,
+          session: e.session,
+          exercise_id: e.exercise_id,
+          sort_order: e.sort_order,
+          sets: e.sets,
+          reps: e.reps,
+          rep_type: e.rep_type,
+          reps_right: e.reps_right,
+          weight: e.weight,
+          weight_unit: e.weight_unit,
+          intensity: e.intensity,
+          notes: e.notes,
+          timer_id: e.timer_id,
+        })),
+      )
+      if (error) throw error
+    }
+    setEntries((prev) => [...prev, ...newEntries])
+  }
+
   async function updateEntry(id: string, values: PlannedEntryUpdate) {
     if (isDev) {
       const all = loadAll()
@@ -328,6 +380,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     getEntriesForDate,
     getEntriesForDateSession,
     addEntry,
+    addEntries,
     updateEntry,
     removeEntry,
     moveEntry,

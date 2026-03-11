@@ -233,9 +233,6 @@ export default function PlannerDayColumn({
                   <Icon className="h-2.5 w-2.5" />
                   <span>{SESSION_LABELS[session]}</span>
                 </button>
-                {sessionEntries.length > 0 && (
-                  <span className="text-surface-300">{sessionEntries.length}</span>
-                )}
                 {sessionActions?.(dateKey, session, sessionEntries)}
               </div>
 

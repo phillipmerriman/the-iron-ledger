@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent } from 'react'
 import { GripVertical, X, Search } from 'lucide-react'
 import type { Exercise } from '@/types/database'
+import type { TimerWithIntervals } from '@/hooks/useTimers'
 import type { PlannedEntry, PlannedEntryUpdate, Session } from '@/hooks/useWeeklyPlan'
 import type { RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
@@ -34,6 +35,7 @@ export interface WorkoutTemplateFormInitial {
 
 interface WorkoutTemplateFormProps {
   exercises: Exercise[]
+  timers?: TimerWithIntervals[]
   initial?: WorkoutTemplateFormInitial
   onSubmit: (data: { name: string; description: string; entries: TemplateFormEntry[] }) => void
   onCancel: () => void
@@ -42,6 +44,7 @@ interface WorkoutTemplateFormProps {
 
 export default function WorkoutTemplateForm({
   exercises,
+  timers,
   initial,
   onSubmit,
   onCancel,
@@ -327,6 +330,7 @@ export default function WorkoutTemplateForm({
                         entry={toPlannedEntry(entry)}
                         exerciseName={ex?.name ?? 'Unknown'}
                         exercises={exercises}
+                        timers={timers}
                         onUpdate={updateEntry}
                         onClose={() => setEditingEntryId(null)}
                       />

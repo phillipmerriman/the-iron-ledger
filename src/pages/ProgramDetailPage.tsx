@@ -42,11 +42,11 @@ export default function ProgramDetailPage() {
     e.name.toLowerCase().includes(search.toLowerCase()),
   )
 
-  // We need a useWeeklyPlan instance to call addEntry for template drops.
+  // We need a useWeeklyPlan instance to call addEntries for template drops.
   // Since ProgramWeekGrid creates its own hook per week, we use a shared one at week 0
-  // just for the addEntry function (it writes to the global localStorage anyway).
+  // just for the addEntries function (it writes to the global localStorage anyway).
   const programStart = program ? parseISO(program.start_date) : new Date()
-  const { addEntry } = useWeeklyPlan({
+  const { addEntries } = useWeeklyPlan({
     startDate: programStart,
     weekOffset: 0,
     programId: id ?? null,
@@ -84,17 +84,22 @@ export default function ProgramDetailPage() {
 
   function handleTemplateDrop(dateKey: string, templateId: string, session: Session) {
     const templateExercises = getExercisesForTemplate(templateId)
-    for (const exercise of templateExercises) {
+    const items = templateExercises.map((exercise) => {
       const extras = parseExtras(exercise.notes)
-      addEntry(dateKey, exercise.exercise_id, {
-        sets: exercise.target_sets,
-        reps: extras.rep_type === 'time' ? exercise.target_duration_sec : exercise.target_reps,
-        rep_type: extras.rep_type,
-        reps_right: extras.reps_right,
-        weight: exercise.target_weight,
-        weight_unit: extras.weight_unit,
-      }, session)
-    }
+      return {
+        exerciseId: exercise.exercise_id,
+        presets: {
+          sets: exercise.target_sets,
+          reps: extras.rep_type === 'time' ? exercise.target_duration_sec : exercise.target_reps,
+          rep_type: extras.rep_type,
+          reps_right: extras.reps_right,
+          weight: exercise.target_weight,
+          weight_unit: extras.weight_unit,
+          timer_id: extras.timer_id,
+        },
+      }
+    })
+    addEntries(dateKey, items, session)
   }
 
   async function handleSaveDay(name: string, entries: PlannedEntry[]) {

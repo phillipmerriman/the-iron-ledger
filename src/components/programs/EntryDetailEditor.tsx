@@ -75,10 +75,13 @@ export default function EntryDetailEditor({
     setPos({ top, left })
   }, [])
 
-  // Reposition once on mount, then again after first render so ref.current has actual height
+  // Reposition after mount once the popup has rendered and has actual height
   useEffect(() => {
-    reposition()
-    requestAnimationFrame(reposition)
+    requestAnimationFrame(() => {
+      reposition()
+      // Second pass in case height changed after first position set
+      requestAnimationFrame(reposition)
+    })
   }, [reposition])
 
   function handleSave() {
@@ -266,6 +269,23 @@ export default function EntryDetailEditor({
           </div>
         )}
 
+        {/* Timer */}
+        {timers && timers.length > 0 && (
+          <div>
+            <label className="text-[10px] font-medium text-surface-500">Timer</label>
+            <select
+              value={timerId ?? ''}
+              onChange={(e) => setTimerId(e.target.value || null)}
+              className={inputClass}
+            >
+              <option value="">None</option>
+              {timers.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Weight */}
         <div>
           <label className="text-[10px] font-medium text-surface-500">Weight</label>
@@ -316,23 +336,6 @@ export default function EntryDetailEditor({
             ))}
           </div>
         </div>
-
-        {/* Timer */}
-        {timers && timers.length > 0 && (
-          <div>
-            <label className="text-[10px] font-medium text-surface-500">Timer</label>
-            <select
-              value={timerId ?? ''}
-              onChange={(e) => setTimerId(e.target.value || null)}
-              className={inputClass}
-            >
-              <option value="">None</option>
-              {timers.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* Notes */}
         <div>

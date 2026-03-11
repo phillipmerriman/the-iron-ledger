@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useExercises from '@/hooks/useExercises'
+import useTimers from '@/hooks/useTimers'
 import WorkoutTemplateCard from '@/components/workouts/WorkoutTemplateCard'
 import WorkoutTemplateForm from '@/components/workouts/WorkoutTemplateForm'
 import type { TemplateFormEntry, WorkoutTemplateFormInitial } from '@/components/workouts/WorkoutTemplateForm'
@@ -13,6 +14,7 @@ import Spinner from '@/components/ui/Spinner'
 export default function WorkoutsPage() {
   const { templates, loading: templatesLoading, getExercisesForTemplate, create, addExercise, remove, updateTemplate, parseExtras } = useWorkoutTemplates()
   const { exercises, loading: exercisesLoading } = useExercises()
+  const { timers } = useTimers()
 
   const loading = templatesLoading || exercisesLoading
 
@@ -36,6 +38,7 @@ export default function WorkoutsPage() {
         target_duration_sec: entry.rep_type === 'time' ? entry.reps : null,
         intensity: entry.intensity ?? null,
         user_notes: entry.notes ?? null,
+        timer_id: entry.timer_id ?? null,
       }
       return {
         exercise_id: entry.exercise_id,
@@ -102,6 +105,7 @@ export default function WorkoutsPage() {
           weight_unit: extras.weight_unit,
           intensity: extras.intensity ?? null,
           notes: extras.user_notes ?? null,
+          timer_id: extras.timer_id ?? null,
         }
       }),
     }
@@ -177,6 +181,7 @@ export default function WorkoutsPage() {
         <WorkoutTemplateForm
           key={editing?.id ?? 'new'}
           exercises={exercises}
+          timers={timers}
           initial={editing ? buildEditInitial(editing) : undefined}
           onSubmit={handleSubmit}
           onCancel={closeModal}

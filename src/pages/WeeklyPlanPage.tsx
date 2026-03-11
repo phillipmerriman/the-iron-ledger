@@ -57,6 +57,7 @@ export default function WeeklyPlanPage() {
     getEntriesForDate,
     getEntriesForDateSession,
     addEntry,
+    addEntries,
     updateEntry,
     removeEntry,
     moveEntry,
@@ -192,17 +193,22 @@ export default function WeeklyPlanPage() {
 
   function handleTemplateDrop(dateKey: string, templateId: string, session: Session) {
     const exercises = getExercisesForTemplate(templateId)
-    for (const tex of exercises) {
+    const items = exercises.map((tex) => {
       const extras = parseExtras(tex.notes)
-      addEntry(dateKey, tex.exercise_id, {
-        sets: tex.target_sets,
-        reps: extras.rep_type === 'time' ? tex.target_duration_sec : tex.target_reps,
-        rep_type: extras.rep_type,
-        reps_right: extras.reps_right,
-        weight: tex.target_weight,
-        weight_unit: extras.weight_unit,
-      }, session)
-    }
+      return {
+        exerciseId: tex.exercise_id,
+        presets: {
+          sets: tex.target_sets,
+          reps: extras.rep_type === 'time' ? tex.target_duration_sec : tex.target_reps,
+          rep_type: extras.rep_type,
+          reps_right: extras.reps_right,
+          weight: tex.target_weight,
+          weight_unit: extras.weight_unit,
+          timer_id: extras.timer_id,
+        },
+      }
+    })
+    addEntries(dateKey, items, session)
   }
 
   function handleDragEnd() {

@@ -13,6 +13,7 @@ export interface TemplateExerciseExtras {
   target_duration_sec: number | null
   intensity: 'light' | 'heavy' | null
   user_notes: string | null
+  timer_id: string | null
 }
 
 const EXTRAS_DEFAULTS: TemplateExerciseExtras = {
@@ -22,6 +23,7 @@ const EXTRAS_DEFAULTS: TemplateExerciseExtras = {
   target_duration_sec: null,
   intensity: null,
   user_notes: null,
+  timer_id: null,
 }
 
 /** Parse extra fields stored as JSON in the notes column */

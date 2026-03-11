@@ -360,6 +360,12 @@ export default function DataPage() {
                   {importResult.weekly_plans > 0 && (
                     <SummaryRow label="Weekly Plan Entries" count={importResult.weekly_plans} />
                   )}
+                  {importResult.timers > 0 && (
+                    <SummaryRow label="Timers" count={importResult.timers} />
+                  )}
+                  {importResult.timer_intervals > 0 && (
+                    <SummaryRow label="Timer Intervals" count={importResult.timer_intervals} />
+                  )}
                   {importResult.personal_records > 0 && (
                     <SummaryRow label="Personal Records" count={importResult.personal_records} />
                   )}
