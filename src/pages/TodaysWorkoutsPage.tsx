@@ -26,6 +26,7 @@ export default function TodaysWorkoutsPage() {
   const [dayOffset, setDayOffset] = useState(0)
   const [runningTimer, setRunningTimer] = useState<TimerWithIntervals | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
+  const [completedSessions, setCompletedSessions] = useState<Set<Session | 'all'>>(new Set())
 
   const viewDate = useMemo(() => addDays(new Date(), dayOffset), [dayOffset])
   const dateKey = format(viewDate, 'yyyy-MM-dd')
@@ -91,9 +92,15 @@ export default function TodaysWorkoutsPage() {
     setCompleteModal({ dayLabel: format(viewDate, 'EEEE, MMM d'), entries: sessionEntries })
   }
 
+  async function handleCompleteSessionGroup(session: Session, sessionEntries: PlannedEntry[]) {
+    await handleCompleteSession(sessionEntries)
+    setCompletedSessions((prev) => new Set(prev).add(session))
+  }
+
   async function handleCompleteAll() {
     if (dayEntries.length === 0) return
     await handleCompleteSession(dayEntries)
+    setCompletedSessions((prev) => new Set([...prev, 'all', ...SESSIONS]))
   }
 
   const dayLabel = today
@@ -158,15 +165,21 @@ export default function TodaysWorkoutsPage() {
       )}
 
       {/* Session groups */}
-      {sessionGroups.map(({ session, label, entries: sessionEntries }) => (
-        <div key={session} className="space-y-3">
+      {sessionGroups.map(({ session, label, entries: sessionEntries }) => {
+        const isDone = completedSessions.has(session) || completedSessions.has('all')
+        return (
+        <div key={session} className={cn('space-y-3', isDone && 'opacity-50')}>
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-surface-400">{label}</h2>
-            {sessionGroups.length > 1 && (
+            <h2 className={cn('text-sm font-semibold uppercase tracking-wide', isDone ? 'text-success-600' : 'text-surface-400')}>
+              {isDone && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}
+              {label}
+              {isDone && ' — Done'}
+            </h2>
+            {sessionGroups.length > 1 && !isDone && (
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => handleCompleteSession(sessionEntries)}
+                onClick={() => handleCompleteSessionGroup(session, sessionEntries)}
               >
                 <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                 Complete {label}
@@ -237,15 +250,24 @@ export default function TodaysWorkoutsPage() {
             })}
           </div>
         </div>
-      ))}
+        )
+      })}
 
       {/* Complete All button */}
-      {dayEntries.length > 0 && (
-        <Button onClick={handleCompleteAll} className="w-full">
-          <CheckCircle2 className="mr-1.5 h-4 w-4" />
-          Complete Workout
-        </Button>
-      )}
+      {dayEntries.length > 0 && (() => {
+        const allDone = completedSessions.has('all') || sessionGroups.every(({ session }) => completedSessions.has(session))
+        return allDone ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-success-50 py-3 text-sm font-medium text-success-700">
+            <CheckCircle2 className="h-4 w-4" />
+            All workouts complete
+          </div>
+        ) : (
+          <Button onClick={handleCompleteAll} className="w-full">
+            <CheckCircle2 className="mr-1.5 h-4 w-4" />
+            Complete Workout
+          </Button>
+        )
+      })()}
 
       {/* Timer runner modal */}
       {runningTimer && (
