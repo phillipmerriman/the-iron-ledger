@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Play, Pause, RotateCcw, SkipForward, X, ChevronRight } from 'lucide-react'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
@@ -45,7 +45,7 @@ export default function WorkoutRunnerModal({
   const entry = entries[currentIdx]
   const exercise = entry ? exercises.find((e) => e.id === entry.exercise_id) : undefined
   const timer = entry?.timer_id ? timers.find((t) => t.id === entry.timer_id) : undefined
-  const timerIntervals = timer?.intervals ?? []
+  const timerIntervals = useMemo(() => timer?.intervals ?? [], [timer])
   const currentTimerInterval = timerIntervals[timerIntervalIdx]
 
   const playBeep = useCallback(() => {
@@ -62,19 +62,6 @@ export default function WorkoutRunnerModal({
       osc.stop(ctx.currentTime + 0.15)
     } catch { /* audio not available */ }
   }, [])
-
-  // Reset timer state when exercise changes
-  useEffect(() => {
-    setTimerIntervalIdx(0)
-    setTimerRunning(false)
-    setTimerWaiting(false)
-    setTimerFinished(false)
-    if (timer && timer.intervals.length > 0) {
-      setRemaining(timer.intervals[0].duration_sec)
-    } else {
-      setRemaining(0)
-    }
-  }, [currentIdx, timer])
 
   const advanceTimerInterval = useCallback(() => {
     if (timerIntervalIdx < timerIntervals.length - 1) {
@@ -122,9 +109,25 @@ export default function WorkoutRunnerModal({
     }
   }, [timerRunning, advanceTimerInterval])
 
+  function resetTimerState(nextTimer: TimerWithIntervals | undefined) {
+    setTimerIntervalIdx(0)
+    setTimerRunning(false)
+    setTimerWaiting(false)
+    setTimerFinished(false)
+    if (nextTimer && nextTimer.intervals.length > 0) {
+      setRemaining(nextTimer.intervals[0].duration_sec)
+    } else {
+      setRemaining(0)
+    }
+  }
+
   function handleNext() {
     if (currentIdx < entries.length - 1) {
-      setCurrentIdx(currentIdx + 1)
+      const nextIdx = currentIdx + 1
+      const nextEntry = entries[nextIdx]
+      const nextTimer = nextEntry?.timer_id ? timers.find((t) => t.id === nextEntry.timer_id) : undefined
+      resetTimerState(nextTimer)
+      setCurrentIdx(nextIdx)
     } else {
       setFinished(true)
     }
