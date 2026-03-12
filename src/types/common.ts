@@ -104,11 +104,10 @@ export const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
 /** Format the base rep pattern (without /min suffix). */
 function formatBaseReps(repType: RepType, reps: number, repsRight?: number | null): string {
   // Strip _per_minute suffix to get base type formatting
-  const base = repType.replace('_per_minute', '') as RepType
+  const base = repType.replace('_per_minute', '')
 
   switch (base) {
     case 'single':
-    case 'reps':
       return `${reps}`
     case 'left_right':
       return `${reps}/${repsRight ?? reps}`
@@ -182,7 +181,7 @@ export function calcTotalReps(
   if (repType === 'time') return 0
 
   // Per-minute variants have the same rep math as their base type
-  const base = repType.replace('_per_minute', '') as RepType
+  const base = repType.replace('_per_minute', '')
 
   switch (base) {
     case 'ladder_up':
