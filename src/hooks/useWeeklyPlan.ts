@@ -14,7 +14,7 @@ import type { RepType, WeightUnit } from '@/types/common'
 export type Session = 'all' | 'morning' | 'noon' | 'night'
 export const SESSIONS: Session[] = ['all', 'morning', 'noon', 'night']
 export const SESSION_LABELS: Record<Session, string> = {
-  all: 'N/A',
+  all: 'Any',
   morning: 'Morning',
   noon: 'Noon',
   night: 'Night',

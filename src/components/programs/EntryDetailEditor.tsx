@@ -51,38 +51,36 @@ export default function EntryDetailEditor({
   const reposition = useCallback(() => {
     const anchor = anchorRef.current
     const popup = ref.current
-    if (!anchor) return
+    if (!anchor || !popup) return
     const rect = anchor.getBoundingClientRect()
-    const popupH = popup?.offsetHeight ?? 300
-    const popupW = 208 // w-52
-    const maxH = window.innerHeight - 16
+    const popupH = popup.scrollHeight
+    const popupW = popup.offsetWidth || 208
+    const vh = window.innerHeight
+    const vw = window.innerWidth
+    const pad = 8
+
     let top = rect.bottom + 4
     let left = rect.left
+
     // Flip above if it would overflow below and there's more room above
-    if (top + popupH > window.innerHeight - 8 && rect.top - popupH > 8) {
-      top = rect.top - Math.min(popupH, maxH) - 4
+    if (top + popupH > vh - pad && rect.top - popupH > pad) {
+      top = rect.top - popupH - 4
     }
-    // Clamp top to stay within viewport
-    if (top + Math.min(popupH, maxH) > window.innerHeight - 8) {
-      top = window.innerHeight - Math.min(popupH, maxH) - 8
-    }
-    if (top < 8) top = 8
-    // Clamp left so it doesn't go off-screen right
-    if (left + popupW > window.innerWidth - 8) {
-      left = window.innerWidth - popupW - 8
-    }
-    if (left < 8) left = 8
+
+    // Clamp within viewport
+    top = Math.max(pad, Math.min(top, vh - pad - popupH))
+    left = Math.max(pad, Math.min(left, vw - pad - popupW))
+
     setPos({ top, left })
   }, [])
 
-  // Reposition after mount once the popup has rendered and has actual height
+  // Reposition on mount and whenever content changes (repType toggles fields)
   useEffect(() => {
     requestAnimationFrame(() => {
       reposition()
-      // Second pass in case height changed after first position set
       requestAnimationFrame(reposition)
     })
-  }, [reposition])
+  }, [reposition, repType])
 
   function handleSave() {
     const resolvedReps =
