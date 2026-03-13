@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { Plus, Dumbbell } from 'lucide-react'
 import {
   isThisWeek,
-  isToday,
   startOfDay,
   subDays,
   isSameDay,

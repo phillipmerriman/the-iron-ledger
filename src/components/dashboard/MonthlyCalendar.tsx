@@ -177,7 +177,6 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
   const dayPlanned = selectedDay ? getPlannedForDay(selectedDay) : []
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
-  const dayCompleted = selectedDay ? isCompleted(selectedDay) : false
 
   return (
     <div>

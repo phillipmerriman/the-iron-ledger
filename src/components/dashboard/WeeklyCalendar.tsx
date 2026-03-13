@@ -168,7 +168,6 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
   const dayPlanned = selectedDay ? getEntriesForDate(format(selectedDay, 'yyyy-MM-dd')) : []
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
-  const dayCompleted = selectedDay ? dayStatus(selectedDay) === 'completed' : false
 
   // Compute weekly total volume across completed session slots from planned entries
   const weekTotal = useMemo(() => {
