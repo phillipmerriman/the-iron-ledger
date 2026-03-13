@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Play, ChevronRight } from 'lucide-react'
+import { Pencil, Trash2, Play, Pause, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import type { Program } from '@/types/database'
@@ -9,9 +9,10 @@ interface ProgramCardProps {
   program: Program
   onDelete: (id: string) => void
   onSetActive: (id: string) => void
+  onDeactivate: (id: string) => void
 }
 
-export default function ProgramCard({ program, onDelete, onSetActive }: ProgramCardProps) {
+export default function ProgramCard({ program, onDelete, onSetActive, onDeactivate }: ProgramCardProps) {
   return (
     <Card className="flex items-start justify-between gap-3">
       <Link to={`/programs/${program.id}`} className="min-w-0 flex-1">
@@ -29,7 +30,16 @@ export default function ProgramCard({ program, onDelete, onSetActive }: ProgramC
       </Link>
 
       <div className="flex shrink-0 items-center gap-1">
-        {!program.is_active && (
+        {program.is_active ? (
+          <button
+            onClick={() => onDeactivate(program.id)}
+            className="rounded-lg p-1.5 text-primary-500 hover:bg-warning-50 hover:text-warning-600"
+            aria-label="Deactivate program"
+            title="Deactivate"
+          >
+            <Pause className="h-4 w-4" />
+          </button>
+        ) : (
           <button
             onClick={() => onSetActive(program.id)}
             className="rounded-lg p-1.5 text-surface-400 hover:bg-primary-50 hover:text-primary-600"

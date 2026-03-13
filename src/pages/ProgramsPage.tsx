@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
 export default function ProgramsPage() {
-  const { programs, loading, create, remove, setActive } = usePrograms()
+  const { programs, loading, create, remove, setActive, deactivate } = usePrograms()
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -65,6 +65,7 @@ export default function ProgramsPage() {
               program={program}
               onDelete={handleDelete}
               onSetActive={setActive}
+              onDeactivate={deactivate}
             />
           ))}
         </div>

@@ -21,7 +21,7 @@ import Badge from '@/components/ui/Badge'
 
 export default function ProgramDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { programs, loading: programsLoading } = usePrograms()
+  const { programs, loading: programsLoading, setActive, deactivate } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
@@ -164,7 +164,15 @@ export default function ProgramDetailPage() {
             <p className="text-surface-500"><span className="font-medium text-surface-600">Description:</span> {program.description}</p>
           )}
           <span className="text-surface-500"><span className="font-medium text-surface-600">Length:</span> {program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</span>
-          {program.is_active ? <Badge variant="primary">Active</Badge> : <Badge>Inactive</Badge>}
+          {program.is_active ? (
+            <button onClick={() => deactivate(program.id)} title="Deactivate program">
+              <Badge variant="primary" className="cursor-pointer hover:opacity-80">Active</Badge>
+            </button>
+          ) : (
+            <button onClick={() => setActive(program.id)} title="Activate program">
+              <Badge className="cursor-pointer hover:opacity-80">Inactive</Badge>
+            </button>
+          )}
         </div>
         <p className="mt-2 text-xs text-surface-400">
           Drag exercises or saved workouts from the pool into each day.

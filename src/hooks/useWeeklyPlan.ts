@@ -106,16 +106,18 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   const fetch = useCallback(async () => {
     if (!user) return
     if (isDev) {
+      const today = format(new Date(), 'yyyy-MM-dd')
       const all = loadAll().filter(
         (e) =>
           e.user_id === user.id &&
           dateKeys.includes(e.date) &&
           (programId
             ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
-            : true),
+            : (e.program_id == null || e.date <= today)),
       )
       setEntries(all)
     } else {
+      const today = format(new Date(), 'yyyy-MM-dd')
       let query = supabase
         .from('planned_entries')
         .select('*')
@@ -128,6 +130,9 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         } else {
           query = query.eq('program_id', programId)
         }
+      } else {
+        // Show unscoped entries + past program entries (today and earlier)
+        query = query.or(`program_id.is.null,date.lte.${today}`)
       }
 
       const { data, error } = await query.order('sort_order')
@@ -578,10 +583,14 @@ export async function loadProgramEntries(userId: string, programId: string): Pro
 
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
 export async function loadUserEntries(userId: string, programId?: string | null): Promise<PlannedEntry[]> {
+  const today = format(new Date(), 'yyyy-MM-dd')
+
   if (isDev) {
     return loadAll().filter((e) =>
       e.user_id === userId &&
-      (programId ? (e.program_id === programId || e.program_id == null) : true),
+      (programId
+        ? (e.program_id === programId || e.program_id == null)
+        : (e.program_id == null || e.date <= today)),
     )
   }
 
@@ -592,9 +601,67 @@ export async function loadUserEntries(userId: string, programId?: string | null)
 
   if (programId) {
     query = query.or(`program_id.eq.${programId},program_id.is.null`)
+  } else {
+    query = query.or(`program_id.is.null,date.lte.${today}`)
   }
 
   const { data, error } = await query.order('date').order('sort_order')
   if (error) throw error
   return asEntries(data ?? [])
+}
+
+/** Remove unscoped entries on dates that already have entries for the given program */
+export async function removeUnscopedDuplicates(userId: string, programId: string) {
+  if (isDev) {
+    const all = loadAll()
+    // Find dates that have entries for this program
+    const programDates = new Set(
+      all.filter((e) => e.user_id === userId && e.program_id === programId).map((e) => e.date),
+    )
+    // Remove unscoped entries on those same dates
+    const kept = all.filter(
+      (e) => !(e.user_id === userId && e.program_id == null && programDates.has(e.date)),
+    )
+    saveAll(kept)
+    return
+  }
+
+  // Get dates that have program entries
+  const { data: programEntries } = await supabase
+    .from('planned_entries')
+    .select('date')
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+  if (!programEntries?.length) return
+
+  const dates = [...new Set(programEntries.map((e) => e.date))]
+  const { error } = await supabase
+    .from('planned_entries')
+    .delete()
+    .eq('user_id', userId)
+    .is('program_id', null)
+    .in('date', dates)
+  if (error) throw error
+}
+
+/** Remove planned entries for a program that are strictly after today */
+export async function clearFutureEntries(userId: string, programId: string) {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const cutoff = tomorrow.toISOString().slice(0, 10) // yyyy-MM-dd
+
+  if (isDev) {
+    const kept = loadAll().filter(
+      (e) => !(e.user_id === userId && e.program_id === programId && e.date >= cutoff),
+    )
+    saveAll(kept)
+    return
+  }
+  const { error } = await supabase
+    .from('planned_entries')
+    .delete()
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+    .gte('date', cutoff)
+  if (error) throw error
 }
