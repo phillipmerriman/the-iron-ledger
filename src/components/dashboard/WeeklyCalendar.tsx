@@ -64,17 +64,51 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
     return exercises.find((e) => e.id === exerciseId)
   }
 
+  function getSessionSlot(ws: WorkoutSession): string {
+    const match = ws.notes?.match(/^session:(.+)$/)
+    return match ? match[1] : 'all'
+  }
+
+  function isSlotCompleted(day: Date, slot: string) {
+    const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
+    return daySessions.some((s) => {
+      if (!s.completed_at) return false
+      const wsSlot = getSessionSlot(s)
+      return wsSlot === slot || wsSlot === 'all' || slot === 'all'
+    })
+  }
+
   function dayStatus(day: Date) {
     const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
     if (daySessions.length === 0) return 'none'
-    if (daySessions.every((s) => s.completed_at)) return 'completed'
-    if (daySessions.some((s) => s.completed_at)) return 'partial'
-    return isToday(day) ? 'in_progress' : 'none'
+    if (!daySessions.every((s) => s.completed_at)) {
+      if (daySessions.some((s) => s.completed_at)) return 'partial'
+      return isToday(day) ? 'in_progress' : 'none'
+    }
+    // All existing sessions are completed — but check if all planned slots are covered
+    const dateKey = format(day, 'yyyy-MM-dd')
+    const planned = getEntriesForDate(dateKey)
+    const plannedSlots = new Set(planned.map((e) => e.session))
+    const completedSlots = new Set(daySessions.filter((s) => s.completed_at).map(getSessionSlot))
+    const hasAllSlot = completedSlots.has('all')
+    for (const slot of plannedSlots) {
+      if (!completedSlots.has(slot) && !hasAllSlot && slot !== 'all') return 'partial'
+    }
+    return 'completed'
   }
 
   function allCompleted(day: Date) {
     const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
-    return daySessions.length > 0 && daySessions.every((s) => s.completed_at)
+    if (daySessions.length === 0 || !daySessions.every((s) => s.completed_at)) return false
+    const dateKey = format(day, 'yyyy-MM-dd')
+    const planned = getEntriesForDate(dateKey)
+    const plannedSlots = new Set(planned.map((e) => e.session))
+    const completedSlots = new Set(daySessions.filter((s) => s.completed_at).map(getSessionSlot))
+    const hasAllSlot = completedSlots.has('all')
+    for (const slot of plannedSlots) {
+      if (!completedSlots.has(slot) && !hasAllSlot && slot !== 'all') return false
+    }
+    return true
   }
 
   function getSessionsForDay(day: Date) {
@@ -136,17 +170,17 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
   const dayCompleted = selectedDay ? dayStatus(selectedDay) === 'completed' : false
 
-  // Compute weekly total volume across completed days from planned entries
+  // Compute weekly total volume across completed session slots from planned entries
   const weekTotal = useMemo(() => {
     let total = 0
     days.forEach((day, i) => {
-      const isCompleted = sessions.some(
-        (s) => isSameDay(new Date(s.started_at), day) && s.completed_at,
-      )
-      if (!isCompleted) return
+      const status = dayStatus(day)
+      if (status !== 'completed' && status !== 'partial') return
       const planned = getEntriesForDate(dateKeys[i])
       for (const entry of planned) {
-        total += calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+        if (isSlotCompleted(day, entry.session)) {
+          total += calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+        }
       }
     })
     return total
@@ -255,7 +289,8 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
                       {group.entries.map((entry) => {
                         const ex = getExercise(entry.exercise_id)
                         const color = getExerciseColorClasses(ex?.color ?? null)
-                        const vol = status === 'completed'
+                        const slotDone = isSlotCompleted(day, entry.session)
+                        const vol = slotDone
                           ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                           : 0
                         return (
@@ -279,9 +314,11 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
                 })()}
               </div>
 
-              {status === 'completed' && (() => {
+              {(status === 'completed' || status === 'partial') && (() => {
                 const dayTotal = planned.reduce((sum, entry) =>
-                  sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
+                  isSlotCompleted(day, entry.session)
+                    ? sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+                    : sum, 0)
                 return dayTotal > 0 ? (
                   <div className="mt-auto pt-1 text-center text-[9px] font-semibold text-primary-600">
                     {dayTotal.toLocaleString()} {preferredUnit}
@@ -376,7 +413,8 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
                           const ex = getExercise(entry.exercise_id)
                           const color = getExerciseColorClasses(ex?.color ?? null)
                           const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
-                          const vol = dayCompleted
+                          const entrySlotDone = selectedDay ? isSlotCompleted(selectedDay, entry.session) : false
+                          const vol = entrySlotDone
                             ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                             : 0
                           return (
@@ -425,9 +463,11 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
                     ))
                   })()}
                 </div>
-                {dayCompleted && (() => {
+                {selectedDay && (() => {
                   const dayTotal = dayPlanned.reduce((sum, entry) =>
-                    sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
+                    isSlotCompleted(selectedDay, entry.session)
+                      ? sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+                      : sum, 0)
                   return dayTotal > 0 ? (
                     <div className="mt-2 rounded-lg bg-primary-50 px-3 py-2 text-center">
                       <span className="font-display text-sm font-bold text-primary-700">

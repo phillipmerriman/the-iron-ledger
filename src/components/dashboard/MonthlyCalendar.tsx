@@ -61,19 +61,51 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
     return new Set(plannedEntries.map((e) => e.date))
   }, [plannedEntries])
 
+  function getSessionSlot(ws: WorkoutSession): string {
+    const match = ws.notes?.match(/^session:(.+)$/)
+    return match ? match[1] : 'all'
+  }
+
+  function isSlotCompleted(day: Date, slot: string) {
+    const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
+    return daySessions.some((s) => {
+      if (!s.completed_at) return false
+      const wsSlot = getSessionSlot(s)
+      return wsSlot === slot || wsSlot === 'all' || slot === 'all'
+    })
+  }
+
   function hasWorkout(day: Date) {
     return sessions.some((s) => isSameDay(new Date(s.started_at), day))
   }
 
   function isCompleted(day: Date) {
-    return sessions.some(
-      (s) => isSameDay(new Date(s.started_at), day) && s.completed_at,
-    )
+    const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
+    if (daySessions.length === 0 || !daySessions.some((s) => s.completed_at)) return false
+    // Check all planned slots are covered by completed sessions
+    const planned = getPlannedForDay(day)
+    if (planned.length === 0) return daySessions.some((s) => s.completed_at)
+    const plannedSlots = new Set(planned.map((e) => e.session))
+    const completedSlots = new Set(daySessions.filter((s) => s.completed_at).map(getSessionSlot))
+    const hasAllSlot = completedSlots.has('all')
+    for (const slot of plannedSlots) {
+      if (!completedSlots.has(slot) && !hasAllSlot && slot !== 'all') return false
+    }
+    return true
   }
 
   function allCompleted(day: Date) {
     const daySessions = sessions.filter((s) => isSameDay(new Date(s.started_at), day))
-    return daySessions.length > 0 && daySessions.every((s) => s.completed_at)
+    if (daySessions.length === 0 || !daySessions.every((s) => s.completed_at)) return false
+    const planned = getPlannedForDay(day)
+    if (planned.length === 0) return true
+    const plannedSlots = new Set(planned.map((e) => e.session))
+    const completedSlots = new Set(daySessions.filter((s) => s.completed_at).map(getSessionSlot))
+    const hasAllSlot = completedSlots.has('all')
+    for (const slot of plannedSlots) {
+      if (!completedSlots.has(slot) && !hasAllSlot && slot !== 'all') return false
+    }
+    return true
   }
 
   function isPlanned(day: Date) {
@@ -316,7 +348,8 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                           const ex = getExercise(entry.exercise_id)
                           const color = getExerciseColorClasses(ex?.color ?? null)
                           const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
-                          const vol = dayCompleted
+                          const entrySlotDone = selectedDay ? isSlotCompleted(selectedDay, entry.session) : false
+                          const vol = entrySlotDone
                             ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                             : 0
                           return (
@@ -365,9 +398,11 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
                     ))
                   })()}
                 </div>
-                {dayCompleted && (() => {
+                {selectedDay && (() => {
                   const dayTotal = dayPlanned.reduce((sum, entry) =>
-                    sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
+                    isSlotCompleted(selectedDay, entry.session)
+                      ? sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
+                      : sum, 0)
                   return dayTotal > 0 ? (
                     <div className="mt-2 rounded-lg bg-primary-50 px-3 py-2 text-center">
                       <span className="font-display text-sm font-bold text-primary-700">
