@@ -10,6 +10,7 @@ import useWorkouts from '@/hooks/useWorkouts'
 import { useAuth } from '@/contexts/AuthContext'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion, calcEntryVolume } from '@/types/common'
 import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
+import WorkoutRunnerModal from '@/components/workouts/WorkoutRunnerModal'
 import WorkoutCompleteModal from '@/components/dashboard/WorkoutCompleteModal'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
@@ -25,6 +26,7 @@ export default function TodaysWorkoutsPage() {
 
   const [dayOffset, setDayOffset] = useState(0)
   const [runningTimer, setRunningTimer] = useState<TimerWithIntervals | null>(null)
+  const [runningWorkout, setRunningWorkout] = useState<{ session: Session; entries: PlannedEntry[] } | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
   const [localCompleted, setLocalCompleted] = useState<Set<Session | 'all'>>(new Set())
 
@@ -51,7 +53,7 @@ export default function TodaysWorkoutsPage() {
 
   // Filter entries for the selected date
   const dayEntries = useMemo(() => {
-    const sessionOrder = { morning: 0, noon: 1, night: 2 }
+    const sessionOrder = { all: 0, morning: 1, noon: 2, night: 3 }
     return entries
       .filter((e) => e.date === dateKey)
       .sort((a, b) => (sessionOrder[a.session] - sessionOrder[b.session]) || (a.sort_order - b.sort_order))
@@ -201,15 +203,26 @@ export default function TodaysWorkoutsPage() {
               {label}
               {isDone && ' — Done'}
             </h2>
-            {sessionGroups.length > 1 && !isDone && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleCompleteSessionGroup(session, sessionEntries)}
-              >
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                Complete {label}
-              </Button>
+            {!isDone && (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setRunningWorkout({ session, entries: sessionEntries })}
+                >
+                  <Play className="mr-1 h-3.5 w-3.5" />
+                  Start Workout
+                </Button>
+                {sessionGroups.length > 1 && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleCompleteSessionGroup(session, sessionEntries)}
+                  >
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                    Complete {label}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
           <div className="space-y-2">
@@ -294,6 +307,22 @@ export default function TodaysWorkoutsPage() {
           </Button>
         )
       })()}
+
+      {/* Workout runner modal */}
+      {runningWorkout && (
+        <WorkoutRunnerModal
+          entries={runningWorkout.entries}
+          exercises={exercises}
+          timers={timers}
+          preferredUnit={preferredUnit}
+          onComplete={() => {
+            const { session, entries: sessionEntries } = runningWorkout
+            setRunningWorkout(null)
+            handleCompleteSessionGroup(session, sessionEntries)
+          }}
+          onClose={() => setRunningWorkout(null)}
+        />
+      )}
 
       {/* Timer runner modal */}
       {runningTimer && (

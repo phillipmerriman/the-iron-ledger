@@ -16,6 +16,7 @@ import SettingsPage from '@/pages/SettingsPage'
 import DataPage from '@/pages/DataPage'
 import WeeklyPlanPage from '@/pages/WeeklyPlanPage'
 import TimersPage from '@/pages/TimersPage'
+import StatsPage from '@/pages/StatsPage'
 import TodaysWorkoutsPage from '@/pages/TodaysWorkoutsPage'
 
 export default function App() {
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="plan" element={<WeeklyPlanPage />} />
               <Route path="plan/:programId" element={<WeeklyPlanPage />} />
               <Route path="timers" element={<TimersPage />} />
+              <Route path="stats" element={<StatsPage />} />
               <Route path="records" element={<RecordsPage />} />
               <Route path="body" element={<BodyPage />} />
               <Route path="data" element={<DataPage />} />

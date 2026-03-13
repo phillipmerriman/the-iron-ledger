@@ -9,7 +9,7 @@ import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
-import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
+import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import PlannerDayColumn from '@/components/planner/PlannerDayColumn'
@@ -71,6 +71,22 @@ export default function WeeklyPlanPage() {
 
   const activeExercises = exercises.filter((e) => !e.is_archived)
 
+  /** Look up exercise defaults and merge with any explicit presets */
+  function getExerciseDefaults(exerciseId: string) {
+    const ex = exercises.find((e) => e.id === exerciseId)
+    if (!ex) return undefined
+    const hasDefaults = ex.default_sets != null || ex.default_reps != null || ex.default_weight != null || ex.default_intensity != null
+    if (!hasDefaults && ex.default_rep_type === 'single' && ex.default_weight_unit === 'lbs') return undefined
+    return {
+      sets: ex.default_sets,
+      reps: ex.default_reps,
+      rep_type: ex.default_rep_type as import('@/types/common').RepType,
+      weight: ex.default_weight,
+      weight_unit: ex.default_weight_unit as import('@/types/common').WeightUnit,
+      intensity: ex.default_intensity,
+    }
+  }
+
   // Filter exercise pool
   const [search, setSearch] = useState('')
   const filtered = activeExercises.filter((e) =>
@@ -117,6 +133,12 @@ export default function WeeklyPlanPage() {
     equipment: Equipment
     color: string | null
     notes: string
+    default_sets: number | null
+    default_reps: number | null
+    default_rep_type: RepType
+    default_weight: number | null
+    default_weight_unit: WeightUnit
+    default_intensity: 'light' | 'heavy' | null
   }) {
     setCreatingExercise(true)
     try {
@@ -167,7 +189,7 @@ export default function WeeklyPlanPage() {
     if (!dragSource) return
 
     if (dragSource.type === 'pool') {
-      addEntry(dateKey, dragSource.exerciseId, undefined, session)
+      addEntry(dateKey, dragSource.exerciseId, getExerciseDefaults(dragSource.exerciseId), session)
     } else if (dragSource.type === 'template') {
       handleTemplateDrop(dateKey, dragSource.templateId, session)
     } else if (dragSource.type === 'entry') {

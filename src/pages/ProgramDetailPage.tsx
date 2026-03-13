@@ -9,7 +9,7 @@ import useTimers from '@/hooks/useTimers'
 import useWeeklyPlan, { loadWeekEntries, clearWeekEntries, pasteWeekEntries } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import { useAuth } from '@/contexts/AuthContext'
-import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
+import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import { cn } from '@/lib/utils'
 import ProgramWeekGrid from '@/components/programs/ProgramWeekGrid'
@@ -60,6 +60,12 @@ export default function ProgramDetailPage() {
     equipment: Equipment
     color: string | null
     notes: string
+    default_sets: number | null
+    default_reps: number | null
+    default_rep_type: RepType
+    default_weight: number | null
+    default_weight_unit: WeightUnit
+    default_intensity: 'light' | 'heavy' | null
   }) {
     setCreatingExercise(true)
     try {

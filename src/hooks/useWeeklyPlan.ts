@@ -11,9 +11,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { InsertDto } from '@/types/database'
 import type { RepType, WeightUnit } from '@/types/common'
 
-export type Session = 'morning' | 'noon' | 'night'
-export const SESSIONS: Session[] = ['morning', 'noon', 'night']
+export type Session = 'all' | 'morning' | 'noon' | 'night'
+export const SESSIONS: Session[] = ['all', 'morning', 'noon', 'night']
 export const SESSION_LABELS: Record<Session, string> = {
+  all: 'Any',
   morning: 'Morning',
   noon: 'Noon',
   night: 'Night',
@@ -138,7 +139,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   useEffect(() => { fetch() }, [fetch])
 
   function getEntriesForDate(dateKey: string) {
-    const sessionOrder = { morning: 0, noon: 1, night: 2 }
+    const sessionOrder = { all: 0, morning: 1, noon: 2, night: 3 }
     return entries
       .filter((e) => e.date === dateKey)
       .sort((a, b) => (sessionOrder[a.session] - sessionOrder[b.session]) || (a.sort_order - b.sort_order))
@@ -150,7 +151,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       .sort((a, b) => a.sort_order - b.sort_order)
   }
 
-  async function addEntry(dateKey: string, exerciseId: string, presets?: PlannedEntryUpdate, session: Session = 'morning') {
+  async function addEntry(dateKey: string, exerciseId: string, presets?: PlannedEntryUpdate, session: Session = 'all') {
     if (!user) return
     const sessionEntries = entries.filter((e) => e.date === dateKey && e.session === session)
     const entry: PlannedEntry = {
@@ -200,7 +201,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     setEntries((prev) => [...prev, entry])
   }
 
-  async function addEntries(dateKey: string, items: { exerciseId: string; presets?: PlannedEntryUpdate }[], session: Session = 'morning') {
+  async function addEntries(dateKey: string, items: { exerciseId: string; presets?: PlannedEntryUpdate }[], session: Session = 'all') {
     if (!user || items.length === 0) return
     const existing = entries.filter((e) => e.date === dateKey && e.session === session)
     const newEntries: PlannedEntry[] = items.map((item, i) => ({

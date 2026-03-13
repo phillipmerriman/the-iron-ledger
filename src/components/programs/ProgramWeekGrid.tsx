@@ -4,6 +4,7 @@ import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
+import type { RepType, WeightUnit } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
 import PlannerDayColumn from '@/components/planner/PlannerDayColumn'
 
@@ -51,6 +52,21 @@ export default function ProgramWeekGrid({
 
   useEffect(() => { refetch() }, [revision, refetch])
 
+  function getExerciseDefaults(exerciseId: string) {
+    const ex = exercises.find((e) => e.id === exerciseId)
+    if (!ex) return undefined
+    const hasDefaults = ex.default_sets != null || ex.default_reps != null || ex.default_weight != null || ex.default_intensity != null
+    if (!hasDefaults && ex.default_rep_type === 'single' && ex.default_weight_unit === 'lbs') return undefined
+    return {
+      sets: ex.default_sets,
+      reps: ex.default_reps,
+      rep_type: ex.default_rep_type as RepType,
+      weight: ex.default_weight,
+      weight_unit: ex.default_weight_unit as WeightUnit,
+      intensity: ex.default_intensity,
+    }
+  }
+
   // Drag state
   const [dropTarget, setDropTarget] = useState<{ dateKey: string; session: Session } | null>(null)
   const [reorderOverId, setReorderOverId] = useState<string | null>(null)
@@ -80,7 +96,7 @@ export default function ProgramWeekGrid({
     if (e.dataTransfer.types.includes('application/x-template')) {
       onTemplateDrop?.(dateKey, data, session)
     } else if (e.dataTransfer.types.includes('application/x-pool')) {
-      addEntry(dateKey, data, undefined, session)
+      addEntry(dateKey, data, getExerciseDefaults(data), session)
     } else {
       // Entry dropped on session container — append at end
       const sessionEntries = getEntriesForDateSession(dateKey, session)

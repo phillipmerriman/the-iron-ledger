@@ -248,7 +248,7 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
                       {gi > 0 && (
                         <div className="my-0.5 flex items-center gap-1">
                           <div className="h-px flex-1 bg-surface-200" />
-                          <span className="text-[7px] font-medium uppercase text-surface-300">{group.session === 'noon' ? '☀' : '☾'}</span>
+                          <span className="text-[7px] font-medium uppercase text-surface-300">{group.session === 'all' ? '—' : group.session === 'noon' ? '☀' : '☾'}</span>
                           <div className="h-px flex-1 bg-surface-200" />
                         </div>
                       )}

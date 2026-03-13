@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Search, X } from 'lucide-react'
 import useExercises from '@/hooks/useExercises'
 import type { Exercise } from '@/types/database'
-import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment } from '@/types/common'
+import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import ExerciseCard from '@/components/exercises/ExerciseCard'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import Modal from '@/components/ui/Modal'
@@ -109,6 +109,12 @@ export default function ExercisesPage() {
     equipment: Equipment
     color: string | null
     notes: string
+    default_sets: number | null
+    default_reps: number | null
+    default_rep_type: RepType
+    default_weight: number | null
+    default_weight_unit: WeightUnit
+    default_intensity: 'light' | 'heavy' | null
   }) {
     setSubmitting(true)
     try {

@@ -86,7 +86,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
 
   function getPlannedForDay(day: Date) {
     const dateKey = format(day, 'yyyy-MM-dd')
-    const sessionOrder = { morning: 0, noon: 1, night: 2 }
+    const sessionOrder = { all: 0, morning: 1, noon: 2, night: 3 }
     return plannedEntries.filter((e) => e.date === dateKey).sort((a, b) => (sessionOrder[a.session] - sessionOrder[b.session]) || (a.sort_order - b.sort_order))
   }
 

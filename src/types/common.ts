@@ -62,19 +62,36 @@ export type UnitSystem = 'imperial' | 'metric'
 
 export type RecordType = 'max_weight' | 'max_reps' | 'max_volume' | 'max_duration'
 
-export type RepType = 'single' | 'left_right' | 'reverse_ladder' | 'double_reverse_ladder' | 'ladder' | 'double_ladder' | 'time' | 'reps_per_minute'
+export type RepType =
+  | 'single' | 'left_right' | 'time'
+  | 'ladder_up' | 'double_ladder_up'
+  | 'reverse_ladder' | 'double_reverse_ladder'
+  | 'ladder' | 'double_ladder'                    // pyramid (up+down) — legacy value names kept for data compat
+  | 'reps_per_minute' | 'left_right_per_minute'
+  | 'ladder_up_per_minute' | 'double_ladder_up_per_minute'
+  | 'reverse_ladder_per_minute' | 'double_reverse_ladder_per_minute'
+  | 'ladder_per_minute' | 'double_ladder_per_minute'
 
 export type WeightUnit = 'lbs' | 'kg' | 'pood' | 'bodyweight'
 
 export const REP_TYPE_OPTIONS: { value: RepType; label: string }[] = [
   { value: 'single', label: 'Single' },
+  { value: 'reps_per_minute', label: 'Single / Min' },
   { value: 'left_right', label: 'Left / Right' },
+  { value: 'left_right_per_minute', label: 'Left / Right / Min' },
+  { value: 'ladder_up', label: 'Ladder' },
+  { value: 'ladder_up_per_minute', label: 'Ladder / Min' },
+  { value: 'double_ladder_up', label: 'Double Ladder' },
+  { value: 'double_ladder_up_per_minute', label: 'Double Ladder / Min' },
   { value: 'reverse_ladder', label: 'Reverse Ladder' },
+  { value: 'reverse_ladder_per_minute', label: 'Reverse Ladder / Min' },
   { value: 'double_reverse_ladder', label: 'Double Reverse Ladder' },
-  { value: 'ladder', label: 'Ladder' },
-  { value: 'double_ladder', label: 'Double Ladder' },
+  { value: 'double_reverse_ladder_per_minute', label: 'Double Reverse Ladder / Min' },
+  { value: 'ladder', label: 'Pyramid' },
+  { value: 'ladder_per_minute', label: 'Pyramid / Min' },
+  { value: 'double_ladder', label: 'Double Pyramid' },
+  { value: 'double_ladder_per_minute', label: 'Double Pyramid / Min' },
   { value: 'time', label: 'Time' },
-  { value: 'reps_per_minute', label: 'Reps / Min' },
 ]
 
 export const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
@@ -84,14 +101,26 @@ export const WEIGHT_UNIT_OPTIONS: { value: WeightUnit; label: string }[] = [
   { value: 'bodyweight', label: 'BW' },
 ]
 
-export function formatReps(repType: RepType, reps: number | null, repsRight?: number | null): string {
-  if (reps == null) return ''
+/** Format the base rep pattern (without /min suffix). */
+function formatBaseReps(repType: RepType, reps: number, repsRight?: number | null): string {
+  // Strip _per_minute suffix to get base type formatting
+  const base = repType.replace('_per_minute', '')
 
-  switch (repType) {
+  switch (base) {
     case 'single':
       return `${reps}`
     case 'left_right':
       return `${reps}/${repsRight ?? reps}`
+    case 'ladder_up': {
+      const parts: number[] = []
+      for (let i = 1; i <= reps; i++) parts.push(i)
+      return parts.join('/')
+    }
+    case 'double_ladder_up': {
+      const parts: string[] = []
+      for (let i = 1; i <= reps; i++) parts.push(`${i}/${i}`)
+      return parts.join(', ')
+    }
     case 'reverse_ladder': {
       const parts: number[] = []
       for (let i = reps; i >= 1; i--) parts.push(i)
@@ -103,6 +132,7 @@ export function formatReps(repType: RepType, reps: number | null, repsRight?: nu
       return parts.join(', ')
     }
     case 'ladder': {
+      // Pyramid: up then down
       const up: number[] = []
       for (let i = 1; i <= reps; i++) up.push(i)
       const down: number[] = []
@@ -110,22 +140,34 @@ export function formatReps(repType: RepType, reps: number | null, repsRight?: nu
       return [...up, ...down].join('/')
     }
     case 'double_ladder': {
+      // Double pyramid: up then down, both sides
       const up: string[] = []
       for (let i = 1; i <= reps; i++) up.push(`${i}/${i}`)
       const down: string[] = []
       for (let i = reps - 1; i >= 1; i--) down.push(`${i}/${i}`)
       return [...up, ...down].join(', ')
     }
-    case 'time': {
-      const mins = Math.floor(reps / 60)
-      const secs = reps % 60
-      return `${mins}:${secs.toString().padStart(2, '0')}`
-    }
-    case 'reps_per_minute':
-      return `${reps}/min × ${repsRight ?? 1}min`
     default:
       return `${reps}`
   }
+}
+
+export function formatReps(repType: RepType, reps: number | null, repsRight?: number | null): string {
+  if (reps == null) return ''
+
+  if (repType === 'time') {
+    const mins = Math.floor(reps / 60)
+    const secs = reps % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  if (repType === 'reps_per_minute') {
+    return `${reps}/min × ${repsRight ?? 1}min`
+  }
+
+  const base = formatBaseReps(repType, reps, repsRight)
+  const isPerMin = repType.endsWith('_per_minute')
+  return isPerMin ? `${base}/min` : base
 }
 
 /** Calculate total reps for an entry, accounting for rep type (ladders, left/right, etc.) */
@@ -138,22 +180,28 @@ export function calcTotalReps(
   if (sets == null || reps == null) return 0
   if (repType === 'time') return 0
 
-  switch (repType) {
+  // Per-minute variants have the same rep math as their base type
+  const base = repType.replace('_per_minute', '')
+
+  switch (base) {
+    case 'ladder_up':
     case 'reverse_ladder':
-      // n + (n-1) + ... + 1 = n*(n+1)/2
+      // 1+2+...+n = n*(n+1)/2
       return sets * (reps * (reps + 1)) / 2
     case 'ladder':
-      // 1+2+...+n+(n-1)+...+1 = n²
+      // Pyramid: 1+2+...+n+(n-1)+...+1 = n²
       return sets * reps * reps
+    case 'double_ladder_up':
     case 'double_reverse_ladder':
       // Both sides: 2 × n*(n+1)/2
       return sets * reps * (reps + 1)
     case 'double_ladder':
-      // Both sides of ladder: 2 × n²
+      // Double pyramid: 2 × n²
       return sets * 2 * reps * reps
     case 'left_right':
       return sets * (reps + (repsRight ?? reps))
-    case 'reps_per_minute':
+    case 'reps':
+      // reps_per_minute: reps × minutes
       return sets * reps * (repsRight ?? 1)
     default:
       return sets * reps

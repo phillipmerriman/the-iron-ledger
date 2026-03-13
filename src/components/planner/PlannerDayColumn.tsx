@@ -1,5 +1,5 @@
 import { useState, useRef, type DragEvent, type ReactNode } from 'react'
-import { X, ChevronRight, Sun, CloudSun, Moon } from 'lucide-react'
+import { X, ChevronRight, Sun, CloudSun, Moon, Minus } from 'lucide-react'
 import { format, isToday } from 'date-fns'
 import type { PlannedEntry, PlannedEntryUpdate, Session } from '@/hooks/useWeeklyPlan'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
@@ -11,6 +11,7 @@ import EntryDetailEditor from '@/components/programs/EntryDetailEditor'
 import { cn } from '@/lib/utils'
 
 const SESSION_ICONS: Record<Session, typeof Sun> = {
+  all: Minus,
   morning: Sun,
   noon: CloudSun,
   night: Moon,
@@ -202,13 +203,17 @@ export default function PlannerDayColumn({
         {SESSIONS.map((session, sIdx) => {
           const sessionEntries = getEntriesForDateSession(dateKey, session)
           const isEmpty = sessionEntries.length === 0
-          const collapsed = isSessionCollapsed(session, isEmpty)
+          const collapsed = session === 'all' ? false : isSessionCollapsed(session, isEmpty)
           const isOver = dropTarget?.dateKey === dateKey && dropTarget?.session === session
           const Icon = SESSION_ICONS[session]
 
+          // Hide the 'all' section entirely when it has no entries
+          if (session === 'all' && isEmpty) return null
+
           return (
-            <div key={session} className={cn(sIdx > 0 && 'border-t border-surface-100')}>
-              {/* Section header */}
+            <div key={session} className={cn(sIdx > 0 && session !== 'all' && 'border-t border-surface-100')}>
+              {/* Section header — hidden for 'all' session */}
+              {session !== 'all' && (
               <div
                 className={cn(
                   'flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-surface-400 transition-colors rounded-sm',
@@ -235,6 +240,7 @@ export default function PlannerDayColumn({
                 </button>
                 {sessionActions?.(dateKey, session, sessionEntries)}
               </div>
+              )}
 
               {/* Section body — animated with CSS grid trick */}
               <div
@@ -302,7 +308,7 @@ export default function PlannerDayColumn({
                                 )}
                                 {entry.sets != null && <p>Sets: {entry.sets}</p>}
                                 {repsDisplay && (
-                                  <p>{entry.rep_type === 'time' ? 'Time: ' : entry.rep_type === 'reps_per_minute' ? '' : 'Reps: '}{repsDisplay}</p>
+                                  <p>{entry.rep_type === 'time' ? 'Time: ' : entry.rep_type.endsWith('_per_minute') ? '' : 'Reps: '}{repsDisplay}</p>
                                 )}
                                 {(entry.weight_unit === 'bodyweight' || entry.weight != null) && (
                                   <p>{formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)}</p>
@@ -331,7 +337,7 @@ export default function PlannerDayColumn({
                       )
                     })}
 
-                    {isEmpty && (
+                    {isEmpty && session !== 'all' && (
                       <span className="py-1 text-center text-[10px] text-surface-300">Drop here</span>
                     )}
                   </div>

@@ -45,6 +45,12 @@ export default function useExercises() {
         equipment: values.equipment ?? 'bodyweight',
         notes: values.notes ?? null,
         is_archived: false,
+        default_sets: values.default_sets ?? null,
+        default_reps: values.default_reps ?? null,
+        default_rep_type: values.default_rep_type ?? 'single',
+        default_weight: values.default_weight ?? null,
+        default_weight_unit: values.default_weight_unit ?? 'lbs',
+        default_intensity: values.default_intensity ?? null,
         created_at: now,
         updated_at: now,
       }
