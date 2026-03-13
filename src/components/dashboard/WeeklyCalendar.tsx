@@ -69,7 +69,7 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
     if (daySessions.length === 0) return 'none'
     if (daySessions.every((s) => s.completed_at)) return 'completed'
     if (daySessions.some((s) => s.completed_at)) return 'partial'
-    return 'in_progress'
+    return isToday(day) ? 'in_progress' : 'none'
   }
 
   function allCompleted(day: Date) {
