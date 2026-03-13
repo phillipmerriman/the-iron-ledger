@@ -6,8 +6,8 @@ import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
-import useWeeklyPlan, { loadWeekEntries, clearWeekEntries, pasteWeekEntries } from '@/hooks/useWeeklyPlan'
-import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
+import { loadWeekEntries, clearWeekEntries, pasteWeekEntries } from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
@@ -21,7 +21,7 @@ import Badge from '@/components/ui/Badge'
 
 export default function ProgramDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { programs, loading: programsLoading } = usePrograms()
+  const { programs, loading: programsLoading, setActive, deactivate } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
@@ -42,15 +42,7 @@ export default function ProgramDetailPage() {
     e.name.toLowerCase().includes(search.toLowerCase()),
   )
 
-  // We need a useWeeklyPlan instance to call addEntries for template drops.
-  // Since ProgramWeekGrid creates its own hook per week, we use a shared one at week 0
-  // just for the addEntries function (it writes to the global localStorage anyway).
   const programStart = program ? parseISO(program.start_date) : new Date()
-  const { addEntries } = useWeeklyPlan({
-    startDate: programStart,
-    weekOffset: 0,
-    programId: id ?? null,
-  })
 
   async function handleCreateExercise(values: {
     name: string
@@ -88,9 +80,9 @@ export default function ProgramDetailPage() {
     e.dataTransfer.setData('application/x-template', 'true')
   }
 
-  function handleTemplateDrop(dateKey: string, templateId: string, session: Session) {
+  function resolveTemplate(templateId: string) {
     const templateExercises = getExercisesForTemplate(templateId)
-    const items = templateExercises.map((exercise) => {
+    return templateExercises.map((exercise) => {
       const extras = parseExtras(exercise.notes)
       return {
         exerciseId: exercise.exercise_id,
@@ -105,7 +97,6 @@ export default function ProgramDetailPage() {
         },
       }
     })
-    addEntries(dateKey, items, session)
   }
 
   async function handleSaveDay(name: string, entries: PlannedEntry[]) {
@@ -173,7 +164,15 @@ export default function ProgramDetailPage() {
             <p className="text-surface-500"><span className="font-medium text-surface-600">Description:</span> {program.description}</p>
           )}
           <span className="text-surface-500"><span className="font-medium text-surface-600">Length:</span> {program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</span>
-          {program.is_active ? <Badge variant="primary">Active</Badge> : <Badge>Inactive</Badge>}
+          {program.is_active ? (
+            <button onClick={() => deactivate(program.id)} title="Deactivate program">
+              <Badge variant="primary" className="cursor-pointer hover:opacity-80">Active</Badge>
+            </button>
+          ) : (
+            <button onClick={() => setActive(program.id)} title="Activate program">
+              <Badge className="cursor-pointer hover:opacity-80">Inactive</Badge>
+            </button>
+          )}
         </div>
         <p className="mt-2 text-xs text-surface-400">
           Drag exercises or saved workouts from the pool into each day.
@@ -218,7 +217,7 @@ export default function ProgramDetailPage() {
                 exercises={exercises}
                 timers={timers}
                 onSaveDay={handleSaveDay}
-                onTemplateDrop={handleTemplateDrop}
+                resolveTemplate={resolveTemplate}
                 revision={revision}
               />
             </div>

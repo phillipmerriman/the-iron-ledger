@@ -38,13 +38,19 @@ export default function WorkoutCompleteModal({
     0,
   )
 
+  // Derive session label from entries (e.g. "Morning Workout Complete!")
+  const distinctSessions = [...new Set(entries.map((e) => e.session))]
+  const sessionPrefix = distinctSessions.length === 1 && distinctSessions[0] !== 'all'
+    ? `${SESSION_LABELS[distinctSessions[0]]} `
+    : ''
+
   return (
     <Modal open={open} onClose={onClose} title="">
       <div className="flex flex-col items-center text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-100">
           <Trophy className="h-7 w-7 text-primary-600" />
         </div>
-        <h2 className="mt-3 text-xl font-bold text-surface-900">Workout Complete!</h2>
+        <h2 className="mt-3 text-xl font-bold text-surface-900">{sessionPrefix}Workout Complete!</h2>
         <p className="mt-1 text-sm text-surface-500">{dayLabel}</p>
       </div>
 

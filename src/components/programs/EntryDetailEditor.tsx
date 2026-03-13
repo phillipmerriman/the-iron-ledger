@@ -145,6 +145,12 @@ export default function EntryDetailEditor({
         ) : exerciseName ? (
           <p className="truncate border-b border-surface-100 pb-1.5 text-xs font-semibold text-surface-800">{exerciseName}</p>
         ) : null}
+        {/* Exercise notes (from exercise definition) */}
+        {exercises?.find((ex) => ex.id === exerciseId)?.notes && (
+          <p className="whitespace-pre-wrap rounded bg-surface-50 px-2 py-1 text-[10px] text-surface-500">
+            {exercises.find((ex) => ex.id === exerciseId)!.notes}
+          </p>
+        )}
         {/* Time of Day */}
         <div>
           <label className="text-[10px] font-medium text-surface-500">Time of Day</label>

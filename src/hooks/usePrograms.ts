@@ -3,6 +3,7 @@ import { supabase, isDev } from '@/lib/supabase'
 import { localDb } from '@/lib/local-storage'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Program, ProgramDay, ProgramDayExercise, InsertDto, UpdateDto } from '@/types/database'
+import { removeUnscopedDuplicates } from '@/hooks/useWeeklyPlan'
 
 const sortByName = (a: Program, b: Program) => a.name.localeCompare(b.name)
 
@@ -100,6 +101,8 @@ export default function usePrograms() {
 
   async function setActive(id: string) {
     if (!user) return
+    // Remove unscoped entries on dates that already have program entries
+    await removeUnscopedDuplicates(user.id, id)
     if (isDev) {
       // Deactivate all, then activate the selected one
       const all = localDb.getAll('programs').filter((p) => p.user_id === user.id)
@@ -117,7 +120,19 @@ export default function usePrograms() {
     )
   }
 
-  return { programs, loading, refetch: fetch, create, update, remove, setActive }
+  async function deactivate(id: string) {
+    if (!user) return
+    if (isDev) {
+      localDb.update('programs', id, { is_active: false })
+    } else {
+      await supabase.from('programs').update({ is_active: false }).eq('id', id)
+    }
+    setPrograms((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, is_active: false } : p)),
+    )
+  }
+
+  return { programs, loading, refetch: fetch, create, update, remove, setActive, deactivate }
 }
 
 // ---- Program Days ----

@@ -27,22 +27,20 @@ export default function ExerciseCard({
   const colorClasses = getExerciseColorClasses(exercise.color)
 
   return (
-    <Card className={cn('flex items-start justify-between gap-3', colorClasses.bg)}>
-      <div className="min-w-0 flex-1">
-        <p className="font-display font-medium text-surface-900">{exercise.name}</p>
-        <div className="mt-1.5 flex flex-wrap gap-1.5">
-          <Badge variant="primary">{formatLabel(exercise.exercise_type)}</Badge>
-          <Badge>{formatLabel(exercise.primary_muscle)}</Badge>
-          <Badge>{formatLabel(exercise.equipment)}</Badge>
-          {exercise.exercise_rate && <Badge variant="info">{formatLabel(exercise.exercise_rate)}</Badge>}
-          {exercise.is_archived && <Badge variant="warning">Archived</Badge>}
+    <Card className={cn('space-y-2', colorClasses.bg)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-display font-medium text-surface-900">{exercise.name}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <Badge variant="primary">{formatLabel(exercise.exercise_type)}</Badge>
+            <Badge>{formatLabel(exercise.primary_muscle)}</Badge>
+            <Badge>{formatLabel(exercise.equipment)}</Badge>
+            {exercise.exercise_rate && <Badge variant="info">{formatLabel(exercise.exercise_rate)}</Badge>}
+            {exercise.is_archived && <Badge variant="warning">Archived</Badge>}
+          </div>
         </div>
-        {exercise.notes && (
-          <p className="mt-2 text-xs text-surface-500">{exercise.notes}</p>
-        )}
-      </div>
 
-      <div className="flex shrink-0 gap-1">
+        <div className="flex shrink-0 gap-1">
         <button
           onClick={() => onEdit(exercise)}
           className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
@@ -78,7 +76,11 @@ export default function ExerciseCard({
         >
           <Trash2 className="h-4 w-4" />
         </button>
+        </div>
       </div>
+      {exercise.notes && (
+        <p className="whitespace-pre-wrap text-xs text-surface-500">{exercise.notes}</p>
+      )}
     </Card>
   )
 }

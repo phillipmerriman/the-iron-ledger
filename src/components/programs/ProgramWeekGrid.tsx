@@ -15,8 +15,8 @@ interface ProgramWeekGridProps {
   exercises: Exercise[]
   timers?: TimerWithIntervals[]
   onSaveDay?: (name: string, entries: PlannedEntry[]) => void
-  /** Called when a template is dropped; parent resolves template exercises and calls addEntry */
-  onTemplateDrop?: (dateKey: string, templateId: string, session: Session) => void
+  /** Resolves a template ID into exercise items for adding to the plan */
+  resolveTemplate?: (templateId: string) => { exerciseId: string; presets?: { sets?: number | null; reps?: number | null; rep_type?: RepType; reps_right?: number | null; weight?: number | null; weight_unit?: WeightUnit; timer_id?: string | null } }[]
   /** Bump to trigger refetch (e.g. after external paste) */
   revision?: number
 }
@@ -28,7 +28,7 @@ export default function ProgramWeekGrid({
   exercises,
   timers,
   onSaveDay,
-  onTemplateDrop,
+  resolveTemplate,
   revision,
 }: ProgramWeekGridProps) {
   const { profile } = useAuth()
@@ -39,6 +39,7 @@ export default function ProgramWeekGrid({
     getEntriesForDate,
     getEntriesForDateSession,
     addEntry,
+    addEntries,
     updateEntry,
     removeEntry,
     moveEntry,
@@ -94,7 +95,8 @@ export default function ProgramWeekGrid({
     if (!data) return
 
     if (e.dataTransfer.types.includes('application/x-template')) {
-      onTemplateDrop?.(dateKey, data, session)
+      const items = resolveTemplate?.(data)
+      if (items?.length) addEntries(dateKey, items, session)
     } else if (e.dataTransfer.types.includes('application/x-pool')) {
       addEntry(dateKey, data, getExerciseDefaults(data), session)
     } else {
