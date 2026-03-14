@@ -12,7 +12,9 @@
       "Bash(node -e \"const p = require\\(''./node_modules/@supabase/postgrest-js/package.json''\\); console.log\\(p.version\\)\")",
       "Bash(xargs ls:*)",
       "Bash(npx eslint:*)",
-      "Bash(find /c/Users/phill/repos/the-iron-ledger -name *.sql -o -name migrations -o -name *schema*)"
+      "Bash(find /c/Users/phill/repos/the-iron-ledger -name *.sql -o -name migrations -o -name *schema*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx vite:*)"
     ]
   }
 }

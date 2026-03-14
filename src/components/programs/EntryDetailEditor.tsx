@@ -35,6 +35,7 @@ export default function EntryDetailEditor({
   const [intensity, setIntensity] = useState<'light' | 'heavy' | null>(entry.intensity ?? null)
   const [notes, setNotes] = useState(entry.notes ?? '')
   const [timerId, setTimerId] = useState<string | null>(entry.timer_id ?? null)
+  const [setMarkers, setSetMarkers] = useState(entry.set_markers ?? false)
 
   // Time fields (derived from reps stored as total seconds)
   const [timeMin, setTimeMin] = useState(() =>
@@ -88,7 +89,7 @@ export default function EntryDetailEditor({
         ? (Number(timeMin) || 0) * 60 + (Number(timeSec) || 0) || null
         : reps === '' ? null : Number(reps)
 
-    onUpdate(entry.id, {
+    const values = {
       exercise_id: exerciseId,
       session,
       sets: sets === '' ? null : Number(sets),
@@ -100,7 +101,9 @@ export default function EntryDetailEditor({
       intensity,
       notes: notes.trim() || null,
       timer_id: timerId,
-    })
+      set_markers: setMarkers,
+    }
+    onUpdate(entry.id, values)
     onClose()
   }
 
@@ -177,6 +180,17 @@ export default function EntryDetailEditor({
             placeholder="3"
           />
         </div>
+
+        {/* Set Markers */}
+        <label className="flex items-center gap-2 text-[10px]">
+          <input
+            type="checkbox"
+            checked={setMarkers}
+            onChange={(e) => setSetMarkers(e.target.checked)}
+            className="h-3.5 w-3.5 rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="font-medium text-surface-500">Set Markers</span>
+        </label>
 
         {/* Rep Type */}
         <div>

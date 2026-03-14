@@ -37,9 +37,10 @@ export interface PlannedEntry {
   intensity: 'light' | 'heavy' | null
   notes: string | null
   timer_id: string | null
+  set_markers: boolean
 }
 
-export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session' | 'timer_id'>>
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session' | 'timer_id' | 'set_markers'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 
@@ -64,6 +65,7 @@ function loadAll(): PlannedEntry[] {
     intensity: e.intensity ?? null,
     notes: e.notes ?? null,
     timer_id: (e as Record<string, unknown>).timer_id as string | null ?? null,
+    set_markers: !!(e as Record<string, unknown>).set_markers,
   }))
 }
 
@@ -73,7 +75,9 @@ function saveAll(entries: PlannedEntry[]) {
 
 /** Cast Supabase row to PlannedEntry (types are compatible) */
 function asEntry(row: Record<string, unknown>): PlannedEntry {
-  return row as unknown as PlannedEntry
+  const entry = row as unknown as PlannedEntry
+  if (entry.set_markers == null) entry.set_markers = false
+  return entry
 }
 
 function asEntries(rows: Record<string, unknown>[]): PlannedEntry[] {
@@ -176,6 +180,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       intensity: presets?.intensity ?? null,
       notes: presets?.notes ?? null,
       timer_id: presets?.timer_id ?? null,
+      set_markers: presets?.set_markers ?? false,
     }
 
     if (isDev) {
@@ -200,6 +205,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         intensity: entry.intensity,
         notes: entry.notes,
         timer_id: entry.timer_id,
+        set_markers: entry.set_markers,
       })
       if (error) throw error
     }
@@ -226,6 +232,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       intensity: item.presets?.intensity ?? null,
       notes: item.presets?.notes ?? null,
       timer_id: item.presets?.timer_id ?? null,
+      set_markers: item.presets?.set_markers ?? false,
     }))
 
     if (isDev) {
@@ -251,6 +258,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
           intensity: e.intensity,
           notes: e.notes,
           timer_id: e.timer_id,
+          set_markers: e.set_markers,
         })),
       )
       if (error) throw error
@@ -503,6 +511,7 @@ export async function pasteWeekEntries(
           intensity: src.intensity,
           notes: src.notes,
           timer_id: (src as PlannedEntry).timer_id ?? null,
+          set_markers: (src as PlannedEntry).set_markers ?? false,
         })
       }
     }
@@ -555,6 +564,7 @@ export async function pasteWeekEntries(
         intensity: src.intensity,
         notes: src.notes,
         timer_id: (src as PlannedEntry).timer_id ?? null,
+        set_markers: (src as PlannedEntry).set_markers ?? false,
       })
     }
   }
