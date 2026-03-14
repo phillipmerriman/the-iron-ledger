@@ -1,30 +1,30 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarRange, ChevronRight } from 'lucide-react'
-import { useProgramDays } from '@/hooks/usePrograms'
-import type { Program, WorkoutSession } from '@/types/database'
+import { format, parseISO, addWeeks } from 'date-fns'
+import type { Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import Badge from '@/components/ui/Badge'
 
 interface ActiveProgramCardProps {
   program: Program
+  activation: ProgramActivation
   sessions: WorkoutSession[]
 }
 
-export default function ActiveProgramCard({ program, sessions }: ActiveProgramCardProps) {
-  const { days } = useProgramDays(program.id)
+export default function ActiveProgramCard({ program, activation, sessions }: ActiveProgramCardProps) {
+  const start = parseISO(activation.start_date)
+  const end = addWeeks(start, program.weeks)
 
-  // Count how many sessions have been completed since the program was created
+  // Count how many sessions have been completed since activation
   const completedSessions = useMemo(
     () =>
       sessions.filter(
         (s) =>
           s.completed_at &&
-          new Date(s.started_at) >= new Date(program.created_at),
+          new Date(s.started_at) >= new Date(activation.created_at),
       ).length,
-    [sessions, program.created_at],
+    [sessions, activation.created_at],
   )
-
-  const totalDays = days.length
 
   return (
     <Link
@@ -43,28 +43,18 @@ export default function ActiveProgramCard({ program, sessions }: ActiveProgramCa
             )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Badge variant="primary">Active</Badge>
+              <Badge>{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</Badge>
               <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
-              <Badge>{totalDays} {totalDays === 1 ? 'day' : 'days'}</Badge>
             </div>
           </div>
         </div>
         <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-surface-400" />
       </div>
 
-      {/* Progress bar */}
-      {totalDays > 0 && (
-        <div className="mt-4">
-          <div className="mb-1 flex items-center justify-between text-xs text-surface-500">
-            <span>{completedSessions} sessions completed</span>
-            <span>{totalDays} days in program</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-surface-100">
-            <div
-              className="h-full rounded-full bg-primary-500 transition-all"
-              style={{ width: `${Math.min((completedSessions / totalDays) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
+      {completedSessions > 0 && (
+        <p className="mt-3 text-xs text-surface-500">
+          {completedSessions} {completedSessions === 1 ? 'session' : 'sessions'} completed
+        </p>
       )}
     </Link>
   )

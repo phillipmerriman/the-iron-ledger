@@ -14,7 +14,13 @@
       "Bash(npx eslint:*)",
       "Bash(find /c/Users/phill/repos/the-iron-ledger -name *.sql -o -name migrations -o -name *schema*)",
       "Bash(echo \"exit: $?\")",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.\\(sql|ts|json\\)$\")",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node node_modules/typescript/lib/tsc.js --noEmit)",
+      "Bash(node -e \"require\\(''child_process''\\).execSync\\(''npx tsc --noEmit'', {stdio: ''inherit''}\\)\")",
+      "Bash(npm run:*)"
     ]
   }
 }

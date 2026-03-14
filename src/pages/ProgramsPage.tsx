@@ -1,19 +1,26 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Pause, Calendar } from 'lucide-react'
+import { format, startOfWeek, addWeeks, parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import ProgramCard from '@/components/programs/ProgramCard'
 import ProgramForm from '@/components/programs/ProgramForm'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 
 export default function ProgramsPage() {
-  const { programs, loading, create, remove, setActive, deactivate } = usePrograms()
+  const { programs, activations, loading, create, remove, activate, deactivate } = usePrograms()
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [activateId, setActivateId] = useState<string | null>(null)
+  const [activateDate, setActivateDate] = useState(() =>
+    format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'),
+  )
 
   function closeModal() {
     setModalOpen(false)
@@ -44,7 +51,7 @@ export default function ProgramsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Programs</h1>
         <Button onClick={() => setModalOpen(true)} size="sm">
@@ -53,23 +60,64 @@ export default function ProgramsPage() {
         </Button>
       </div>
 
-      {programs.length === 0 ? (
-        <div className="py-12 text-center text-surface-400">
-          No programs yet. Create your first training program!
-        </div>
-      ) : (
+      {/* Active Programs Section */}
+      {activations.length > 0 && (
         <div className="space-y-3">
-          {programs.map((program) => (
-            <ProgramCard
-              key={program.id}
-              program={program}
-              onDelete={handleDelete}
-              onSetActive={setActive}
-              onDeactivate={deactivate}
-            />
-          ))}
+          <h2 className="text-sm font-bold uppercase tracking-wide text-surface-500">Active Programs</h2>
+          {activations.map((act) => {
+            const program = programs.find((p) => p.id === act.program_id)
+            if (!program) return null
+            const start = parseISO(act.start_date)
+            const end = addWeeks(start, program.weeks)
+            return (
+              <Card key={act.id} className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-surface-900">{program.name}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="primary">Active</Badge>
+                    <Badge>
+                      <Calendar className="mr-1 inline h-3 w-3" />
+                      {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}
+                    </Badge>
+                    <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
+                  </div>
+                </div>
+                <button
+                  onClick={() => deactivate(act.id)}
+                  className="shrink-0 rounded-lg p-1.5 text-primary-500 hover:bg-warning-50 hover:text-warning-600"
+                  aria-label="Deactivate program"
+                  title="Deactivate"
+                >
+                  <Pause className="h-4 w-4" />
+                </button>
+              </Card>
+            )
+          })}
         </div>
       )}
+
+      {/* All Programs */}
+      <div className="space-y-3">
+        {activations.length > 0 && (
+          <h2 className="text-sm font-bold uppercase tracking-wide text-surface-500">All Programs</h2>
+        )}
+        {programs.length === 0 ? (
+          <div className="py-12 text-center text-surface-400">
+            No programs yet. Create your first training program!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {programs.map((program) => (
+              <ProgramCard
+                key={program.id}
+                program={program}
+                onDelete={handleDelete}
+                onSetActive={(id) => { setActivateId(id); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       <Modal
         open={modalOpen}
@@ -81,6 +129,44 @@ export default function ProgramsPage() {
           onCancel={closeModal}
           submitting={submitting}
         />
+      </Modal>
+
+      {/* Activation date picker modal */}
+      <Modal
+        open={activateId !== null}
+        onClose={() => setActivateId(null)}
+        title="Activate Program"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600">
+            Choose the Sunday your program should start on. Week 1 will begin on this date.
+          </p>
+          <div>
+            <label htmlFor="activate-start" className="block text-sm font-medium text-surface-700">
+              Start Date (Sunday)
+            </label>
+            <input
+              id="activate-start"
+              type="date"
+              value={activateDate}
+              onChange={(e) => setActivateDate(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setActivateId(null)}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                if (activateId) {
+                  await activate(activateId, activateDate)
+                  setActivateId(null)
+                }
+              }}
+            >
+              Activate
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

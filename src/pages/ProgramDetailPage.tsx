@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste } from 'lucide-react'
-import { parseISO } from 'date-fns'
+import { parseISO, format, startOfWeek } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
@@ -15,13 +15,14 @@ import { cn } from '@/lib/utils'
 import ProgramWeekGrid from '@/components/programs/ProgramWeekGrid'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
 
 export default function ProgramDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { programs, loading: programsLoading, setActive, deactivate } = usePrograms()
+  const { programs, activations, loading: programsLoading, activate, deactivate } = usePrograms()
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
@@ -33,6 +34,10 @@ export default function ProgramDetailPage() {
   const [copiedWeek, setCopiedWeek] = useState<{ weekOffset: number; entries: (PlannedEntry & { dayIndex: number })[] } | null>(null)
   const [revision, setRevision] = useState(0)
   const [pasteConfirm, setPasteConfirm] = useState<{ targetWeekOffset: number } | null>(null)
+  const [activateOpen, setActivateOpen] = useState(false)
+  const [activateDate, setActivateDate] = useState(() =>
+    format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'),
+  )
 
   const program = programs.find((p) => p.id === id)
   const loading = programsLoading || exercisesLoading
@@ -164,15 +169,22 @@ export default function ProgramDetailPage() {
             <p className="text-surface-500"><span className="font-medium text-surface-600">Description:</span> {program.description}</p>
           )}
           <span className="text-surface-500"><span className="font-medium text-surface-600">Length:</span> {program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</span>
-          {program.is_active ? (
-            <button onClick={() => deactivate(program.id)} title="Deactivate program">
-              <Badge variant="primary" className="cursor-pointer hover:opacity-80">Active</Badge>
-            </button>
-          ) : (
-            <button onClick={() => setActive(program.id)} title="Activate program">
-              <Badge className="cursor-pointer hover:opacity-80">Inactive</Badge>
-            </button>
-          )}
+          {(() => {
+            const programActivations = activations.filter((a) => a.program_id === program.id)
+            return programActivations.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {programActivations.map((act) => (
+                  <button key={act.id} onClick={() => deactivate(act.id)} title="Deactivate this activation">
+                    <Badge variant="primary" className="cursor-pointer hover:opacity-80">Active</Badge>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => { setActivateOpen(true); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }} title="Activate program">
+                <Badge className="cursor-pointer hover:opacity-80">Inactive</Badge>
+              </button>
+            )
+          })()}
         </div>
         <p className="mt-2 text-xs text-surface-400">
           Drag exercises or saved workouts from the pool into each day.
@@ -369,6 +381,38 @@ export default function ProgramDetailPage() {
           },
         ]}
       />
+
+      {/* Activation date picker modal */}
+      <Modal open={activateOpen} onClose={() => setActivateOpen(false)} title="Activate Program">
+        <div className="space-y-4">
+          <p className="text-sm text-surface-600">
+            Choose the Sunday your program should start on. Week 1 will begin on this date.
+          </p>
+          <div>
+            <label htmlFor="activate-start" className="block text-sm font-medium text-surface-700">
+              Start Date (Sunday)
+            </label>
+            <input
+              id="activate-start"
+              type="date"
+              value={activateDate}
+              onChange={(e) => setActivateDate(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setActivateOpen(false)}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                await activate(program.id, activateDate)
+                setActivateOpen(false)
+              }}
+            >
+              Activate
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

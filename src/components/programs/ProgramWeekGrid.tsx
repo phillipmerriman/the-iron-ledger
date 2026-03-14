@@ -204,6 +204,7 @@ export default function ProgramWeekGrid({
             dropTarget={dropTarget}
             reorderOverId={reorderOverId}
             isDragging={(id) => draggingEntryId === id}
+            hideDate
             headerActions={
               allPlanned.length > 0 ? (
                 <div className="flex gap-0.5">

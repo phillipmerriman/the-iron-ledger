@@ -88,6 +88,8 @@ interface UseWeeklyPlanOptions {
   startDate?: Date
   weekOffset?: number
   programId?: string | null
+  /** Pass multiple IDs to include entries from several activations */
+  programIds?: string[]
   includeUnscoped?: boolean
 }
 
@@ -97,6 +99,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     startDate = new Date(),
     weekOffset = 0,
     programId = null,
+    programIds,
     includeUnscoped = false,
   } = options
 
@@ -109,15 +112,19 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const hasMultiple = programIds && programIds.length > 0
+
     if (isDev) {
       const today = format(new Date(), 'yyyy-MM-dd')
       const all = loadAll().filter(
         (e) =>
           e.user_id === user.id &&
           dateKeys.includes(e.date) &&
-          (programId
-            ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
-            : (e.program_id == null || e.date <= today)),
+          (hasMultiple
+            ? (programIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
+            : programId
+              ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
+              : (e.program_id == null || e.date <= today)),
       )
       setEntries(all)
     } else {
@@ -128,7 +135,10 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         .eq('user_id', user.id)
         .in('date', dateKeys)
 
-      if (programId) {
+      if (hasMultiple) {
+        const idFilters = programIds.map((id) => `program_id.eq.${id}`).join(',')
+        query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
+      } else if (programId) {
         if (includeUnscoped) {
           query = query.or(`program_id.eq.${programId},program_id.is.null`)
         } else {
@@ -143,7 +153,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       if (error) throw error
       setEntries(asEntries(data ?? []))
     }
-  }, [user, dateKeys.join(','), programId, includeUnscoped])
+  }, [user, dateKeys.join(','), programId, programIds?.join(','), includeUnscoped])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -592,14 +602,15 @@ export async function loadProgramEntries(userId: string, programId: string): Pro
 }
 
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
-export async function loadUserEntries(userId: string, programId?: string | null): Promise<PlannedEntry[]> {
+export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
   const today = format(new Date(), 'yyyy-MM-dd')
+  const hasActivations = activationIds && activationIds.length > 0
 
   if (isDev) {
     return loadAll().filter((e) =>
       e.user_id === userId &&
-      (programId
-        ? (e.program_id === programId || e.program_id == null)
+      (hasActivations
+        ? (activationIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
         : (e.program_id == null || e.date <= today)),
     )
   }
@@ -609,8 +620,9 @@ export async function loadUserEntries(userId: string, programId?: string | null)
     .select('*')
     .eq('user_id', userId)
 
-  if (programId) {
-    query = query.or(`program_id.eq.${programId},program_id.is.null`)
+  if (hasActivations) {
+    const idFilters = activationIds.map((id) => `program_id.eq.${id}`).join(',')
+    query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
   } else {
     query = query.or(`program_id.is.null,date.lte.${today}`)
   }

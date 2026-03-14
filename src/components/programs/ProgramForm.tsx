@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { X } from 'lucide-react'
-import { format, nextSunday } from 'date-fns'
+import { format, startOfWeek } from 'date-fns'
 import type { Program } from '@/types/database'
 import { cn } from '@/lib/utils'
 import Button from '@/components/ui/Button'
@@ -17,11 +17,10 @@ export default function ProgramForm({ initial, onSubmit, onCancel, submitting }:
   const [name, setName] = useState(initial?.name ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [weeks, setWeeks] = useState(initial?.weeks ?? 1)
-  const [startDate, setStartDate] = useState(
-    initial?.start_date
-      ? format(new Date(initial.start_date), 'yyyy-MM-dd')
-      : format(nextSunday(new Date()), 'yyyy-MM-dd'),
-  )
+  // Internal reference date — not user-facing. Use current week's Sunday.
+  const startDate = initial?.start_date
+    ? format(new Date(initial.start_date), 'yyyy-MM-dd')
+    : format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -68,15 +67,6 @@ export default function ProgramForm({ initial, onSubmit, onCancel, submitting }:
           )}
         </div>
       </div>
-
-      <Input
-        id="program-start"
-        label="Start Date"
-        type="date"
-        required
-        value={startDate}
-        onChange={(e) => setStartDate(e.target.value)}
-      />
 
       <Input
         id="program-weeks"
