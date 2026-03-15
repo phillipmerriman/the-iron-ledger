@@ -33,6 +33,7 @@ export default function ProgramDetailPage() {
   const [creatingExercise, setCreatingExercise] = useState(false)
   const [search, setSearch] = useState('')
   const [copiedWeek, setCopiedWeek] = useState<{ weekOffset: number; entries: (PlannedEntry & { dayIndex: number })[] } | null>(null)
+  const [copiedDay, setCopiedDay] = useState<{ entries: PlannedEntry[] } | null>(null)
   const [revision, setRevision] = useState(0)
   const [pasteConfirm, setPasteConfirm] = useState<{ targetWeekOffset: number } | null>(null)
   const [activateOpen, setActivateOpen] = useState(false)
@@ -232,6 +233,8 @@ export default function ProgramDetailPage() {
                 onSaveDay={handleSaveDay}
                 resolveTemplate={resolveTemplate}
                 revision={revision}
+                copiedDay={copiedDay}
+                onCopyDay={(entries) => setCopiedDay({ entries })}
               />
             </div>
           ))}
