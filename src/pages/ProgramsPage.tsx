@@ -34,7 +34,7 @@ export default function ProgramsPage() {
     try {
       const program = await create(values)
       closeModal()
-      if (program) navigate(`/plan/${program.id}`)
+      if (program) navigate(`/programs/${program.id}`)
     } finally {
       setSubmitting(false)
     }
