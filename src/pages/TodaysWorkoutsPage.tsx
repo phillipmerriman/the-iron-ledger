@@ -21,7 +21,7 @@ export default function TodaysWorkoutsPage() {
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { exercises, loading: exercisesLoading } = useExercises()
   const { timers } = useTimers()
-  const { programs } = usePrograms()
+  const { activations } = usePrograms()
   const { sessions: workoutSessions, create: createSession } = useWorkouts()
 
   const [dayOffset, setDayOffset] = useState(0)
@@ -39,13 +39,12 @@ export default function TodaysWorkoutsPage() {
   const dateKey = format(viewDate, 'yyyy-MM-dd')
   const today = isToday(viewDate)
 
-  // Find active program
-  const activeProgram = programs.find((p) => p.is_active) ?? null
+  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
   const { entries } = useWeeklyPlan({
     startDate: viewDate,
     weekOffset: 0,
-    programId: activeProgram?.id ?? null,
+    programIds: activationIds.length > 0 ? activationIds : undefined,
     includeUnscoped: true,
   })
 

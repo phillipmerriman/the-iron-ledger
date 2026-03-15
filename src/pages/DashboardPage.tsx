@@ -25,18 +25,18 @@ import Spinner from '@/components/ui/Spinner'
 export default function DashboardPage() {
   const { user } = useAuth()
   const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
-  const { programs, loading: programsLoading } = usePrograms()
+  const { programs, activations, loading: programsLoading } = usePrograms()
 
   const loading = workoutsLoading || programsLoading
 
-  const activeProgram = programs.find((p) => p.is_active)
+  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
   // Load planned entries for slot-aware completion checks
   const [plannedEntries, setPlannedEntries] = useState<PlannedEntry[]>([])
   useEffect(() => {
     if (!user) return
-    loadUserEntries(user.id, activeProgram?.id ?? null).then(setPlannedEntries)
-  }, [user, activeProgram])
+    loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setPlannedEntries)
+  }, [user, activationIds])
 
   const stats = useMemo(() => {
     function getSessionSlot(ws: WorkoutSession): string {
@@ -163,9 +163,12 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Active program */}
-      {activeProgram ? (
-        <ActiveProgramCard program={activeProgram} sessions={sessions} />
+      {/* Active programs */}
+      {activations.length > 0 ? (
+        activations.map((act) => {
+          const prog = programs.find((p) => p.id === act.program_id)
+          return prog ? <ActiveProgramCard key={act.id} program={prog} activation={act} sessions={sessions} /> : null
+        })
       ) : (
         <Card className="flex items-center gap-3">
           <div className="rounded-lg bg-surface-100 p-2">
@@ -186,10 +189,10 @@ export default function DashboardPage() {
       {/* Calendars */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <WeeklyCalendar sessions={sessions} activeProgram={activeProgram} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+          <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
         </Card>
         <Card>
-          <MonthlyCalendar sessions={sessions} activeProgram={activeProgram} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+          <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
         </Card>
       </div>
     </div>

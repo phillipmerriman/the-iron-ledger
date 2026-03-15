@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Play, Pause, RotateCcw, SkipForward, X, ChevronRight } from 'lucide-react'
+import { Play, Pause, RotateCcw, SkipForward, X, ChevronRight, Check } from 'lucide-react'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
@@ -31,6 +31,7 @@ export default function WorkoutRunnerModal({
   onClose,
 }: WorkoutRunnerModalProps) {
   const [currentIdx, setCurrentIdx] = useState(0)
+  const [currentSet, setCurrentSet] = useState(1)
   const [finished, setFinished] = useState(false)
 
   // Timer state (for entries with timers)
@@ -45,6 +46,8 @@ export default function WorkoutRunnerModal({
   const entry = entries[currentIdx]
   const exercise = entry ? exercises.find((e) => e.id === entry.exercise_id) : undefined
   const timer = entry?.timer_id ? timers.find((t) => t.id === entry.timer_id) : undefined
+  const useSetMarkers = entry?.set_markers && (entry.sets ?? 0) > 1
+  const totalSets = entry?.sets ?? 1
   const timerIntervals = useMemo(() => timer?.intervals ?? [], [timer])
   const currentTimerInterval = timerIntervals[timerIntervalIdx]
 
@@ -121,16 +124,28 @@ export default function WorkoutRunnerModal({
     }
   }
 
-  function handleNext() {
+  function advanceToNextExercise() {
     if (currentIdx < entries.length - 1) {
       const nextIdx = currentIdx + 1
       const nextEntry = entries[nextIdx]
       const nextTimer = nextEntry?.timer_id ? timers.find((t) => t.id === nextEntry.timer_id) : undefined
       resetTimerState(nextTimer)
       setCurrentIdx(nextIdx)
+      setCurrentSet(1)
     } else {
       setFinished(true)
     }
+  }
+
+  function handleNext() {
+    // If set markers enabled and more sets remain, advance set instead of exercise
+    if (useSetMarkers && currentSet < totalSets) {
+      setCurrentSet((s) => s + 1)
+      // Reset timer for next set if exercise has a timer
+      if (timer) resetTimerState(timer)
+      return
+    }
+    advanceToNextExercise()
   }
 
   function handleTimerResume() {
@@ -180,7 +195,18 @@ export default function WorkoutRunnerModal({
   })
 
   const colorClasses = exercise ? getExerciseColorClasses(exercise.color) : getExerciseColorClasses(null)
-  const overallProgress = entries.length > 0 ? (currentIdx / entries.length) * 100 : 0
+  // Overall progress accounts for set progress within set-marker exercises
+  const overallProgress = useMemo(() => {
+    if (entries.length === 0) return 0
+    const totalSteps = entries.reduce((sum, e) => sum + (e.set_markers && (e.sets ?? 0) > 1 ? (e.sets ?? 1) : 1), 0)
+    let completedSteps = 0
+    for (let i = 0; i < currentIdx; i++) {
+      const e = entries[i]
+      completedSteps += (e.set_markers && (e.sets ?? 0) > 1 ? (e.sets ?? 1) : 1)
+    }
+    completedSteps += useSetMarkers ? currentSet - 1 : 0
+    return (completedSteps / totalSteps) * 100
+  }, [entries, currentIdx, currentSet, useSetMarkers])
 
   // Timer progress
   const timerTotalSec = currentTimerInterval?.duration_sec ?? 1
@@ -220,9 +246,31 @@ export default function WorkoutRunnerModal({
               </p>
 
               {/* Exercise name */}
-              <h2 className="mb-4 text-center font-display text-lg font-bold text-surface-800">
+              <h2 className="text-center font-display text-lg font-bold text-surface-800">
                 {exercise?.name ?? 'Unknown'}
               </h2>
+
+              {/* Set counter (when set markers enabled) */}
+              {useSetMarkers ? (
+                <div className="mb-4 mt-1">
+                  <p className="text-center text-sm font-semibold text-primary-600">
+                    Set {currentSet} of {totalSets}
+                  </p>
+                  <div className="mx-auto mt-1.5 flex max-w-[10rem] items-center gap-1">
+                    {Array.from({ length: totalSets }, (_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'h-1.5 flex-1 rounded-full transition-colors',
+                          i < currentSet ? 'bg-primary-500' : 'bg-surface-200',
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4" />
+              )}
 
               {/* Exercise details card */}
               <div className={cn(
@@ -312,8 +360,10 @@ export default function WorkoutRunnerModal({
                       onClick={handleNext}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
                     >
-                      {currentIdx < entries.length - 1 ? (
-                        <>Next Exercise <ChevronRight className="h-4 w-4" /></>
+                      {useSetMarkers && currentSet < totalSets ? (
+                        <>Complete Set <Check className="h-4 w-4" /></>
+                      ) : currentIdx < entries.length - 1 ? (
+                        <>{useSetMarkers ? 'Complete Set' : 'Next Exercise'} <ChevronRight className="h-4 w-4" /></>
                       ) : 'Finish Workout'}
                     </button>
                   ) : (
@@ -364,8 +414,10 @@ export default function WorkoutRunnerModal({
                   onClick={handleNext}
                   className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
                 >
-                  {currentIdx < entries.length - 1 ? (
-                    <>Next Exercise <ChevronRight className="h-4 w-4" /></>
+                  {useSetMarkers && currentSet < totalSets ? (
+                    <>Complete Set <Check className="h-4 w-4" /></>
+                  ) : currentIdx < entries.length - 1 ? (
+                    <>{useSetMarkers ? 'Complete Set' : 'Next Exercise'} <ChevronRight className="h-4 w-4" /></>
                   ) : 'Finish Workout'}
                 </button>
               )}

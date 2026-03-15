@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
+import { addDays, differenceInDays, parseISO, format, startOfWeek } from 'date-fns'
 import { supabase, isDev } from '@/lib/supabase'
 import { localDb } from '@/lib/local-storage'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Program, ProgramDay, ProgramDayExercise, InsertDto, UpdateDto } from '@/types/database'
-import { removeUnscopedDuplicates } from '@/hooks/useWeeklyPlan'
+import type { Program, ProgramDay, ProgramDayExercise, ProgramActivation, InsertDto, UpdateDto } from '@/types/database'
 
 const sortByName = (a: Program, b: Program) => a.name.localeCompare(b.name)
+
+const ACTIVATIONS_KEY = 'fittrack:program_activations'
+
+function loadActivations(): ProgramActivation[] {
+  const raw = localStorage.getItem(ACTIVATIONS_KEY)
+  return raw ? JSON.parse(raw) : []
+}
+
+function saveActivations(activations: ProgramActivation[]) {
+  localStorage.setItem(ACTIVATIONS_KEY, JSON.stringify(activations))
+}
 
 export default function usePrograms() {
   const { user } = useAuth()
   const [programs, setPrograms] = useState<Program[]>([])
+  const [activations, setActivations] = useState<ProgramActivation[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetch = useCallback(async () => {
@@ -18,6 +30,7 @@ export default function usePrograms() {
     if (isDev) {
       const all = localDb.getAll('programs').filter((p) => p.user_id === user.id)
       setPrograms(all.sort(sortByName))
+      setActivations(loadActivations().filter((a) => a.user_id === user.id))
     } else {
       const { data } = await supabase
         .from('programs')
@@ -25,6 +38,11 @@ export default function usePrograms() {
         .eq('user_id', user.id)
         .order('name')
       setPrograms(data ?? [])
+      const { data: acts } = await supabase
+        .from('program_activations')
+        .select('*')
+        .eq('user_id', user.id)
+      setActivations(acts ?? [])
     }
     setLoading(false)
   }, [user])
@@ -99,40 +117,125 @@ export default function usePrograms() {
     setPrograms((prev) => prev.filter((p) => p.id !== id))
   }
 
-  async function setActive(id: string) {
+  async function activate(programId: string, newStartDate: string) {
     if (!user) return
-    // Remove unscoped entries on dates that already have program entries
-    await removeUnscopedDuplicates(user.id, id)
-    if (isDev) {
-      // Deactivate all, then activate the selected one
-      const all = localDb.getAll('programs').filter((p) => p.user_id === user.id)
-      for (const p of all) localDb.update('programs', p.id, { is_active: p.id === id })
-      setPrograms((prev) =>
-        prev.map((p) => ({ ...p, is_active: p.id === id })),
-      )
-      return
-    }
-    // Deactivate all user programs, then activate selected
-    await supabase.from('programs').update({ is_active: false }).eq('user_id', user.id)
-    await supabase.from('programs').update({ is_active: true }).eq('id', id)
-    setPrograms((prev) =>
-      prev.map((p) => ({ ...p, is_active: p.id === id })),
-    )
-  }
 
-  async function deactivate(id: string) {
-    if (!user) return
+    const program = programs.find((p) => p.id === programId)
+    if (!program) return
+
+    // Snap the chosen start date to its week's Sunday
+    const chosenSunday = format(startOfWeek(parseISO(newStartDate), { weekStartsOn: 0 }), 'yyyy-MM-dd')
+
+    // Create activation record
+    const activation: ProgramActivation = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      program_id: programId,
+      start_date: chosenSunday,
+      created_at: new Date().toISOString(),
+    }
+
+    // Calculate day offset between template start and chosen start
+    const templateStart = parseISO(program.start_date)
+    const activationStart = parseISO(chosenSunday)
+    const dayOffset = differenceInDays(activationStart, templateStart)
+
+    // Load all template entries and copy them with shifted dates, scoped to activation ID
+    const STORAGE_KEY = 'fittrack:weekly_plan'
+
     if (isDev) {
-      localDb.update('programs', id, { is_active: false })
+      // Load template entries
+      const allEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Record<string, unknown>[]
+      const templateEntries = allEntries.filter((e) => e.program_id === programId)
+
+      // Create copies scoped to the activation
+      const copies = templateEntries.map((e) => ({
+        ...e,
+        id: crypto.randomUUID(),
+        program_id: activation.id,
+        date: format(addDays(parseISO(e.date as string), dayOffset), 'yyyy-MM-dd'),
+      }))
+
+      allEntries.push(...copies)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allEntries))
+
+      // Save activation
+      const acts = loadActivations()
+      acts.push(activation)
+      saveActivations(acts)
     } else {
-      await supabase.from('programs').update({ is_active: false }).eq('id', id)
+      // Save activation to Supabase
+      const { error: actErr } = await supabase.from('program_activations').insert(activation)
+      if (actErr) throw actErr
+
+      // Load template entries
+      const { data: templateEntries } = await supabase
+        .from('planned_entries')
+        .select('*')
+        .eq('program_id', programId)
+
+      if (templateEntries && templateEntries.length > 0) {
+        const copies = templateEntries.map((e) => ({
+          user_id: e.user_id,
+          program_id: activation.id,
+          date: format(addDays(parseISO(e.date), dayOffset), 'yyyy-MM-dd'),
+          session: e.session,
+          exercise_id: e.exercise_id,
+          sort_order: e.sort_order,
+          sets: e.sets,
+          reps: e.reps,
+          rep_type: e.rep_type,
+          reps_right: e.reps_right,
+          weight: e.weight,
+          weight_unit: e.weight_unit,
+          intensity: e.intensity,
+          notes: e.notes,
+          timer_id: e.timer_id,
+          set_markers: e.set_markers,
+        }))
+        const { error } = await supabase.from('planned_entries').insert(copies)
+        if (error) throw error
+      }
     }
-    setPrograms((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, is_active: false } : p)),
-    )
+
+    setActivations((prev) => [...prev, activation])
   }
 
-  return { programs, loading, refetch: fetch, create, update, remove, setActive, deactivate }
+  async function deactivate(activationId: string) {
+    if (!user) return
+    const today = format(new Date(), 'yyyy-MM-dd')
+
+    if (isDev) {
+      // Remove future entries for this activation, keep past/today
+      const STORAGE_KEY = 'fittrack:weekly_plan'
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const entries = JSON.parse(raw) as { program_id: string | null; date: string }[]
+        const filtered = entries.filter((e) =>
+          e.program_id !== activationId || e.date <= today,
+        )
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+      }
+
+      // Remove activation record
+      const acts = loadActivations().filter((a) => a.id !== activationId)
+      saveActivations(acts)
+    } else {
+      // Remove future entries
+      await supabase
+        .from('planned_entries')
+        .delete()
+        .eq('program_id', activationId)
+        .gt('date', today)
+
+      // Remove activation record
+      await supabase.from('program_activations').delete().eq('id', activationId)
+    }
+
+    setActivations((prev) => prev.filter((a) => a.id !== activationId))
+  }
+
+  return { programs, activations, loading, refetch: fetch, create, update, remove, activate, deactivate }
 }
 
 // ---- Program Days ----

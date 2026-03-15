@@ -196,7 +196,7 @@ export async function buildExport(userId: string, selectedCategories: CategoryKe
             .from('planned_entries')
             .select('*')
             .eq('user_id', userId)
-          data.categories.weekly_plans = (entries ?? []) as PlannedEntry[]
+          data.categories.weekly_plans = (entries ?? []).map((e) => ({ ...e, set_markers: e.set_markers ?? false })) as PlannedEntry[]
         }
         break
       }

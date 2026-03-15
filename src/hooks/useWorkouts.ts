@@ -23,7 +23,7 @@ export default function useWorkouts() {
       // Migrate: backfill total_weight_moved for completed sessions missing it
       const needsMigration = all.filter((s) => s.completed_at && (s.total_weight_moved == null || typeof s.total_weight_moved === 'number'))
       if (needsMigration.length > 0) {
-        const planned = await loadUserEntries(user.id, null)
+        const planned = await loadUserEntries(user.id)
         const preferredUnit = 'lbs'
         for (const s of needsMigration) {
           if (typeof s.total_weight_moved === 'number') {

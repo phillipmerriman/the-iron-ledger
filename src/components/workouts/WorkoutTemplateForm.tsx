@@ -240,6 +240,7 @@ export default function WorkoutTemplateForm({
       date: '',
       session: entry.session ?? 'all',
       timer_id: entry.timer_id ?? null,
+      set_markers: (entry as Partial<PlannedEntry>).set_markers ?? false,
     }
   }
 

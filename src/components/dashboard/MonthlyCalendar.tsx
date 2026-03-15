@@ -18,7 +18,7 @@ import { loadUserEntries, SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Program, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion, calcEntryVolume } from '@/types/common'
 import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -28,13 +28,14 @@ import WorkoutCompleteModal from './WorkoutCompleteModal'
 
 interface MonthlyCalendarProps {
   sessions: WorkoutSession[]
-  activeProgram?: Program | null
+  activations?: ProgramActivation[]
+  programs?: Program[]
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ sessions, activations = [], programs: _programs = [], onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
   const { user } = useAuth()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -50,12 +51,14 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
 
-  // Load all planned entries (scoped to active program if one exists)
+  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
+
+  // Load all planned entries (scoped to activations if any exist)
   const [plannedEntries, setPlannedEntries] = useState<PlannedEntry[]>([])
   useEffect(() => {
     if (!user) return
-    loadUserEntries(user.id, activeProgram?.id ?? null).then(setPlannedEntries)
-  }, [activeProgram, user])
+    loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setPlannedEntries)
+  }, [activationIds, user])
 
   const plannedDates = useMemo(() => {
     return new Set(plannedEntries.map((e) => e.date))
@@ -266,7 +269,7 @@ export default function MonthlyCalendar({ sessions, activeProgram, onUpdateSessi
           <div className="h-2.5 w-2.5 rounded-full bg-warning-500/40" />
           In Progress
         </div>
-        {activeProgram && (
+        {activations.length > 0 && (
           <div className="flex items-center gap-1">
             <div className="h-2.5 w-2.5 rounded-full bg-primary-200" />
             Planned

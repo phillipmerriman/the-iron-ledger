@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { format, isToday, isSameDay, isFuture, differenceInWeeks, parseISO, startOfWeek } from 'date-fns'
+import { format, isToday, isSameDay, isFuture } from 'date-fns'
 import { ChevronLeft, ChevronRight, Pencil, Check, Undo2 } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
-import type { Program, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { getExerciseColorClasses, calcEntryVolume, formatReps, formatWeightWithConversion } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,27 +16,19 @@ import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 
 interface WeeklyCalendarProps {
   sessions: WorkoutSession[]
-  activeProgram?: Program | null
+  activations?: ProgramActivation[]
+  programs?: Program[]
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ sessions, activations = [], programs: _programs = [], onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: WeeklyCalendarProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
-  const programStart = activeProgram?.start_date ? parseISO(activeProgram.start_date) : undefined
-
-  // Figure out which week offset we're in relative to the program start
-  const liveWeekOffset = useMemo(() => {
-    if (!programStart) return 0
-    return differenceInWeeks(
-      startOfWeek(new Date(), { weekStartsOn: 0 }),
-      startOfWeek(programStart, { weekStartsOn: 0 }),
-    )
-  }, [programStart])
+  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
   const [searchParams, setSearchParams] = useSearchParams()
   const weekDelta = Number(searchParams.get('week')) || 0
@@ -49,13 +41,11 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
       return params
     }, { replace: true })
   }
-  const currentWeekOffset = liveWeekOffset + weekDelta
   const isCurrentWeek = weekDelta === 0
 
   const { days, dateKeys, getEntriesForDate } = useWeeklyPlan({
-    startDate: programStart,
-    weekOffset: currentWeekOffset,
-    programId: activeProgram?.id ?? null,
+    weekOffset: weekDelta,
+    programIds: activationIds.length > 0 ? activationIds : undefined,
     includeUnscoped: true,
   })
   const { exercises } = useExercises()
@@ -201,11 +191,6 @@ export default function WeeklyCalendar({ sessions, activeProgram, onUpdateSessio
           </button>
           <h3 className="text-sm font-semibold text-surface-700">
             {isCurrentWeek ? 'This Week' : weekDelta === -1 ? 'Last Week' : weekDelta === 1 ? 'Next Week' : `${format(days[0], 'MMM d')} – ${format(days[6], 'MMM d')}`}
-            {activeProgram && currentWeekOffset >= 0 && currentWeekOffset < activeProgram.weeks && (
-              <span className="ml-1.5 text-xs font-normal text-surface-400">
-                — {activeProgram.name} (wk {currentWeekOffset + 1}/{activeProgram.weeks})
-              </span>
-            )}
           </h3>
           <button
             onClick={() => setWeekDelta((d) => d + 1)}

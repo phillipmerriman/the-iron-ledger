@@ -54,6 +54,8 @@ export interface PlannerDayColumnProps {
 
   // Styling
   minHeight?: string
+  /** Hide the date number (M/d) in the header — show only day name */
+  hideDate?: boolean
 }
 
 export default function PlannerDayColumn({
@@ -78,6 +80,7 @@ export default function PlannerDayColumn({
   headerActions,
   sessionActions,
   minHeight,
+  hideDate,
 }: PlannerDayColumnProps) {
   const today = isToday(day)
   // Editing state
@@ -191,9 +194,11 @@ export default function PlannerDayColumn({
           >
             {format(day, 'EEE')}
           </span>
-          <span className="ml-1 text-[11px] text-surface-400">
-            {format(day, 'M/d')}
-          </span>
+          {!hideDate && (
+            <span className="ml-1 text-[11px] text-surface-400">
+              {format(day, 'M/d')}
+            </span>
+          )}
         </div>
         {headerActions}
       </div>

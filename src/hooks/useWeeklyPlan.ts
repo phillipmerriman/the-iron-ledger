@@ -37,9 +37,10 @@ export interface PlannedEntry {
   intensity: 'light' | 'heavy' | null
   notes: string | null
   timer_id: string | null
+  set_markers: boolean
 }
 
-export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session' | 'timer_id'>>
+export type PlannedEntryUpdate = Partial<Pick<PlannedEntry, 'exercise_id' | 'sets' | 'reps' | 'rep_type' | 'reps_right' | 'weight' | 'weight_unit' | 'intensity' | 'notes' | 'session' | 'timer_id' | 'set_markers'>>
 
 const STORAGE_KEY = 'fittrack:weekly_plan'
 
@@ -64,6 +65,7 @@ function loadAll(): PlannedEntry[] {
     intensity: e.intensity ?? null,
     notes: e.notes ?? null,
     timer_id: (e as Record<string, unknown>).timer_id as string | null ?? null,
+    set_markers: !!(e as Record<string, unknown>).set_markers,
   }))
 }
 
@@ -73,7 +75,9 @@ function saveAll(entries: PlannedEntry[]) {
 
 /** Cast Supabase row to PlannedEntry (types are compatible) */
 function asEntry(row: Record<string, unknown>): PlannedEntry {
-  return row as unknown as PlannedEntry
+  const entry = row as unknown as PlannedEntry
+  if (entry.set_markers == null) entry.set_markers = false
+  return entry
 }
 
 function asEntries(rows: Record<string, unknown>[]): PlannedEntry[] {
@@ -84,6 +88,8 @@ interface UseWeeklyPlanOptions {
   startDate?: Date
   weekOffset?: number
   programId?: string | null
+  /** Pass multiple IDs to include entries from several activations */
+  programIds?: string[]
   includeUnscoped?: boolean
 }
 
@@ -93,6 +99,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     startDate = new Date(),
     weekOffset = 0,
     programId = null,
+    programIds,
     includeUnscoped = false,
   } = options
 
@@ -105,15 +112,19 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
 
   const fetch = useCallback(async () => {
     if (!user) return
+    const hasMultiple = programIds && programIds.length > 0
+
     if (isDev) {
       const today = format(new Date(), 'yyyy-MM-dd')
       const all = loadAll().filter(
         (e) =>
           e.user_id === user.id &&
           dateKeys.includes(e.date) &&
-          (programId
-            ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
-            : (e.program_id == null || e.date <= today)),
+          (hasMultiple
+            ? (programIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
+            : programId
+              ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
+              : (e.program_id == null || e.date <= today)),
       )
       setEntries(all)
     } else {
@@ -124,7 +135,10 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         .eq('user_id', user.id)
         .in('date', dateKeys)
 
-      if (programId) {
+      if (hasMultiple) {
+        const idFilters = programIds.map((id) => `program_id.eq.${id}`).join(',')
+        query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
+      } else if (programId) {
         if (includeUnscoped) {
           query = query.or(`program_id.eq.${programId},program_id.is.null`)
         } else {
@@ -139,7 +153,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       if (error) throw error
       setEntries(asEntries(data ?? []))
     }
-  }, [user, dateKeys.join(','), programId, includeUnscoped])
+  }, [user, dateKeys.join(','), programId, programIds?.join(','), includeUnscoped])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -176,6 +190,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       intensity: presets?.intensity ?? null,
       notes: presets?.notes ?? null,
       timer_id: presets?.timer_id ?? null,
+      set_markers: presets?.set_markers ?? false,
     }
 
     if (isDev) {
@@ -200,6 +215,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
         intensity: entry.intensity,
         notes: entry.notes,
         timer_id: entry.timer_id,
+        set_markers: entry.set_markers,
       })
       if (error) throw error
     }
@@ -226,6 +242,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       intensity: item.presets?.intensity ?? null,
       notes: item.presets?.notes ?? null,
       timer_id: item.presets?.timer_id ?? null,
+      set_markers: item.presets?.set_markers ?? false,
     }))
 
     if (isDev) {
@@ -251,6 +268,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
           intensity: e.intensity,
           notes: e.notes,
           timer_id: e.timer_id,
+          set_markers: e.set_markers,
         })),
       )
       if (error) throw error
@@ -503,6 +521,7 @@ export async function pasteWeekEntries(
           intensity: src.intensity,
           notes: src.notes,
           timer_id: (src as PlannedEntry).timer_id ?? null,
+          set_markers: (src as PlannedEntry).set_markers ?? false,
         })
       }
     }
@@ -555,6 +574,7 @@ export async function pasteWeekEntries(
         intensity: src.intensity,
         notes: src.notes,
         timer_id: (src as PlannedEntry).timer_id ?? null,
+        set_markers: (src as PlannedEntry).set_markers ?? false,
       })
     }
   }
@@ -582,14 +602,15 @@ export async function loadProgramEntries(userId: string, programId: string): Pro
 }
 
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
-export async function loadUserEntries(userId: string, programId?: string | null): Promise<PlannedEntry[]> {
+export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
   const today = format(new Date(), 'yyyy-MM-dd')
+  const hasActivations = activationIds && activationIds.length > 0
 
   if (isDev) {
     return loadAll().filter((e) =>
       e.user_id === userId &&
-      (programId
-        ? (e.program_id === programId || e.program_id == null)
+      (hasActivations
+        ? (activationIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
         : (e.program_id == null || e.date <= today)),
     )
   }
@@ -599,8 +620,9 @@ export async function loadUserEntries(userId: string, programId?: string | null)
     .select('*')
     .eq('user_id', userId)
 
-  if (programId) {
-    query = query.or(`program_id.eq.${programId},program_id.is.null`)
+  if (hasActivations) {
+    const idFilters = activationIds.map((id) => `program_id.eq.${id}`).join(',')
+    query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
   } else {
     query = query.or(`program_id.is.null,date.lte.${today}`)
   }

@@ -454,6 +454,7 @@ export interface Database {
           weight_unit: 'lbs' | 'kg' | 'pood' | 'bodyweight'
           intensity: 'light' | 'heavy' | null
           notes: string | null
+          set_markers: boolean
           created_at: string
         }
         Insert: {
@@ -473,6 +474,7 @@ export interface Database {
           weight_unit?: 'lbs' | 'kg' | 'pood' | 'bodyweight'
           intensity?: 'light' | 'heavy' | null
           notes?: string | null
+          set_markers?: boolean
           created_at?: string
         }
         Update: {
@@ -490,6 +492,28 @@ export interface Database {
           weight_unit?: 'lbs' | 'kg' | 'pood' | 'bodyweight'
           intensity?: 'light' | 'heavy' | null
           notes?: string | null
+          set_markers?: boolean
+        }
+        Relationships: []
+      }
+      program_activations: {
+        Row: {
+          id: string
+          user_id: string
+          program_id: string
+          start_date: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          program_id: string
+          start_date: string
+          created_at?: string
+        }
+        Update: {
+          program_id?: string
+          start_date?: string
         }
         Relationships: []
       }
@@ -528,3 +552,12 @@ export type BodyMeasurement = Tables<'body_measurements'>
 export type PlannedEntryRow = Tables<'planned_entries'>
 export type Timer = Tables<'timers'>
 export type TimerInterval = Tables<'timer_intervals'>
+
+/** A single activation of a program template with a specific start date */
+export interface ProgramActivation {
+  id: string
+  user_id: string
+  program_id: string   // references the template program
+  start_date: string   // chosen Sunday (YYYY-MM-DD)
+  created_at: string
+}
