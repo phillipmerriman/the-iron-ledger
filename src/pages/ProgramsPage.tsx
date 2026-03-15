@@ -10,9 +10,10 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
+import StartDatePicker from '@/components/programs/StartDatePicker'
 
 export default function ProgramsPage() {
-  const { programs, activations, loading, create, remove, activate, deactivate } = usePrograms()
+  const { programs, activations, loading, create, update, remove, activate, deactivate } = usePrograms()
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -21,6 +22,8 @@ export default function ProgramsPage() {
   const [activateDate, setActivateDate] = useState(() =>
     format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'),
   )
+  const [editProgram, setEditProgram] = useState<{ id: string; name: string; description: string } | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
 
   function closeModal() {
     setModalOpen(false)
@@ -113,6 +116,10 @@ export default function ProgramsPage() {
                 program={program}
                 onDelete={handleDelete}
                 onSetActive={(id) => { setActivateId(id); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }}
+                onEdit={(id) => {
+                  const p = programs.find((pr) => pr.id === id)
+                  if (p) setEditProgram({ id: p.id, name: p.name, description: p.description ?? '' })
+                }}
               />
             ))}
           </div>
@@ -137,36 +144,86 @@ export default function ProgramsPage() {
         onClose={() => setActivateId(null)}
         title="Activate Program"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-surface-600">
-            Choose the Sunday your program should start on. Week 1 will begin on this date.
-          </p>
-          <div>
-            <label htmlFor="activate-start" className="block text-sm font-medium text-surface-700">
-              Start Date (Sunday)
-            </label>
-            <input
-              id="activate-start"
-              type="date"
-              value={activateDate}
-              onChange={(e) => setActivateDate(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setActivateId(null)}>Cancel</Button>
-            <Button
-              onClick={async () => {
-                if (activateId) {
-                  await activate(activateId, activateDate)
-                  setActivateId(null)
-                }
-              }}
-            >
-              Activate
-            </Button>
-          </div>
-        </div>
+        {(() => {
+          const activateProgram = programs.find((p) => p.id === activateId)
+          return (
+            <div className="space-y-4">
+              <p className="text-sm text-surface-600">
+                Choose the Sunday your program should start on. Week 1 will begin on {activateDate ? format(parseISO(activateDate), 'EEEE, MMM d, yyyy') : 'the selected date'}.
+              </p>
+              <StartDatePicker
+                value={activateDate}
+                onChange={setActivateDate}
+                programWeeks={activateProgram?.weeks ?? 1}
+                activationIds={activations.map((a) => a.id)}
+              />
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button variant="secondary" onClick={() => setActivateId(null)}>Cancel</Button>
+                <Button
+                  onClick={async () => {
+                    if (activateId) {
+                      await activate(activateId, activateDate)
+                      setActivateId(null)
+                    }
+                  }}
+                >
+                  Activate
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      {/* Edit program modal */}
+      <Modal
+        open={editProgram !== null}
+        onClose={() => setEditProgram(null)}
+        title="Edit Program"
+      >
+        {editProgram && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setEditSaving(true)
+              try {
+                await update(editProgram.id, { name: editProgram.name, description: editProgram.description || null })
+                setEditProgram(null)
+              } finally {
+                setEditSaving(false)
+              }
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label htmlFor="edit-name" className="block text-sm font-medium text-surface-700">Name</label>
+              <input
+                id="edit-name"
+                type="text"
+                required
+                value={editProgram.name}
+                onChange={(e) => setEditProgram({ ...editProgram, name: e.target.value })}
+                className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="edit-desc" className="block text-sm font-medium text-surface-700">Description</label>
+              <textarea
+                id="edit-desc"
+                rows={3}
+                value={editProgram.description}
+                onChange={(e) => setEditProgram({ ...editProgram, description: e.target.value })}
+                className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="secondary" type="button" onClick={() => setEditProgram(null)}>Cancel</Button>
+              <Button type="submit" disabled={editSaving || !editProgram.name.trim()}>
+                {editSaving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
     </div>
   )

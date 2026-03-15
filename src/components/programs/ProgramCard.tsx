@@ -8,9 +8,10 @@ interface ProgramCardProps {
   program: Program
   onDelete: (id: string) => void
   onSetActive: (id: string) => void
+  onEdit: (id: string) => void
 }
 
-export default function ProgramCard({ program, onDelete, onSetActive }: ProgramCardProps) {
+export default function ProgramCard({ program, onDelete, onSetActive, onEdit }: ProgramCardProps) {
   return (
     <Card className="flex items-start justify-between gap-3">
       <Link to={`/programs/${program.id}`} className="min-w-0 flex-1">
@@ -34,14 +35,14 @@ export default function ProgramCard({ program, onDelete, onSetActive }: ProgramC
         >
           <Play className="h-4 w-4" />
         </button>
-        <Link
-          to={`/plan/${program.id}`}
+        <button
+          onClick={() => onEdit(program.id)}
           className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
-          aria-label="Edit plan"
-          title="Edit plan"
+          aria-label="Edit program"
+          title="Edit program"
         >
           <Pencil className="h-4 w-4" />
-        </Link>
+        </button>
         <button
           onClick={() => onDelete(program.id)}
           className="rounded-lg p-1.5 text-surface-400 hover:bg-danger-50 hover:text-danger-600"

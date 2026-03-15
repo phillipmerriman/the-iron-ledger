@@ -19,6 +19,7 @@ import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
 import Badge from '@/components/ui/Badge'
+import StartDatePicker from '@/components/programs/StartDatePicker'
 
 export default function ProgramDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -386,20 +387,14 @@ export default function ProgramDetailPage() {
       <Modal open={activateOpen} onClose={() => setActivateOpen(false)} title="Activate Program">
         <div className="space-y-4">
           <p className="text-sm text-surface-600">
-            Choose the Sunday your program should start on. Week 1 will begin on this date.
+            Choose the Sunday your program should start on. Week 1 will begin on {activateDate ? format(parseISO(activateDate), 'EEEE, MMM d, yyyy') : 'the selected date'}.
           </p>
-          <div>
-            <label htmlFor="activate-start" className="block text-sm font-medium text-surface-700">
-              Start Date (Sunday)
-            </label>
-            <input
-              id="activate-start"
-              type="date"
-              value={activateDate}
-              onChange={(e) => setActivateDate(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
-          </div>
+          <StartDatePicker
+            value={activateDate}
+            onChange={setActivateDate}
+            programWeeks={program.weeks}
+            activationIds={activations.map((a) => a.id)}
+          />
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button variant="secondary" onClick={() => setActivateOpen(false)}>Cancel</Button>
             <Button
