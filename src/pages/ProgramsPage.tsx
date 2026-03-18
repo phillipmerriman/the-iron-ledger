@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Pause, Calendar } from 'lucide-react'
+import { Plus, OctagonX, Calendar } from 'lucide-react'
 import { format, startOfWeek, addWeeks, parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import ProgramCard from '@/components/programs/ProgramCard'
@@ -91,7 +91,7 @@ export default function ProgramsPage() {
                   aria-label="Deactivate program"
                   title="Deactivate"
                 >
-                  <Pause className="h-4 w-4" />
+                  <OctagonX className="h-4 w-4" />
                 </button>
               </Card>
             )

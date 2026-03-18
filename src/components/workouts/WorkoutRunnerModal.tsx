@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Play, Pause, RotateCcw, SkipForward, X, ChevronRight, Check } from 'lucide-react'
+import { CirclePlay, Pause, RotateCcw, SkipForward, X, ChevronRight, Check } from 'lucide-react'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
@@ -348,7 +348,7 @@ export default function WorkoutRunnerModal({
                           <RotateCcw className="h-4 w-4" />
                         </button>
                         <button onClick={handleTimerResume} className="rounded-full bg-primary-600 p-3 text-white shadow-lg hover:bg-primary-700">
-                          <Play className="h-5 w-5" />
+                          <CirclePlay className="h-5 w-5" />
                         </button>
                         <button onClick={handleTimerSkip} className="rounded-full p-2 text-surface-400 hover:bg-surface-100" title="Skip">
                           <SkipForward className="h-4 w-4" />
@@ -378,7 +378,7 @@ export default function WorkoutRunnerModal({
                           timerRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-600 hover:bg-primary-700',
                         )}
                       >
-                        {timerRunning ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                        {timerRunning ? <Pause className="h-5 w-5" /> : <CirclePlay className="h-5 w-5" />}
                       </button>
                       <button onClick={handleTimerSkip} className="rounded-full p-2 text-surface-400 hover:bg-surface-100" title="Skip">
                         <SkipForward className="h-4 w-4" />

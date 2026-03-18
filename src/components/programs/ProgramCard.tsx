@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Play, ChevronRight } from 'lucide-react'
+import { Pencil, Trash2, CirclePlay, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Program } from '@/types/database'
 import Badge from '@/components/ui/Badge'
@@ -33,7 +33,7 @@ export default function ProgramCard({ program, onDelete, onSetActive, onEdit }: 
           aria-label="Activate program"
           title="Activate with start date"
         >
-          <Play className="h-4 w-4" />
+          <CirclePlay className="h-4.5 w-4.5" />
         </button>
         <button
           onClick={() => onEdit(program.id)}

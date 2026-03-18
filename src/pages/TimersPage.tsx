@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, GripVertical, Pencil, X, Clock, Copy, Play } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Pencil, X, Clock, Copy, CirclePlay } from 'lucide-react'
 import useTimers, { type TimerWithIntervals } from '@/hooks/useTimers'
 import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
 import Button from '@/components/ui/Button'
@@ -316,7 +316,7 @@ export default function TimersPage() {
                 onClick={() => setRunningTimer(timer)}
                 className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
               >
-                <Play className="h-3 w-3" /> Start
+                <CirclePlay className="h-3 w-3" /> Start
               </button>
             </div>
           </div>
