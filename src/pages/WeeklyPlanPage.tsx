@@ -31,7 +31,8 @@ export default function WeeklyPlanPage() {
   const dashboardLink = dashWeek ? `/?week=${dashWeek}` : '/'
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
-  const { programs, loading: programsLoading } = usePrograms()
+  const { programs, activations, loading: programsLoading } = usePrograms()
+  const activationIds = programId ? undefined : activations.map((a) => a.id)
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
@@ -67,6 +68,7 @@ export default function WeeklyPlanPage() {
     startDate: programStart,
     weekOffset,
     programId: programId ?? null,
+    programIds: activationIds,
   })
 
   const activeExercises = exercises.filter((e) => !e.is_archived)

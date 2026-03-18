@@ -115,20 +115,18 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     const hasMultiple = programIds && programIds.length > 0
 
     if (isDev) {
-      const today = format(new Date(), 'yyyy-MM-dd')
       const all = loadAll().filter(
         (e) =>
           e.user_id === user.id &&
           dateKeys.includes(e.date) &&
           (hasMultiple
-            ? (programIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
+            ? (programIds.includes(e.program_id!) || e.program_id == null)
             : programId
               ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
-              : (e.program_id == null || e.date <= today)),
+              : e.program_id == null),
       )
       setEntries(all)
     } else {
-      const today = format(new Date(), 'yyyy-MM-dd')
       let query = supabase
         .from('planned_entries')
         .select('*')
@@ -137,7 +135,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
 
       if (hasMultiple) {
         const idFilters = programIds.map((id) => `program_id.eq.${id}`).join(',')
-        query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
+        query = query.or(`${idFilters},program_id.is.null`)
       } else if (programId) {
         if (includeUnscoped) {
           query = query.or(`program_id.eq.${programId},program_id.is.null`)
@@ -145,8 +143,8 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
           query = query.eq('program_id', programId)
         }
       } else {
-        // Show unscoped entries + past program entries (today and earlier)
-        query = query.or(`program_id.is.null,date.lte.${today}`)
+        // Show only unscoped entries
+        query = query.is('program_id', null)
       }
 
       const { data, error } = await query.order('sort_order')
@@ -603,15 +601,14 @@ export async function loadProgramEntries(userId: string, programId: string): Pro
 
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
 export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
-  const today = format(new Date(), 'yyyy-MM-dd')
   const hasActivations = activationIds && activationIds.length > 0
 
   if (isDev) {
     return loadAll().filter((e) =>
       e.user_id === userId &&
       (hasActivations
-        ? (activationIds.includes(e.program_id!) || e.program_id == null || e.date <= today)
-        : (e.program_id == null || e.date <= today)),
+        ? (activationIds.includes(e.program_id!) || e.program_id == null)
+        : e.program_id == null),
     )
   }
 
@@ -622,9 +619,9 @@ export async function loadUserEntries(userId: string, activationIds?: string[]):
 
   if (hasActivations) {
     const idFilters = activationIds.map((id) => `program_id.eq.${id}`).join(',')
-    query = query.or(`${idFilters},program_id.is.null,date.lte.${today}`)
+    query = query.or(`${idFilters},program_id.is.null`)
   } else {
-    query = query.or(`program_id.is.null,date.lte.${today}`)
+    query = query.is('program_id', null)
   }
 
   const { data, error } = await query.order('date').order('sort_order')
