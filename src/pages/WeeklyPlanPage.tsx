@@ -31,7 +31,8 @@ export default function WeeklyPlanPage() {
   const dashboardLink = dashWeek ? `/?week=${dashWeek}` : '/'
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
-  const { programs, loading: programsLoading } = usePrograms()
+  const { programs, activations, loading: programsLoading } = usePrograms()
+  const activationIds = programId ? undefined : activations.map((a) => a.id)
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
@@ -67,6 +68,7 @@ export default function WeeklyPlanPage() {
     startDate: programStart,
     weekOffset,
     programId: programId ?? null,
+    programIds: activationIds,
   })
 
   const activeExercises = exercises.filter((e) => !e.is_archived)
@@ -286,21 +288,31 @@ export default function WeeklyPlanPage() {
     setClipboard({ type: 'day', dateKey, entries })
   }
 
-  function handlePasteDay(dateKey: string) {
+  async function handlePasteDay(dateKey: string) {
     if (!clipboard) return
-    const entries = clipboard.entries
-    for (const entry of entries) {
+    const clipEntries = clipboard.entries
+    // Group entries by target session to preserve order within each session
+    const bySession = new Map<Session, typeof clipEntries>()
+    for (const entry of clipEntries) {
       const targetSession = clipboard.type === 'session' ? clipboard.session : entry.session
-      addEntry(dateKey, entry.exercise_id, {
-        sets: entry.sets,
-        reps: entry.reps,
-        rep_type: entry.rep_type,
-        reps_right: entry.reps_right,
-        weight: entry.weight,
-        weight_unit: entry.weight_unit,
-        intensity: entry.intensity,
-        notes: entry.notes,
-      }, targetSession)
+      if (!bySession.has(targetSession)) bySession.set(targetSession, [])
+      bySession.get(targetSession)!.push(entry)
+    }
+    for (const [session, sessionEntries] of bySession) {
+      await addEntries(dateKey, sessionEntries.map((e) => ({
+        exerciseId: e.exercise_id,
+        presets: {
+          sets: e.sets,
+          reps: e.reps,
+          rep_type: e.rep_type,
+          reps_right: e.reps_right,
+          weight: e.weight,
+          weight_unit: e.weight_unit,
+          intensity: e.intensity,
+          notes: e.notes,
+          set_markers: e.set_markers,
+        },
+      })), session)
     }
   }
 
@@ -310,20 +322,22 @@ export default function WeeklyPlanPage() {
     setClipboard({ type: 'session', dateKey, session, entries })
   }
 
-  function handlePasteSession(dateKey: string, session: Session) {
+  async function handlePasteSession(dateKey: string, session: Session) {
     if (!clipboard) return
-    for (const entry of clipboard.entries) {
-      addEntry(dateKey, entry.exercise_id, {
-        sets: entry.sets,
-        reps: entry.reps,
-        rep_type: entry.rep_type,
-        reps_right: entry.reps_right,
-        weight: entry.weight,
-        weight_unit: entry.weight_unit,
-        intensity: entry.intensity,
-        notes: entry.notes,
-      }, session)
-    }
+    await addEntries(dateKey, clipboard.entries.map((e) => ({
+      exerciseId: e.exercise_id,
+      presets: {
+        sets: e.sets,
+        reps: e.reps,
+        rep_type: e.rep_type,
+        reps_right: e.reps_right,
+        weight: e.weight,
+        weight_unit: e.weight_unit,
+        intensity: e.intensity,
+        notes: e.notes,
+        set_markers: e.set_markers,
+      },
+    })), session)
   }
 
   if (programsLoading || exercisesLoading) {

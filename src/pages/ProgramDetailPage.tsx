@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste } from 'lucide-react'
-import { parseISO, format, startOfWeek } from 'date-fns'
+import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste, CirclePlay, OctagonX } from 'lucide-react'
+import { parseISO, format, startOfWeek, addWeeks } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
@@ -18,7 +18,6 @@ import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import Spinner from '@/components/ui/Spinner'
-import Badge from '@/components/ui/Badge'
 import StartDatePicker from '@/components/programs/StartDatePicker'
 
 export default function ProgramDetailPage() {
@@ -33,6 +32,7 @@ export default function ProgramDetailPage() {
   const [creatingExercise, setCreatingExercise] = useState(false)
   const [search, setSearch] = useState('')
   const [copiedWeek, setCopiedWeek] = useState<{ weekOffset: number; entries: (PlannedEntry & { dayIndex: number })[] } | null>(null)
+  const [copiedDay, setCopiedDay] = useState<{ entries: PlannedEntry[] } | null>(null)
   const [revision, setRevision] = useState(0)
   const [pasteConfirm, setPasteConfirm] = useState<{ targetWeekOffset: number } | null>(null)
   const [activateOpen, setActivateOpen] = useState(false)
@@ -172,18 +172,32 @@ export default function ProgramDetailPage() {
           <span className="text-surface-500"><span className="font-medium text-surface-600">Length:</span> {program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</span>
           {(() => {
             const programActivations = activations.filter((a) => a.program_id === program.id)
-            return programActivations.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {programActivations.map((act) => (
-                  <button key={act.id} onClick={() => deactivate(act.id)} title="Deactivate this activation">
-                    <Badge variant="primary" className="cursor-pointer hover:opacity-80">Active</Badge>
-                  </button>
-                ))}
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                {programActivations.map((act) => {
+                  const start = parseISO(act.start_date)
+                  const end = addWeeks(start, program.weeks)
+                  return (
+                    <button
+                      key={act.id}
+                      onClick={() => deactivate(act.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                      title="Click to deactivate"
+                    >
+                      <OctagonX className="h-4 w-4" />
+                      Active: {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => { setActivateOpen(true); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1 text-xs font-medium text-surface-600 hover:bg-surface-100"
+                  title="Activate program"
+                >
+                  <CirclePlay className="h-4 w-4" />
+                  {programActivations.length > 0 ? 'Add Activation' : 'Activate'}
+                </button>
               </div>
-            ) : (
-              <button onClick={() => { setActivateOpen(true); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }} title="Activate program">
-                <Badge className="cursor-pointer hover:opacity-80">Inactive</Badge>
-              </button>
             )
           })()}
         </div>
@@ -232,6 +246,8 @@ export default function ProgramDetailPage() {
                 onSaveDay={handleSaveDay}
                 resolveTemplate={resolveTemplate}
                 revision={revision}
+                copiedDay={copiedDay}
+                onCopyDay={(entries) => setCopiedDay({ entries })}
               />
             </div>
           ))}

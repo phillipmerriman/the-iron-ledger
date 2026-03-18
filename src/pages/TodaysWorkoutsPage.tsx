@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format, addDays, isToday } from 'date-fns'
-import { ChevronLeft, ChevronRight, Play, Clock, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CirclePlay, Clock, CheckCircle2 } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
@@ -208,7 +208,7 @@ export default function TodaysWorkoutsPage() {
                   size="sm"
                   onClick={() => setRunningWorkout({ session, entries: sessionEntries })}
                 >
-                  <Play className="mr-1 h-3.5 w-3.5" />
+                  <CirclePlay className="mr-1 h-3.5 w-3.5" />
                   Start Workout
                 </Button>
                 {sessionGroups.length > 1 && (
@@ -280,7 +280,7 @@ export default function TodaysWorkoutsPage() {
                       onClick={() => setRunningTimer(timer)}
                       className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
                     >
-                      <Play className="h-4 w-4" /> Start
+                      <CirclePlay className="h-4 w-4" /> Start
                     </button>
                   )}
                 </div>

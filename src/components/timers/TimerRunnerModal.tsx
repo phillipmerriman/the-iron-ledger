@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Play, Pause, RotateCcw, SkipForward, X } from 'lucide-react'
+import { CirclePlay, Pause, RotateCcw, SkipForward, X } from 'lucide-react'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
 
 interface TimerRunnerModalProps {
@@ -206,7 +206,7 @@ export default function TimerRunnerModal({ timer, onClose }: TimerRunnerModalPro
                   onClick={handleResume}
                   className="rounded-full bg-primary-600 p-4 text-white shadow-lg hover:bg-primary-700"
                 >
-                  <Play className="h-7 w-7" />
+                  <CirclePlay className="h-7 w-7" />
                 </button>
                 <button
                   onClick={handleSkip}
@@ -238,7 +238,7 @@ export default function TimerRunnerModal({ timer, onClose }: TimerRunnerModalPro
                 }`}
                 disabled={finished}
               >
-                {running ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7" />}
+                {running ? <Pause className="h-7 w-7" /> : <CirclePlay className="h-7 w-7" />}
               </button>
               <button
                 onClick={handleSkip}

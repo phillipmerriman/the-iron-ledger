@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { addDays, differenceInDays, parseISO, format, startOfWeek } from 'date-fns'
 import { supabase, isDev } from '@/lib/supabase'
 import { localDb } from '@/lib/local-storage'
@@ -117,7 +117,21 @@ export default function usePrograms() {
     setPrograms((prev) => prev.filter((p) => p.id !== id))
   }
 
+  const activatingRef = useRef(false)
+
   async function activate(programId: string, newStartDate: string) {
+    if (!user) return
+    if (activatingRef.current) return // prevent double-click / re-render duplication
+    activatingRef.current = true
+
+    try {
+      return await _activate(programId, newStartDate)
+    } finally {
+      activatingRef.current = false
+    }
+  }
+
+  async function _activate(programId: string, newStartDate: string) {
     if (!user) return
 
     const program = programs.find((p) => p.id === programId)
@@ -143,18 +157,22 @@ export default function usePrograms() {
     // Load all template entries and copy them with shifted dates, scoped to activation ID
     const STORAGE_KEY = 'fittrack:weekly_plan'
 
+    const today = format(new Date(), 'yyyy-MM-dd')
+
     if (isDev) {
       // Load template entries
       const allEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Record<string, unknown>[]
       const templateEntries = allEntries.filter((e) => e.program_id === programId)
 
-      // Create copies scoped to the activation
-      const copies = templateEntries.map((e) => ({
-        ...e,
-        id: crypto.randomUUID(),
-        program_id: activation.id,
-        date: format(addDays(parseISO(e.date as string), dayOffset), 'yyyy-MM-dd'),
-      }))
+      // Create copies scoped to the activation — only for today and future dates
+      const copies = templateEntries
+        .map((e) => ({
+          ...e,
+          id: crypto.randomUUID(),
+          program_id: activation.id,
+          date: format(addDays(parseISO(e.date as string), dayOffset), 'yyyy-MM-dd'),
+        }))
+        .filter((e) => e.date > today)
 
       allEntries.push(...copies)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allEntries))
@@ -175,26 +193,30 @@ export default function usePrograms() {
         .eq('program_id', programId)
 
       if (templateEntries && templateEntries.length > 0) {
-        const copies = templateEntries.map((e) => ({
-          user_id: e.user_id,
-          program_id: activation.id,
-          date: format(addDays(parseISO(e.date), dayOffset), 'yyyy-MM-dd'),
-          session: e.session,
-          exercise_id: e.exercise_id,
-          sort_order: e.sort_order,
-          sets: e.sets,
-          reps: e.reps,
-          rep_type: e.rep_type,
-          reps_right: e.reps_right,
-          weight: e.weight,
-          weight_unit: e.weight_unit,
-          intensity: e.intensity,
-          notes: e.notes,
-          timer_id: e.timer_id,
-          set_markers: e.set_markers,
-        }))
-        const { error } = await supabase.from('planned_entries').insert(copies)
-        if (error) throw error
+        const copies = templateEntries
+          .map((e) => ({
+            user_id: e.user_id,
+            program_id: activation.id,
+            date: format(addDays(parseISO(e.date), dayOffset), 'yyyy-MM-dd'),
+            session: e.session,
+            exercise_id: e.exercise_id,
+            sort_order: e.sort_order,
+            sets: e.sets,
+            reps: e.reps,
+            rep_type: e.rep_type,
+            reps_right: e.reps_right,
+            weight: e.weight,
+            weight_unit: e.weight_unit,
+            intensity: e.intensity,
+            notes: e.notes,
+            timer_id: e.timer_id,
+            set_markers: e.set_markers,
+          }))
+          .filter((e) => e.date > today)
+        if (copies.length > 0) {
+          const { error } = await supabase.from('planned_entries').insert(copies)
+          if (error) throw error
+        }
       }
     }
 
@@ -206,15 +228,15 @@ export default function usePrograms() {
     const today = format(new Date(), 'yyyy-MM-dd')
 
     if (isDev) {
-      // Remove future entries for this activation, keep past/today
       const STORAGE_KEY = 'fittrack:weekly_plan'
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const entries = JSON.parse(raw) as { program_id: string | null; date: string }[]
-        const filtered = entries.filter((e) =>
-          e.program_id !== activationId || e.date <= today,
-        )
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+        // Remove future entries, unscope past/today entries so they stay visible
+        const updated = entries
+          .filter((e) => !(e.program_id === activationId && e.date > today))
+          .map((e) => e.program_id === activationId ? { ...e, program_id: null } : e)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
       }
 
       // Remove activation record
@@ -227,6 +249,13 @@ export default function usePrograms() {
         .delete()
         .eq('program_id', activationId)
         .gt('date', today)
+
+      // Unscope past/today entries so they remain visible
+      await supabase
+        .from('planned_entries')
+        .update({ program_id: null })
+        .eq('program_id', activationId)
+        .lte('date', today)
 
       // Remove activation record
       await supabase.from('program_activations').delete().eq('id', activationId)

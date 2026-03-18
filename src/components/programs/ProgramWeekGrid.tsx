@@ -1,5 +1,5 @@
-import { useState, useEffect, type DragEvent } from 'react'
-import { Trash2, Save } from 'lucide-react'
+import { useState, useEffect, useRef, type DragEvent } from 'react'
+import { Trash2, Save, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
@@ -19,6 +19,9 @@ interface ProgramWeekGridProps {
   resolveTemplate?: (templateId: string) => { exerciseId: string; presets?: { sets?: number | null; reps?: number | null; rep_type?: RepType; reps_right?: number | null; weight?: number | null; weight_unit?: WeightUnit; timer_id?: string | null } }[]
   /** Bump to trigger refetch (e.g. after external paste) */
   revision?: number
+  /** Shared clipboard from parent for cross-week copy/paste */
+  copiedDay?: { entries: PlannedEntry[] } | null
+  onCopyDay?: (entries: PlannedEntry[]) => void
 }
 
 export default function ProgramWeekGrid({
@@ -30,6 +33,8 @@ export default function ProgramWeekGrid({
   onSaveDay,
   resolveTemplate,
   revision,
+  copiedDay: externalCopiedDay,
+  onCopyDay,
 }: ProgramWeekGridProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
@@ -176,6 +181,55 @@ export default function ProgramWeekGrid({
     onSaveDay(name.trim(), planned)
   }
 
+  // Copy/paste day — use shared clipboard from parent if provided
+  const [localCopiedDay, setLocalCopiedDay] = useState<{ entries: PlannedEntry[] } | null>(null)
+  const copiedDay = externalCopiedDay !== undefined ? externalCopiedDay : localCopiedDay
+  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  function handleCopyDay(dateKey: string) {
+    const entries = getEntriesForDate(dateKey)
+    if (entries.length === 0) return
+    if (onCopyDay) {
+      onCopyDay(entries)
+    } else {
+      setLocalCopiedDay({ entries })
+    }
+  }
+
+  async function handlePasteDay(dateKey: string) {
+    if (!copiedDay) return
+    const bySession = new Map<Session, PlannedEntry[]>()
+    for (const entry of copiedDay.entries) {
+      if (!bySession.has(entry.session)) bySession.set(entry.session, [])
+      bySession.get(entry.session)!.push(entry)
+    }
+    for (const [session, sessionEntries] of bySession) {
+      await addEntries(dateKey, sessionEntries.map((e) => ({
+        exerciseId: e.exercise_id,
+        presets: {
+          sets: e.sets,
+          reps: e.reps,
+          rep_type: e.rep_type,
+          reps_right: e.reps_right,
+          weight: e.weight,
+          weight_unit: e.weight_unit,
+          intensity: e.intensity,
+          notes: e.notes,
+          set_markers: e.set_markers,
+        },
+      })), session)
+    }
+  }
+
   return (
     <div className="grid grid-cols-7 gap-2">
       {days.map((day, i) => {
@@ -206,28 +260,43 @@ export default function ProgramWeekGrid({
             isDragging={(id) => draggingEntryId === id}
             hideDate
             headerActions={
-              allPlanned.length > 0 ? (
-                <div className="flex gap-0.5">
-                  {onSaveDay && (
-                    <button
-                      onClick={() => handleSaveDay(dateKey)}
-                      className="rounded p-0.5 text-surface-300 hover:bg-primary-50 hover:text-primary-500"
-                      aria-label="Save as workout"
-                      title="Save as workout"
-                    >
-                      <Save className="h-3 w-3" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => clearDate(dateKey)}
-                    className="rounded p-0.5 text-surface-300 hover:bg-danger-50 hover:text-danger-500"
-                    aria-label="Clear day"
-                    title="Clear all"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                </div>
-              ) : undefined
+              (allPlanned.length > 0 || copiedDay) ? <div className="relative">
+                <button
+                  onClick={() => setOpenMenu(openMenu === `day-${dateKey}` ? null : `day-${dateKey}`)}
+                  className="rounded p-0.5 text-surface-300 hover:bg-surface-100 hover:text-surface-500"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+                {openMenu === `day-${dateKey}` && (
+                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                    {allPlanned.length > 0 && (
+                      <>
+                        <button onClick={() => { handleCopyDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                          <Copy className="h-3.5 w-3.5" /> Copy Day
+                        </button>
+                        {onSaveDay && (
+                          <button onClick={() => { handleSaveDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                            <Save className="h-3.5 w-3.5" /> Save as Template
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {copiedDay && (
+                      <button onClick={() => { handlePasteDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                        <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                      </button>
+                    )}
+                    {allPlanned.length > 0 && (
+                      <>
+                        <div className="my-1 border-t border-surface-100" />
+                        <button onClick={() => { clearDate(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                          <Trash2 className="h-3.5 w-3.5" /> Clear Day
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div> : undefined
             }
           />
         )
