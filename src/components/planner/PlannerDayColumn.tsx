@@ -322,7 +322,7 @@ export default function PlannerDayColumn({
                             </div>
                             <button
                               onClick={(e) => { e.stopPropagation(); onRemoveEntry(entry.id) }}
-                              className="shrink-0 rounded p-0.5 text-surface-300 opacity-0 transition-opacity hover:text-danger-500 group-hover:opacity-100"
+                              className="shrink-0 rounded p-0.5 text-surface-300 opacity-100 md:opacity-0 transition-opacity hover:text-danger-500 md:group-hover:opacity-100"
                               aria-label="Remove"
                             >
                               <X className="h-3 w-3" />

@@ -1,6 +1,6 @@
 import { useState, useRef, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste, CirclePlay, OctagonX } from 'lucide-react'
+import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste, CirclePlay, OctagonX, Check } from 'lucide-react'
 import { parseISO, format, startOfWeek, addWeeks } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import useExercises from '@/hooks/useExercises'
@@ -53,6 +53,13 @@ export default function ProgramDetailPage() {
   const [exercisePoolOpen, setExercisePoolOpen] = useState(false)
   const [mobileSession, setMobileSession] = useState<Session>('morning')
   const mobileGridApi = useRef<ProgramWeekGridApi | null>(null)
+  const [addedFlash, setAddedFlash] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function flashAdded(id: string) {
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    setAddedFlash(id)
+    flashTimer.current = setTimeout(() => setAddedFlash(null), 800)
+  }
 
   const program = programs.find((p) => p.id === id)
   const loading = programsLoading || exercisesLoading
@@ -334,6 +341,7 @@ export default function ProgramDetailPage() {
             <div className="max-h-[40vh] space-y-1 overflow-y-auto">
               {filtered.map((exercise) => {
                 const poolColor = getExerciseColorClasses(exercise.color)
+                const justAdded = addedFlash === exercise.id
                 return (
                   <button
                     key={exercise.id}
@@ -343,15 +351,19 @@ export default function ProgramDetailPage() {
                       const dateKey = api.dateKeys[mobileDayIndex]
                       if (!dateKey) return
                       api.addEntry(dateKey, exercise.id, api.getExerciseDefaults(exercise.id), mobileSession)
+                      flashAdded(exercise.id)
                     }}
                     className={cn(
                       'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
-                      exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
                     )}
                   >
-                    <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
-                      {exercise.name}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
+                        {exercise.name}
+                      </p>
+                      {justAdded && <Check className="h-4 w-4 text-success-600" />}
+                    </div>
                     <div className="mt-0.5 flex gap-1">
                       <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
                       <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
@@ -368,6 +380,7 @@ export default function ProgramDetailPage() {
                 <div className="space-y-1">
                   {templates.map((tmpl) => {
                     const count = getExercisesForTemplate(tmpl.id).length
+                    const justAdded = addedFlash === tmpl.id
                     return (
                       <button
                         key={tmpl.id}
@@ -378,10 +391,17 @@ export default function ProgramDetailPage() {
                           if (!dateKey) return
                           const items = resolveTemplate(tmpl.id)
                           if (items.length) api.addEntries(dateKey, items, mobileSession)
+                          flashAdded(tmpl.id)
                         }}
-                        className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-left transition-colors hover:border-primary-300"
+                        className={cn(
+                          'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                          justAdded ? 'border-success-400 bg-success-50' : 'border-surface-200 bg-surface-50',
+                        )}
                       >
-                        <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                          {justAdded && <Check className="h-4 w-4 text-success-600" />}
+                        </div>
                         <p className="text-xs text-surface-400">{count} {count === 1 ? 'exercise' : 'exercises'}</p>
                       </button>
                     )

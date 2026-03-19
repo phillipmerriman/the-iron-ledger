@@ -23,7 +23,7 @@ interface WeeklyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function WeeklyCalendar({ sessions, activations = [], programs: _programs = [], onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ sessions, activations = [], onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -160,20 +160,17 @@ export default function WeeklyCalendar({ sessions, activations = [], programs: _
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
 
   // Compute weekly total volume across completed session slots from planned entries
-  const weekTotal = useMemo(() => {
-    let total = 0
-    days.forEach((day, i) => {
-      const status = dayStatus(day)
-      if (status !== 'completed' && status !== 'partial') return
-      const planned = getEntriesForDate(dateKeys[i])
-      for (const entry of planned) {
-        if (isSlotCompleted(day, entry.session)) {
-          total += calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
-        }
+  let weekTotal = 0
+  days.forEach((day, i) => {
+    const status = dayStatus(day)
+    if (status !== 'completed' && status !== 'partial') return
+    const planned = getEntriesForDate(dateKeys[i])
+    for (const entry of planned) {
+      if (isSlotCompleted(day, entry.session)) {
+        weekTotal += calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
       }
-    })
-    return total
-  }, [days, dateKeys, sessions, getEntriesForDate, preferredUnit])
+    }
+  })
 
   const dashWeekParam = weekDelta !== 0 ? `&dashweek=${weekDelta}` : ''
   const planLink = `/plan?from=dashboard${dashWeekParam}`
