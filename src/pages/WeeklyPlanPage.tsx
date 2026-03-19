@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type DragEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal, Check } from 'lucide-react'
 import { format, parseISO, isToday } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
@@ -119,6 +119,13 @@ export default function WeeklyPlanPage() {
   })
   const [exercisePoolOpen, setExercisePoolOpen] = useState(false)
   const [mobileSession, setMobileSession] = useState<Session>('morning')
+  const [addedFlash, setAddedFlash] = useState<string | null>(null)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function flashAdded(id: string) {
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    setAddedFlash(id)
+    flashTimer.current = setTimeout(() => setAddedFlash(null), 800)
+  }
 
   // Context menu state
   const [openMenu, setOpenMenu] = useState<string | null>(null)
@@ -350,10 +357,12 @@ export default function WeeklyPlanPage() {
 
   function handleMobileTapExercise(exerciseId: string) {
     addEntry(dateKeys[mobileDayIndex], exerciseId, getExerciseDefaults(exerciseId), mobileSession)
+    flashAdded(exerciseId)
   }
 
   function handleMobileTapTemplate(templateId: string) {
     handleTemplateDrop(dateKeys[mobileDayIndex], templateId, mobileSession)
+    flashAdded(templateId)
   }
 
   if (programsLoading || exercisesLoading) {
@@ -629,18 +638,22 @@ export default function WeeklyPlanPage() {
             <div className="max-h-[40vh] space-y-1 overflow-y-auto">
               {filtered.map((exercise) => {
                 const poolColor = getExerciseColorClasses(exercise.color)
+                const justAdded = addedFlash === exercise.id
                 return (
                   <button
                     key={exercise.id}
                     onClick={() => handleMobileTapExercise(exercise.id)}
                     className={cn(
                       'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
-                      exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
                     )}
                   >
-                    <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
-                      {exercise.name}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
+                        {exercise.name}
+                      </p>
+                      {justAdded && <Check className="h-4 w-4 text-success-600" />}
+                    </div>
                     <div className="mt-0.5 flex gap-1">
                       <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
                       <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
@@ -662,13 +675,20 @@ export default function WeeklyPlanPage() {
                 <div className="space-y-1">
                   {templates.map((tmpl) => {
                     const count = getExercisesForTemplate(tmpl.id).length
+                    const justAdded = addedFlash === tmpl.id
                     return (
                       <button
                         key={tmpl.id}
                         onClick={() => handleMobileTapTemplate(tmpl.id)}
-                        className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-left transition-colors hover:border-primary-300"
+                        className={cn(
+                          'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                          justAdded ? 'border-success-400 bg-success-50' : 'border-surface-200 bg-surface-50',
+                        )}
                       >
-                        <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                          {justAdded && <Check className="h-4 w-4 text-success-600" />}
+                        </div>
                         <p className="text-xs text-surface-400">{count} {count === 1 ? 'exercise' : 'exercises'}</p>
                       </button>
                     )
