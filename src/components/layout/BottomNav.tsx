@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 
 const links = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/workouts/today', label: 'Workouts', icon: Dumbbell },
+  { to: '/workouts', label: 'Workouts', icon: Dumbbell },
   { to: '/exercises', label: 'Exercises', icon: ClipboardList },
   { to: '/programs', label: 'Programs', icon: CalendarRange },
   { to: '/timers', label: 'Timers', icon: Timer },
