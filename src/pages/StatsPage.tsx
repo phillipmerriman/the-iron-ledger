@@ -190,54 +190,61 @@ export default function StatsPage() {
                     </div>
                   </button>
 
-                  {/* Expanded detail */}
-                  {isExpanded && (
-                    <div className="mb-2 ml-8 space-y-2 rounded-lg border border-surface-100 bg-surface-50 p-3">
-                      {/* All time ranges */}
-                      <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                        {(['week', 'month', 'year', 'allTime'] as TimeRange[]).map((r) => (
-                          <div key={r}>
-                            <p className="font-medium text-surface-400">{r === 'allTime' ? 'All Time' : r.charAt(0).toUpperCase() + r.slice(1)}</p>
-                            {ex.isTimed ? (
-                              <>
-                                <p className="mt-0.5 font-semibold text-surface-700">{formatTut(getTut(ex, r))}</p>
-                                <p className="text-surface-400">TUT</p>
-                              </>
-                            ) : (
-                              <>
-                                <p className="mt-0.5 font-semibold text-surface-700">{getReps(ex, r).toLocaleString()}</p>
-                                <p className="text-surface-400">reps</p>
-                              </>
-                            )}
-                            {getExVolume(ex, r) > 0 && (
-                              <p className="mt-0.5 text-primary-600">{getExVolume(ex, r).toLocaleString()} {unit}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Recent timeline */}
-                      {ex.timeline.length > 0 && (
-                        <div className="border-t border-surface-200 pt-2">
-                          <p className="mb-1 text-xs font-medium text-surface-400">Recent Sessions</p>
-                          <div className="max-h-32 space-y-1 overflow-y-auto">
-                            {ex.timeline.slice(-10).reverse().map((t) => (
-                              <div key={t.date} className="flex items-center justify-between text-xs">
-                                <span className="text-surface-500">{t.date}</span>
-                                <span className="text-surface-700">
-                                  {t.sets} {t.sets === 1 ? 'set' : 'sets'}
-                                  {ex.isTimed
-                                    ? ` · TUT ${formatTut(t.tut)}`
-                                    : ` · ${t.totalReps} reps`}
-                                  {t.volume > 0 && ` · ${t.volume.toLocaleString()} ${unit}`}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                  {/* Expanded detail — animated with CSS grid trick */}
+                  <div
+                    className={cn(
+                      'grid transition-[grid-template-rows] duration-200 ease-in-out',
+                      isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="mb-2 space-y-2 rounded-lg border border-surface-100 bg-surface-50 p-3">
+                        {/* All time ranges */}
+                        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                          {(['week', 'month', 'year', 'allTime'] as TimeRange[]).map((r) => (
+                            <div key={r}>
+                              <p className="font-medium text-surface-400">{r === 'allTime' ? 'All Time' : r.charAt(0).toUpperCase() + r.slice(1)}</p>
+                              {ex.isTimed ? (
+                                <>
+                                  <p className="mt-0.5 font-semibold text-surface-700">{formatTut(getTut(ex, r))}</p>
+                                  <p className="text-surface-400">TUT</p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="mt-0.5 font-semibold text-surface-700">{getReps(ex, r).toLocaleString()}</p>
+                                  <p className="text-surface-400">reps</p>
+                                </>
+                              )}
+                              {getExVolume(ex, r) > 0 && (
+                                <p className="mt-0.5 text-primary-600">{getExVolume(ex, r).toLocaleString()} {unit}</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      )}
+
+                        {/* Recent timeline */}
+                        {ex.timeline.length > 0 && (
+                          <div className="border-t border-surface-200 pt-2">
+                            <p className="mb-1 text-xs font-medium text-surface-400">Recent Sessions</p>
+                            <div className="max-h-32 space-y-1 overflow-y-auto">
+                              {ex.timeline.slice(-10).reverse().map((t) => (
+                                <div key={t.date} className="flex items-center justify-between text-xs">
+                                  <span className="text-surface-500">{t.date}</span>
+                                  <span className="text-surface-700">
+                                    {t.sets} {t.sets === 1 ? 'set' : 'sets'}
+                                    {ex.isTimed
+                                      ? ` · TUT ${formatTut(t.tut)}`
+                                      : ` · ${t.totalReps} reps`}
+                                    {t.volume > 0 && ` · ${t.volume.toLocaleString()} ${unit}`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )
             })}

@@ -5,17 +5,15 @@ import {
   ClipboardList,
   CalendarRange,
   Timer,
-  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const links = [
-  { to: '/', label: 'Home', icon: LayoutDashboard },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/workouts', label: 'Workouts', icon: Dumbbell },
   { to: '/exercises', label: 'Exercises', icon: ClipboardList },
   { to: '/programs', label: 'Programs', icon: CalendarRange },
   { to: '/timers', label: 'Timers', icon: Timer },
-  { to: '/settings', label: 'Settings', icon: Settings },
 ] as const
 
 export default function BottomNav() {
