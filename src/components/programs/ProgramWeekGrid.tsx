@@ -70,14 +70,7 @@ export default function ProgramWeekGrid({
   })
 
   useEffect(() => { refetch() }, [revision, refetch])
-
-  // Expose internal functions for mobile tap-to-add from parent
-  useEffect(() => {
-    if (exposeApi) {
-      exposeApi({ addEntry, addEntries, dateKeys, getExerciseDefaults })
-    }
-  })
-
+  
   function getExerciseDefaults(exerciseId: string) {
     const ex = exercises.find((e) => e.id === exerciseId)
     if (!ex) return undefined
@@ -92,6 +85,13 @@ export default function ProgramWeekGrid({
       intensity: ex.default_intensity,
     }
   }
+
+  // Expose internal functions for mobile tap-to-add from parent
+  useEffect(() => {
+    if (exposeApi) {
+      exposeApi({ addEntry, addEntries, dateKeys, getExerciseDefaults })
+    }
+  })
 
   // Drag state
   const [dropTarget, setDropTarget] = useState<{ dateKey: string; session: Session } | null>(null)
