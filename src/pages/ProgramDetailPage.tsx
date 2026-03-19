@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from 'react'
+import { useState, useRef, type DragEvent } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste, CirclePlay, OctagonX } from 'lucide-react'
 import { parseISO, format, startOfWeek, addWeeks } from 'date-fns'
@@ -11,8 +11,15 @@ import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
+import Badge from '@/components/ui/Badge'
+import type { Session } from '@/hooks/useWeeklyPlan'
+
+function formatLabel(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
 import { cn } from '@/lib/utils'
 import ProgramWeekGrid from '@/components/programs/ProgramWeekGrid'
+import type { ProgramWeekGridApi } from '@/components/programs/ProgramWeekGrid'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -39,6 +46,13 @@ export default function ProgramDetailPage() {
   const [activateDate, setActivateDate] = useState(() =>
     format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'),
   )
+
+  // Mobile state
+  const [mobileWeekIndex, setMobileWeekIndex] = useState(0)
+  const [mobileDayIndex, setMobileDayIndex] = useState(0)
+  const [exercisePoolOpen, setExercisePoolOpen] = useState(false)
+  const [mobileSession, setMobileSession] = useState<Session>('morning')
+  const mobileGridApi = useRef<ProgramWeekGridApi | null>(null)
 
   const program = programs.find((p) => p.id === id)
   const loading = programsLoading || exercisesLoading
@@ -202,12 +216,192 @@ export default function ProgramDetailPage() {
           })()}
         </div>
         <p className="mt-2 text-xs text-surface-400">
-          Drag exercises or saved workouts from the pool into each day.
+          <span className="hidden md:inline">Drag exercises or saved workouts from the pool into each day.</span>
+          <span className="md:hidden">Tap + to add exercises to your day.</span>
         </p>
       </div>
 
-      {/* Main layout: weeks + pool sidebar */}
-      <div className="flex gap-4">
+      {/* ---- Mobile layout ---- */}
+      <div className="md:hidden space-y-3">
+        {/* Week selector + copy/paste */}
+        <div className="flex items-center gap-2">
+          <select
+            value={mobileWeekIndex}
+            onChange={(e) => { setMobileWeekIndex(Number(e.target.value)); setMobileDayIndex(0) }}
+            className="rounded-lg border border-surface-200 px-2 py-1.5 text-sm font-semibold"
+          >
+            {weeks.map((w) => (
+              <option key={w} value={w}>Week {w + 1}</option>
+            ))}
+          </select>
+          <div className="flex gap-1 ml-auto">
+            <button
+              onClick={() => handleCopyWeek(mobileWeekIndex)}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-surface-400 hover:bg-surface-100 hover:text-surface-600"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copy
+            </button>
+            <button
+              onClick={() => handlePasteWeek(mobileWeekIndex)}
+              disabled={!copiedWeek}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-surface-400 hover:bg-surface-100 hover:text-surface-600 disabled:opacity-30"
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+            </button>
+          </div>
+        </div>
+
+        {/* Day tabs */}
+        <div className="flex gap-1 overflow-x-auto">
+          {(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const).map((dayName, i) => (
+            <button
+              key={i}
+              onClick={() => setMobileDayIndex(i)}
+              className={cn(
+                'flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center text-xs font-semibold transition-colors',
+                mobileDayIndex === i
+                  ? 'bg-primary-500 text-white'
+                  : 'text-surface-500 hover:bg-surface-100',
+              )}
+            >
+              {dayName}
+            </button>
+          ))}
+        </div>
+
+        {/* Single day via ProgramWeekGrid */}
+        <ProgramWeekGrid
+          weekOffset={mobileWeekIndex}
+          programId={program.id}
+          programStart={programStart}
+          exercises={exercises}
+          timers={timers}
+          onSaveDay={handleSaveDay}
+          resolveTemplate={resolveTemplate}
+          revision={revision}
+          copiedDay={copiedDay}
+          onCopyDay={(entries) => setCopiedDay({ entries })}
+          mobileDayIndex={mobileDayIndex}
+          exposeApi={(api) => { mobileGridApi.current = api }}
+        />
+
+        {/* FAB */}
+        <button
+          onClick={() => setExercisePoolOpen(true)}
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:bg-primary-700"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+
+        {/* Mobile exercise pool modal */}
+        <Modal open={exercisePoolOpen} onClose={() => setExercisePoolOpen(false)} title={<>Add Exercise<br /><span className="text-sm font-normal text-surface-500">{['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][mobileDayIndex]}</span></>}>
+          <div className="space-y-3">
+            {/* Session picker */}
+            <div className="flex gap-1">
+              {(['morning', 'noon', 'night'] as Session[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setMobileSession(s)}
+                  className={cn(
+                    'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
+                    mobileSession === s
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-surface-100 text-surface-500 hover:bg-surface-200',
+                  )}
+                >
+                  {s === 'morning' ? 'Morning' : s === 'noon' ? 'Noon' : 'Night'}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search exercises..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+              {search && (
+                <button type="button" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Exercise list */}
+            <div className="max-h-[40vh] space-y-1 overflow-y-auto">
+              {filtered.map((exercise) => {
+                const poolColor = getExerciseColorClasses(exercise.color)
+                return (
+                  <button
+                    key={exercise.id}
+                    onClick={() => {
+                      const api = mobileGridApi.current
+                      if (!api) return
+                      const dateKey = api.dateKeys[mobileDayIndex]
+                      if (!dateKey) return
+                      api.addEntry(dateKey, exercise.id, api.getExerciseDefaults(exercise.id), mobileSession)
+                    }}
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                      exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                    )}
+                  >
+                    <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
+                      {exercise.name}
+                    </p>
+                    <div className="mt-0.5 flex gap-1">
+                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
+                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Saved workouts */}
+            {templates.length > 0 && (
+              <div>
+                <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-surface-500">Saved Workouts</h4>
+                <div className="space-y-1">
+                  {templates.map((tmpl) => {
+                    const count = getExercisesForTemplate(tmpl.id).length
+                    return (
+                      <button
+                        key={tmpl.id}
+                        onClick={() => {
+                          const api = mobileGridApi.current
+                          if (!api) return
+                          const dateKey = api.dateKeys[mobileDayIndex]
+                          if (!dateKey) return
+                          const items = resolveTemplate(tmpl.id)
+                          if (items.length) api.addEntries(dateKey, items, mobileSession)
+                        }}
+                        className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-left transition-colors hover:border-primary-300"
+                      >
+                        <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                        <p className="text-xs text-surface-400">{count} {count === 1 ? 'exercise' : 'exercises'}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => { setExercisePoolOpen(false); setNewExerciseOpen(true) }}
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-surface-300 py-2 text-xs font-medium text-surface-500 hover:border-primary-300 hover:text-primary-600"
+            >
+              <Plus className="h-3.5 w-3.5" /> New Exercise
+            </button>
+          </div>
+        </Modal>
+      </div>
+
+      {/* ---- Desktop layout ---- */}
+      <div className="hidden md:flex md:gap-4">
         {/* Weeks column */}
         <div className="min-w-0 flex-1 space-y-2">
           {weeks.map((weekOffset) => (

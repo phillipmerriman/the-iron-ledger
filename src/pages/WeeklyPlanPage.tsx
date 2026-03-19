@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, type DragEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, isToday } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
@@ -111,6 +111,14 @@ export default function WeeklyPlanPage() {
 
   // Clipboard for copy/paste
   const [clipboard, setClipboard] = useState<{ type: 'day'; dateKey: string; entries: PlannedEntry[] } | { type: 'session'; dateKey: string; session: Session; entries: PlannedEntry[] } | null>(null)
+
+  // Mobile state
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => {
+    const todayIdx = days.findIndex((d) => isToday(d))
+    return todayIdx >= 0 ? todayIdx : 0
+  })
+  const [exercisePoolOpen, setExercisePoolOpen] = useState(false)
+  const [mobileSession, setMobileSession] = useState<Session>('morning')
 
   // Context menu state
   const [openMenu, setOpenMenu] = useState<string | null>(null)
@@ -340,6 +348,14 @@ export default function WeeklyPlanPage() {
     })), session)
   }
 
+  function handleMobileTapExercise(exerciseId: string) {
+    addEntry(dateKeys[mobileDayIndex], exerciseId, getExerciseDefaults(exerciseId), mobileSession)
+  }
+
+  function handleMobileTapTemplate(templateId: string) {
+    handleTemplateDrop(dateKeys[mobileDayIndex], templateId, mobileSession)
+  }
+
   if (programsLoading || exercisesLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -374,7 +390,8 @@ export default function WeeklyPlanPage() {
             {program ? `Plan: ${program.name}` : 'Plan Your Week'}
           </h1>
           <p className="text-sm text-surface-500">
-            Drag exercises or saved workouts from the pool into each day.
+            <span className="hidden md:inline">Drag exercises or saved workouts from the pool into each day.</span>
+            <span className="md:hidden">Tap + to add exercises to your day.</span>
           </p>
         </div>
       </div>
@@ -437,7 +454,242 @@ export default function WeeklyPlanPage() {
         </div>
       )}
 
-      <div className="flex gap-4">
+      {/* ---- Mobile day-by-day view ---- */}
+      <div className="md:hidden">
+        {/* Day tabs */}
+        <div className="mb-3 flex gap-1 overflow-x-auto">
+          {days.map((day, i) => (
+            <button
+              key={dateKeys[i]}
+              onClick={() => setMobileDayIndex(i)}
+              className={cn(
+                'flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center text-xs font-semibold transition-colors',
+                mobileDayIndex === i
+                  ? 'bg-primary-500 text-white'
+                  : isToday(day) ? 'bg-primary-50 text-primary-600' : 'text-surface-500 hover:bg-surface-100',
+              )}
+            >
+              <div>{format(day, 'EEE')}</div>
+              <div className="text-[10px] opacity-75">{format(day, 'M/d')}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Single day column */}
+        <PlannerDayColumn
+          key={dateKeys[mobileDayIndex]}
+          day={days[mobileDayIndex]}
+          dateKey={dateKeys[mobileDayIndex]}
+          exercises={exercises}
+          timers={timers}
+          preferredUnit={preferredUnit}
+          getEntriesForDate={getEntriesForDate}
+          getEntriesForDateSession={getEntriesForDateSession}
+          onUpdateEntry={updateEntry}
+          onRemoveEntry={removeEntry}
+          onSessionDragOver={handleSessionDragOver}
+          onSessionDragLeave={handleSessionDragLeave}
+          onSessionDrop={handleSessionDrop}
+          onEntryDragStart={handleEntryDragStart}
+          onEntryDragEnd={handleDragEnd}
+          onEntryDragOver={handleEntryDragOver}
+          onEntryDrop={handleEntryDrop}
+          dropTarget={dropTarget}
+          reorderOverId={reorderOverId}
+          isDragging={(id) => dragSource?.type === 'entry' && dragSource.entryId === id}
+          minHeight="200px"
+          headerActions={
+            (() => {
+              const allPlanned = getEntriesForDate(dateKeys[mobileDayIndex])
+              return (allPlanned.length > 0 || clipboard) ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenMenu(openMenu === `day-m` ? null : `day-m`)}
+                    className="rounded p-0.5 text-surface-300 hover:bg-surface-100 hover:text-surface-500"
+                  >
+                    <MoreHorizontal className="h-3.5 w-3.5" />
+                  </button>
+                  {openMenu === `day-m` && (
+                    <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                      {allPlanned.length > 0 && (
+                        <>
+                          <button onClick={() => { handleCopyDay(dateKeys[mobileDayIndex]); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                            <Copy className="h-3.5 w-3.5" /> Copy Day
+                          </button>
+                          <button onClick={() => { handleSaveDay(dateKeys[mobileDayIndex]); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                            <Save className="h-3.5 w-3.5" /> Save as Template
+                          </button>
+                        </>
+                      )}
+                      {clipboard && (
+                        <button onClick={() => { handlePasteDay(dateKeys[mobileDayIndex]); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                          <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                        </button>
+                      )}
+                      {allPlanned.length > 0 && (
+                        <>
+                          <div className="my-1 border-t border-surface-100" />
+                          <button onClick={() => { clearDate(dateKeys[mobileDayIndex]); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                            <Trash2 className="h-3.5 w-3.5" /> Clear Day
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : undefined
+            })()
+          }
+          sessionActions={(dk, session, sessionEntries) =>
+            (sessionEntries.length > 0 || clipboard) ? (
+              <div className="relative ml-auto">
+                <button
+                  onClick={() => setOpenMenu(openMenu === `ses-${dk}-${session}` ? null : `ses-${dk}-${session}`)}
+                  className="rounded p-0.5 text-surface-300 hover:text-surface-500"
+                >
+                  <MoreHorizontal className="h-2.5 w-2.5" />
+                </button>
+                {openMenu === `ses-${dk}-${session}` && (
+                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                    {sessionEntries.length > 0 && (
+                      <button onClick={() => { handleCopySession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </button>
+                    )}
+                    {clipboard && (
+                      <button onClick={() => { handlePasteSession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
+                        <ClipboardPaste className="h-3.5 w-3.5" /> Paste
+                      </button>
+                    )}
+                    {sessionEntries.length > 0 && (
+                      <>
+                        <div className="my-1 border-t border-surface-100" />
+                        <button onClick={() => { clearSession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-danger-600 hover:bg-danger-50">
+                          <Trash2 className="h-3.5 w-3.5" /> Clear
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null
+          }
+        />
+
+        {/* FAB to open exercise pool */}
+        <button
+          onClick={() => setExercisePoolOpen(true)}
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:bg-primary-700"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+
+        {/* Mobile exercise pool modal */}
+        <Modal open={exercisePoolOpen} onClose={() => setExercisePoolOpen(false)} title={<>Add Exercise<br /><span className="text-sm font-normal text-surface-500">{format(days[mobileDayIndex], 'EEEE, MMM d')}</span></>}>
+          <div className="space-y-3">
+            {/* Session picker */}
+            <div className="flex gap-1">
+              {(['morning', 'noon', 'night'] as Session[]).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setMobileSession(s)}
+                  className={cn(
+                    'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
+                    mobileSession === s
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-surface-100 text-surface-500 hover:bg-surface-200',
+                  )}
+                >
+                  {s === 'morning' ? 'Morning' : s === 'noon' ? 'Noon' : 'Night'}
+                </button>
+              ))}
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search exercises..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-surface-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-surface-400 hover:text-surface-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Exercise list */}
+            <div className="max-h-[40vh] space-y-1 overflow-y-auto">
+              {filtered.map((exercise) => {
+                const poolColor = getExerciseColorClasses(exercise.color)
+                return (
+                  <button
+                    key={exercise.id}
+                    onClick={() => handleMobileTapExercise(exercise.id)}
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                      exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                    )}
+                  >
+                    <p className={cn('font-display text-sm font-medium', exercise.color ? poolColor.text : 'text-surface-800')}>
+                      {exercise.name}
+                    </p>
+                    <div className="mt-0.5 flex gap-1">
+                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.primary_muscle)}</Badge>
+                      <Badge className="!text-[9px] !px-1 !py-0">{formatLabel(exercise.equipment)}</Badge>
+                    </div>
+                  </button>
+                )
+              })}
+              {filtered.length === 0 && (
+                <p className="py-4 text-center text-sm text-surface-400">
+                  {activeExercises.length === 0 ? 'Add exercises first' : 'No matches'}
+                </p>
+              )}
+            </div>
+
+            {/* Saved workouts */}
+            {templates.length > 0 && (
+              <div>
+                <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-surface-500">Saved Workouts</h4>
+                <div className="space-y-1">
+                  {templates.map((tmpl) => {
+                    const count = getExercisesForTemplate(tmpl.id).length
+                    return (
+                      <button
+                        key={tmpl.id}
+                        onClick={() => handleMobileTapTemplate(tmpl.id)}
+                        className="w-full rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 text-left transition-colors hover:border-primary-300"
+                      >
+                        <p className="font-display text-sm font-medium text-surface-800">{tmpl.name}</p>
+                        <p className="text-xs text-surface-400">{count} {count === 1 ? 'exercise' : 'exercises'}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* New exercise button */}
+            <button
+              onClick={() => { setExercisePoolOpen(false); setNewExerciseOpen(true) }}
+              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-surface-300 py-2 text-xs font-medium text-surface-500 hover:border-primary-300 hover:text-primary-600"
+            >
+              <Plus className="h-3.5 w-3.5" /> New Exercise
+            </button>
+          </div>
+        </Modal>
+      </div>
+
+      {/* ---- Desktop layout ---- */}
+      <div className="hidden md:flex md:gap-4">
         {/* Day columns */}
         <div className="grid flex-1 grid-cols-7 gap-2">
           {days.map((day, i) => {

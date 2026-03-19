@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format, isToday, isSameDay, isFuture } from 'date-fns'
 import { ChevronLeft, ChevronRight, Pencil, Check, Undo2 } from 'lucide-react'
@@ -178,6 +178,14 @@ export default function WeeklyCalendar({ sessions, activations = [], programs: _
   const dashWeekParam = weekDelta !== 0 ? `&dashweek=${weekDelta}` : ''
   const planLink = `/plan?from=dashboard${dashWeekParam}`
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const todayRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (isCurrentWeek && todayRef.current && scrollRef.current) {
+      todayRef.current.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' })
+    }
+  }, [isCurrentWeek, weekDelta])
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
@@ -217,7 +225,7 @@ export default function WeeklyCalendar({ sessions, activations = [], programs: _
         </Link>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div ref={scrollRef} className="flex gap-1 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible md:pb-0">
         {days.map((day, i) => {
           const dateKey = dateKeys[i]
           const today = isToday(day)
@@ -227,9 +235,10 @@ export default function WeeklyCalendar({ sessions, activations = [], programs: _
           return (
             <div
               key={dateKey}
+              ref={today ? todayRef : undefined}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                'flex min-h-[80px] cursor-pointer flex-col rounded-lg border p-1.5 transition-colors hover:border-primary-300',
+                'flex min-h-[80px] w-[80px] flex-shrink-0 cursor-pointer flex-col rounded-lg border p-1.5 transition-colors hover:border-primary-300 md:w-auto md:min-w-0 md:flex-shrink',
                 today ? 'border-primary-300 bg-primary-50/30' : 'border-surface-200',
                 status === 'completed' && 'border-primary-400 bg-primary-50/50',
               )}
@@ -256,7 +265,7 @@ export default function WeeklyCalendar({ sessions, activations = [], programs: _
                 </span>
               </div>
 
-              <div className="flex flex-col gap-0.5">
+              <div className="flex min-w-0 flex-col gap-0.5 overflow-hidden">
                 {(() => {
                   const sessionGroups = SESSIONS
                     .map((s) => ({ session: s, entries: planned.filter((e) => e.session === s) }))

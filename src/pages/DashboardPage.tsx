@@ -188,7 +188,7 @@ export default function DashboardPage() {
 
       {/* Calendars */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="min-w-0">
           <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
         </Card>
         <Card>
