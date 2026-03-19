@@ -22,6 +22,17 @@ interface ProgramWeekGridProps {
   /** Shared clipboard from parent for cross-week copy/paste */
   copiedDay?: { entries: PlannedEntry[] } | null
   onCopyDay?: (entries: PlannedEntry[]) => void
+  /** When set, render only this day index instead of the full 7-column grid (mobile) */
+  mobileDayIndex?: number
+  /** Called on mount/update with the grid's internal functions so parent can trigger mobile adds */
+  exposeApi?: (api: ProgramWeekGridApi) => void
+}
+
+export interface ProgramWeekGridApi {
+  addEntry: (dateKey: string, exerciseId: string, presets: import('@/hooks/useWeeklyPlan').PlannedEntryUpdate | undefined, session: Session) => void
+  addEntries: (dateKey: string, items: { exerciseId: string; presets?: import('@/hooks/useWeeklyPlan').PlannedEntryUpdate }[], session: Session) => void
+  dateKeys: string[]
+  getExerciseDefaults: (id: string) => import('@/hooks/useWeeklyPlan').PlannedEntryUpdate | undefined
 }
 
 export default function ProgramWeekGrid({
@@ -35,6 +46,8 @@ export default function ProgramWeekGrid({
   revision,
   copiedDay: externalCopiedDay,
   onCopyDay,
+  mobileDayIndex,
+  exposeApi,
 }: ProgramWeekGridProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
@@ -57,6 +70,13 @@ export default function ProgramWeekGrid({
   })
 
   useEffect(() => { refetch() }, [revision, refetch])
+
+  // Expose internal functions for mobile tap-to-add from parent
+  useEffect(() => {
+    if (exposeApi) {
+      exposeApi({ addEntry, addEntries, dateKeys, getExerciseDefaults })
+    }
+  })
 
   function getExerciseDefaults(exerciseId: string) {
     const ex = exercises.find((e) => e.id === exerciseId)
@@ -230,9 +250,12 @@ export default function ProgramWeekGrid({
     }
   }
 
+  const visibleDays = mobileDayIndex !== undefined ? [mobileDayIndex] : days.map((_, i) => i)
+
   return (
-    <div className="grid grid-cols-7 gap-2">
-      {days.map((day, i) => {
+    <div className={mobileDayIndex !== undefined ? '' : 'grid grid-cols-7 gap-2'}>
+      {visibleDays.map((i) => {
+        const day = days[i]
         const dateKey = dateKeys[i]
         const allPlanned = getEntriesForDate(dateKey)
 
