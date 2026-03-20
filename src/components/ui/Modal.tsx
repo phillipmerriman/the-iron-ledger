@@ -36,7 +36,7 @@ export default function Modal({ open, onClose, title, size = 'md', children }: M
         className="flex min-h-full items-center justify-center p-4"
         onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       >
-        <div className={`flex w-full ${sizeClasses[size]} max-h-[85vh] flex-col rounded-xl bg-white p-4 md:p-6 shadow-xl`}>
+        <div className={`flex w-full ${sizeClasses[size]} max-h-[85vh] flex-col rounded-xl bg-card p-4 md:p-6 shadow-xl`}>
           <div className="mb-4 flex shrink-0 items-start justify-between">
             <h2 className="text-lg font-semibold text-surface-900">{title}</h2>
             <button

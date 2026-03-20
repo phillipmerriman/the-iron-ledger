@@ -235,7 +235,7 @@ export default function ProgramDetailPage() {
           <select
             value={mobileWeekIndex}
             onChange={(e) => { setMobileWeekIndex(Number(e.target.value)); setMobileDayIndex(0) }}
-            className="rounded-lg border border-surface-200 px-2 py-1.5 text-sm font-semibold"
+            className="rounded-lg border border-surface-200 bg-input-bg px-2 py-1.5 text-sm font-semibold text-text"
           >
             {weeks.map((w) => (
               <option key={w} value={w}>Week {w + 1}</option>
@@ -267,7 +267,7 @@ export default function ProgramDetailPage() {
               className={cn(
                 'flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center text-xs font-semibold transition-colors',
                 mobileDayIndex === i
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-500 text-on-primary'
                   : 'text-surface-500 hover:bg-surface-100',
               )}
             >
@@ -295,7 +295,7 @@ export default function ProgramDetailPage() {
         {/* FAB */}
         <button
           onClick={() => setExercisePoolOpen(true)}
-          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:bg-primary-700"
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-on-primary shadow-lg hover:bg-primary-600 active:bg-primary-700"
         >
           <Plus className="h-6 w-6" />
         </button>
@@ -312,7 +312,7 @@ export default function ProgramDetailPage() {
                   className={cn(
                     'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
                     mobileSession === s
-                      ? 'bg-primary-500 text-white'
+                      ? 'bg-primary-500 text-on-primary'
                       : 'bg-surface-100 text-surface-500 hover:bg-surface-200',
                   )}
                 >
@@ -355,7 +355,7 @@ export default function ProgramDetailPage() {
                     }}
                     className={cn(
                       'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
-                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -471,7 +471,7 @@ export default function ProgramDetailPage() {
         <div className="w-56 shrink-0">
           <div className="sticky top-6 space-y-3">
             {/* Exercise pool */}
-            <div className="rounded-xl border border-surface-200 bg-white">
+            <div className="rounded-xl border border-surface-200 bg-card">
               <div className="border-b border-surface-100 px-3 py-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
@@ -517,7 +517,7 @@ export default function ProgramDetailPage() {
                         onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
                         className={cn(
                           'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
-                          exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                          exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                         )}
                       >
                         <p className={cn('font-display text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
@@ -536,7 +536,7 @@ export default function ProgramDetailPage() {
             </div>
 
             {/* Saved Workouts pool */}
-            <div className="rounded-xl border border-surface-200 bg-white">
+            <div className="rounded-xl border border-surface-200 bg-card">
               <div className="border-b border-surface-100 px-3 py-2">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
                   Saved Workouts

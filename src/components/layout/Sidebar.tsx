@@ -40,8 +40,8 @@ export default function Sidebar() {
   const [workoutsOpen, setWorkoutsOpen] = useState(workoutsActive)
 
   return (
-    <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-surface-200 md:bg-white">
-      <div className="flex h-14 items-center gap-2 border-b border-surface-200 px-4">
+    <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border md:bg-card">
+      <div className="flex h-14 items-center gap-2 border-b border-border px-4">
         <Dumbbell className="h-6 w-6 text-primary-600" />
         <span className="font-display text-lg font-bold text-surface-900">Iron Ledger</span>
       </div>

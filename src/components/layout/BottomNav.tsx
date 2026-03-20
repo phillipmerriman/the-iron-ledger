@@ -18,7 +18,7 @@ const links = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-surface-200 bg-white md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card md:hidden">
       <div className="flex items-center justify-around">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink

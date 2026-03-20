@@ -147,7 +147,7 @@ export default function TimersPage() {
 
       {/* Editor */}
       {editing !== null && (
-        <div className="rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-surface-200 bg-card p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
               {editing === 'new' ? 'New Timer' : 'Edit Timer'}
@@ -279,7 +279,7 @@ export default function TimersPage() {
         {timers.map((timer) => (
           <div
             key={timer.id}
-            className="group rounded-xl border border-surface-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+            className="group rounded-xl border border-surface-200 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className="mb-2 flex items-start justify-between">
               <h3 className="font-display font-semibold text-surface-800">{timer.name}</h3>
@@ -314,7 +314,7 @@ export default function TimersPage() {
               </span>
               <button
                 onClick={() => setRunningTimer(timer)}
-                className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+                className="inline-flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-on-primary hover:bg-primary-700"
               >
                 <CirclePlay className="h-3 w-3" /> Start
               </button>

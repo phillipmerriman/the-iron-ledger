@@ -184,7 +184,7 @@ export default function DataPage() {
           <button
             onClick={handleExport}
             disabled={selectedCategories.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             Export JSON
@@ -267,7 +267,7 @@ export default function DataPage() {
                 <button
                   onClick={handleImport}
                   disabled={importCategories.length === 0 || importing}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Upload className="h-4 w-4" />
                   {importing ? 'Importing...' : 'Import'}
@@ -301,7 +301,7 @@ export default function DataPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleDuplicateChoice(false)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-on-primary hover:bg-primary-700"
                 >
                   Skip Duplicates
                 </button>

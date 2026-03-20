@@ -27,10 +27,10 @@ export default function ExerciseCard({
   const colorClasses = getExerciseColorClasses(exercise.color)
 
   return (
-    <Card className={cn('space-y-2', colorClasses.bg)}>
+    <Card className={cn('space-y-2', colorClasses.bg, colorClasses.bg && 'force-light')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-display font-medium text-surface-900">{exercise.name}</p>
+          <p className={cn('font-display font-medium', colorClasses.text || 'text-surface-900')}>{exercise.name}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <Badge variant="primary">{formatLabel(exercise.exercise_type)}</Badge>
             <Badge>{formatLabel(exercise.primary_muscle)}</Badge>

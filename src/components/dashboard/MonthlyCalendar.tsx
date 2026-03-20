@@ -236,7 +236,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
                   !inMonth && 'text-surface-300',
                   inMonth && !worked && !planned && 'text-surface-600',
                   today && 'border-2 border-primary-400 font-bold',
-                  completed && 'bg-primary-500 text-white hover:bg-primary-600',
+                  completed && 'bg-primary-500 text-on-primary hover:bg-primary-600',
                   worked && !completed && today && 'bg-warning-500/20 text-warning-600 hover:bg-warning-500/30',
                   worked && !completed && !today && inMonth && 'bg-primary-100 text-primary-700 hover:bg-primary-200',
                   planned && !worked && inMonth && 'bg-primary-100 text-primary-700 hover:bg-primary-200',
@@ -252,7 +252,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
               ) : (planned || (worked && !completed && !today)) && inMonth ? (
                 <div className="mt-0.5 h-1 w-1 rounded-full bg-primary-400" />
               ) : inMonth && !worked ? (
-                <span className="mt-0.5 text-[8px] font-medium text-surface-300">Rest</span>
+                <span className="mt-0.5 text-[8px] font-medium text-surface-400">Rest</span>
               ) : null}
             </div>
           )
@@ -359,7 +359,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
                               key={entry.id}
                               className={cn(
                                 'rounded-lg border p-2 text-sm',
-                                ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                                ex?.color ? `${color.bg} ${color.border} force-light` : 'border-surface-200 bg-surface-50',
                               )}
                             >
                               <div className="flex items-center gap-1.5">

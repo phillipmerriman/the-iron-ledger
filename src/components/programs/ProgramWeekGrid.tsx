@@ -291,7 +291,7 @@ export default function ProgramWeekGrid({
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </button>
                 {openMenu === `day-${dateKey}` && (
-                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                     {allPlanned.length > 0 && (
                       <>
                         <button onClick={() => { handleCopyDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">

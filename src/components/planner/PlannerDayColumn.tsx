@@ -174,7 +174,7 @@ export default function PlannerDayColumn({
     <div
       className={cn(
         'flex flex-col rounded-xl border-2 border-dashed transition-colors',
-        today ? 'border-primary-300 bg-primary-50/20' : 'border-surface-200 bg-white',
+        today ? 'border-primary-300 bg-primary-50/20' : 'border-surface-200 bg-card',
       )}
       style={minHeight ? { minHeight } : undefined}
     >
@@ -293,7 +293,7 @@ export default function PlannerDayColumn({
                             title={[getExerciseName(entry.exercise_id), entry.notes].filter(Boolean).join('\n') || undefined}
                             className={cn(
                               'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
-                              ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
+                              ex?.color ? `${entryColor.bg} ${entryColor.border} force-light` : 'border-surface-200 bg-card',
                               isDraggedEntry && 'opacity-30',
                             )}
                           >

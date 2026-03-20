@@ -49,12 +49,12 @@ export default function MobileDrawer({ open, onClose }: MobileDrawerProps) {
       {/* Drawer */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transition-transform duration-200 ease-in-out md:hidden',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-xl transition-transform duration-200 ease-in-out md:hidden',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Header */}
-        <div className="flex h-14 items-center justify-between border-b border-surface-200 px-4">
+        <div className="flex h-14 items-center justify-between border-b border-border px-4">
           <span className="font-display text-lg font-bold text-surface-900">Menu</span>
           <button
             onClick={onClose}

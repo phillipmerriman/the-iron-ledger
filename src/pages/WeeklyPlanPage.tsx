@@ -474,7 +474,7 @@ export default function WeeklyPlanPage() {
               className={cn(
                 'flex-1 min-w-0 rounded-lg px-1 py-1.5 text-center text-xs font-semibold transition-colors',
                 mobileDayIndex === i
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-500 text-on-primary'
                   : isToday(day) ? 'bg-primary-50 text-primary-600' : 'text-surface-500 hover:bg-surface-100',
               )}
             >
@@ -519,7 +519,7 @@ export default function WeeklyPlanPage() {
                     <MoreHorizontal className="h-3.5 w-3.5" />
                   </button>
                   {openMenu === `day-m` && (
-                    <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                    <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                       {allPlanned.length > 0 && (
                         <>
                           <button onClick={() => { handleCopyDay(dateKeys[mobileDayIndex]); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
@@ -559,7 +559,7 @@ export default function WeeklyPlanPage() {
                   <MoreHorizontal className="h-2.5 w-2.5" />
                 </button>
                 {openMenu === `ses-${dk}-${session}` && (
-                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                  <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                     {sessionEntries.length > 0 && (
                       <button onClick={() => { handleCopySession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
                         <Copy className="h-3.5 w-3.5" /> Copy
@@ -588,7 +588,7 @@ export default function WeeklyPlanPage() {
         {/* FAB to open exercise pool */}
         <button
           onClick={() => setExercisePoolOpen(true)}
-          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 active:bg-primary-700"
+          className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-on-primary shadow-lg hover:bg-primary-600 active:bg-primary-700"
         >
           <Plus className="h-6 w-6" />
         </button>
@@ -605,7 +605,7 @@ export default function WeeklyPlanPage() {
                   className={cn(
                     'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
                     mobileSession === s
-                      ? 'bg-primary-500 text-white'
+                      ? 'bg-primary-500 text-on-primary'
                       : 'bg-surface-100 text-surface-500 hover:bg-surface-200',
                   )}
                 >
@@ -645,7 +645,7 @@ export default function WeeklyPlanPage() {
                     onClick={() => handleMobileTapExercise(exercise.id)}
                     className={cn(
                       'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
-                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                      justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -749,7 +749,7 @@ export default function WeeklyPlanPage() {
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </button>
                       {openMenu === `day-${dateKey}` && (
-                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-40 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                           {allPlanned.length > 0 && (
                             <>
                               <button onClick={() => { handleCopyDay(dateKey); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
@@ -788,7 +788,7 @@ export default function WeeklyPlanPage() {
                         <MoreHorizontal className="h-2.5 w-2.5" />
                       </button>
                       {openMenu === `ses-${dk}-${session}` && (
-                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-white py-1 shadow-lg">
+                        <div ref={menuRef} className="absolute right-0 top-full z-30 mt-1 w-36 rounded-lg border border-surface-200 bg-card py-1 shadow-lg">
                           {sessionEntries.length > 0 && (
                             <button onClick={() => { handleCopySession(dk, session); setOpenMenu(null) }} className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-surface-600 hover:bg-surface-50">
                               <Copy className="h-3.5 w-3.5" /> Copy
@@ -821,7 +821,7 @@ export default function WeeklyPlanPage() {
         <div className="w-56 shrink-0">
           <div className="sticky top-6 space-y-3">
             {/* Exercise pool */}
-            <div className="rounded-xl border border-surface-200 bg-white">
+            <div className="rounded-xl border border-surface-200 bg-card">
               <div className="border-b border-surface-100 px-3 py-2">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
@@ -868,7 +868,7 @@ export default function WeeklyPlanPage() {
                         onDragEnd={handleDragEnd}
                         className={cn(
                           'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
-                          exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
+                          exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                         )}
                       >
                         <p className={cn('font-display text-xs font-medium truncate', exercise.color ? poolColor.text : 'text-surface-800')}>
@@ -891,7 +891,7 @@ export default function WeeklyPlanPage() {
             </div>
 
             {/* Saved Workouts pool */}
-            <div className="rounded-xl border border-surface-200 bg-white">
+            <div className="rounded-xl border border-surface-200 bg-card">
               <div className="border-b border-surface-100 px-3 py-2">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
                   Saved Workouts
