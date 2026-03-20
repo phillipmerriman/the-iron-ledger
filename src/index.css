@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Fitness app color palette */
   --color-primary-50: #ecfdf5;
@@ -33,14 +35,109 @@
   --color-info-500: #3b82f6;
   --color-info-600: #2563eb;
 
+  /* Semantic tokens — light defaults */
+  --color-bg: #f8fafc;
+  --color-card: #ffffff;
+  --color-card-alt: #f8fafc;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-border-light: #f1f5f9;
+  --color-hover: #f1f5f9;
+  --color-input-bg: #ffffff;
+  --color-input-border: #cbd5e1;
+  --color-nav-active-bg: #ecfdf5;
+  --color-nav-active-text: #047857;
+  --color-on-primary: #ffffff;
+
   --font-display: 'OCR A Std', 'OCR A Extended', monospace;
 }
 
+/* Dracula dark theme overrides */
+.dark {
+  --color-bg: #282a36;
+  --color-card: #44475a;
+  --color-card-alt: #383a4a;
+  --color-text: #f8f8f2;
+  --color-text-secondary: #d5d8e6;
+  --color-text-muted: #9ba4c0;
+  --color-border: #6272a4;
+  --color-border-light: #44475a;
+  --color-hover: #44475a;
+  --color-input-bg: #282a36;
+  --color-input-border: #6272a4;
+  --color-nav-active-bg: #44475a;
+  --color-nav-active-text: #50fa7b;
+  --color-on-primary: #282a36;
+
+  /* Override surface scale for dark mode components using surface-* directly */
+  --color-surface-50: #323443;
+  --color-surface-100: #3c3e50;
+  --color-surface-200: #44475a;
+  --color-surface-300: #6272a4;
+  --color-surface-400: #9ba4c0;
+  --color-surface-500: #c0c5d8;
+  --color-surface-600: #d5d8e6;
+  --color-surface-700: #f8f8f2;
+  --color-surface-800: #f8f8f2;
+  --color-surface-900: #f8f8f2;
+  --color-surface-950: #f8f8f2;
+
+  /* Override primary for dark mode accents */
+  --color-primary-50: #44475a;
+  --color-primary-100: #44475a;
+  --color-primary-200: #6272a4;
+  --color-primary-400: #3de068;
+  --color-primary-500: #3de068;
+  --color-primary-600: #3de068;
+  --color-primary-700: #36c95d;
+
+  /* Danger / Warning / Info in dark */
+  --color-danger-500: #ff5555;
+  --color-danger-600: #ff5555;
+  --color-warning-500: #f1fa8c;
+  --color-warning-600: #f1fa8c;
+  --color-info-500: #8be9fd;
+  --color-info-600: #8be9fd;
+}
+
 body {
-  @apply bg-surface-50 text-surface-900 antialiased;
+  @apply bg-bg text-text antialiased;
   font-family: system-ui, -apple-system, sans-serif;
   margin: 0;
   min-height: 100vh;
+}
+
+.dark body,
+.dark {
+  color-scheme: dark;
+}
+
+
+/* Reset to light-mode colors inside pastel-colored cards */
+.dark .force-light {
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #020617;
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-700: #047857;
+  --color-info-500: #3b82f6;
+  --color-info-600: #2563eb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  color-scheme: light;
 }
 
 h1, h2, h3, h4, h5, h6 {

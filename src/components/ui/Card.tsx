@@ -9,7 +9,7 @@ export default function Card({ padding = true, className, children, ...props }: 
   return (
     <div
       className={cn(
-        'rounded-xl border border-surface-200 bg-white shadow-sm',
+        'rounded-xl border border-border bg-card shadow-sm',
         padding && 'p-4',
         className,
       )}

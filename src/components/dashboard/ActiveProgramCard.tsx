@@ -29,7 +29,7 @@ export default function ActiveProgramCard({ program, activation, sessions }: Act
   return (
     <Link
       to={`/programs/${program.id}`}
-      className="block rounded-xl border border-surface-200 bg-white p-4 shadow-sm transition-colors hover:border-primary-300"
+      className="block rounded-xl border border-surface-200 bg-card p-4 shadow-sm transition-colors hover:border-primary-300"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">

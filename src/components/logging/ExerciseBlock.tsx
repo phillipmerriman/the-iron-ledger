@@ -27,7 +27,7 @@ export default function ExerciseBlock({
   const warmupSets = sets.filter((s) => s.is_warmup)
 
   return (
-    <div className="rounded-xl border border-surface-200 bg-white">
+    <div className="rounded-xl border border-surface-200 bg-card">
       <div className="border-b border-surface-100 px-4 py-2.5">
         <p className="font-display font-medium text-surface-900">{exercise.name}</p>
         <div className="mt-1 flex gap-1.5">

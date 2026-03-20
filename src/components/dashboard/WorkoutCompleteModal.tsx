@@ -76,7 +76,7 @@ export default function WorkoutCompleteModal({
                     key={entry.id}
                     className={cn(
                       'flex items-center justify-between rounded-lg border p-2.5',
-                      ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                      ex?.color ? `${color.bg} ${color.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >
                     <div className="min-w-0">

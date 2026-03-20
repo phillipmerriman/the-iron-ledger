@@ -308,7 +308,7 @@ export default function WorkoutTemplateForm({
                       onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                       className={cn(
                         'group flex items-start gap-1 rounded-lg border p-2 text-xs shadow-sm cursor-pointer transition-opacity',
-                        ex?.color ? `${entryColor.bg} ${entryColor.border}` : 'border-surface-200 bg-white',
+                        ex?.color ? `${entryColor.bg} ${entryColor.border} force-light` : 'border-surface-200 bg-card',
                         isDragging && 'opacity-30',
                       )}
                     >
@@ -359,7 +359,7 @@ export default function WorkoutTemplateForm({
 
         {/* Exercise pool */}
         <div className="w-48 shrink-0">
-          <div className="rounded-xl border border-surface-200 bg-white">
+          <div className="rounded-xl border border-surface-200 bg-card">
             <div className="border-b border-surface-100 px-3 py-2">
               <h3 className="text-xs font-bold uppercase tracking-wide text-surface-500">
                 Exercise Pool

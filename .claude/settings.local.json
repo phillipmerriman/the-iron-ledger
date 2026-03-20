@@ -22,7 +22,10 @@
       "Bash(node -e \"require\\(''child_process''\\).execSync\\(''npx tsc --noEmit'', {stdio: ''inherit''}\\)\")",
       "Bash(npm run:*)",
       "Bash(ls -la /c/Users/phill/repos/the-iron-ledger/src/*.css)",
-      "Bash(ls -la /c/Users/phill/repos/the-iron-ledger/*.css)"
+      "Bash(ls -la /c/Users/phill/repos/the-iron-ledger/*.css)",
+      "Bash(while read:*)",
+      "Bash(do sed:*)",
+      "Bash(done)"
     ]
   }
 }

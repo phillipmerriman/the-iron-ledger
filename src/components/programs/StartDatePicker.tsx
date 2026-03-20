@@ -119,7 +119,7 @@ export default function StartDatePicker({ value, onChange, programWeeks, activat
                   // Program range highlight
                   inRange && !isSelected && 'bg-primary-100 text-primary-700',
                   // Selected Sunday
-                  isSelected && 'bg-primary-500 text-white',
+                  isSelected && 'bg-primary-500 text-on-primary',
                   // Sunday emphasis
                   isSunday && inMonth && !isSelected && !inRange && 'font-semibold text-surface-800',
                   // Regular day

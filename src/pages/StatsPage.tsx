@@ -76,7 +76,7 @@ export default function StatsPage() {
               onClick={() => setRange(r)}
               className={cn(
                 'px-3 py-1.5 transition-colors first:rounded-l-lg last:rounded-r-lg',
-                r === range ? 'bg-primary-600 text-white' : 'text-surface-600 hover:bg-surface-50',
+                r === range ? 'bg-primary-600 text-on-primary' : 'text-surface-600 hover:bg-surface-50',
               )}
             >
               {r === 'allTime' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)}

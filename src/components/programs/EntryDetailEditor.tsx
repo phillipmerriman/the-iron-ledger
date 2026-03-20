@@ -119,7 +119,7 @@ export default function EntryDetailEditor({
   })
 
   const inputClass =
-    'w-full rounded border border-surface-200 px-2 py-1 text-xs focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
+    'w-full rounded border border-surface-200 bg-input-bg px-2 py-1 text-xs text-text focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500'
 
   return (
     <>
@@ -127,7 +127,7 @@ export default function EntryDetailEditor({
     {createPortal(
     <div
       ref={ref}
-      className="fixed z-50 w-52 max-h-[calc(100vh-16px)] overflow-y-auto rounded-lg border border-surface-200 bg-white p-2 shadow-lg"
+      className="fixed z-50 w-52 max-h-[calc(100vh-16px)] overflow-y-auto rounded-lg border border-surface-200 bg-card p-2 shadow-lg"
       style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden', top: 0, left: 0 }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -371,7 +371,7 @@ export default function EntryDetailEditor({
         {/* Save button */}
         <button
           onClick={handleSave}
-          className="w-full rounded bg-primary-600 px-2 py-1 text-xs font-medium text-white hover:bg-primary-700"
+          className="w-full rounded bg-primary-600 px-2 py-1 text-xs font-medium text-on-primary hover:bg-primary-700"
         >
           Done
         </button>

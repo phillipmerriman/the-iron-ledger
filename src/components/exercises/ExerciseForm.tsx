@@ -226,7 +226,7 @@ export default function ExerciseForm({ initial, onSubmit, onCancel, submitting, 
                   min={1}
                   value={defaultSets}
                   onChange={(e) => setDefaultSets(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full rounded-lg border border-surface-300 bg-input-bg px-3 py-2 text-sm text-text shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   placeholder="3"
                 />
               </div>
@@ -235,7 +235,7 @@ export default function ExerciseForm({ initial, onSubmit, onCancel, submitting, 
                 <select
                   value={defaultRepType}
                   onChange={(e) => setDefaultRepType(e.target.value as RepType)}
-                  className="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full rounded-lg border border-surface-300 bg-input-bg px-3 py-2 text-sm text-text shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 >
                   {REP_TYPE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -278,7 +278,7 @@ export default function ExerciseForm({ initial, onSubmit, onCancel, submitting, 
                   min={1}
                   value={defaultReps}
                   onChange={(e) => setDefaultReps(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  className="w-full rounded-lg border border-surface-300 bg-input-bg px-3 py-2 text-sm text-text shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                   placeholder="10"
                 />
               </div>
@@ -348,7 +348,7 @@ export default function ExerciseForm({ initial, onSubmit, onCancel, submitting, 
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className={cn(
-              'block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500',
+              'block w-full rounded-lg border border-surface-300 bg-input-bg px-3 py-2 text-sm text-text shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500',
               notes && 'pr-8',
             )}
             placeholder="Optional notes..."

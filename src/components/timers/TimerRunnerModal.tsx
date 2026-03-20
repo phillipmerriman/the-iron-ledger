@@ -150,7 +150,7 @@ export default function TimerRunnerModal({ timer, onClose }: TimerRunnerModalPro
   return (
     <div className="fixed inset-0 z-50 bg-black/60">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="relative w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl">
           {/* Close */}
           <button
             onClick={onClose}
@@ -204,7 +204,7 @@ export default function TimerRunnerModal({ timer, onClose }: TimerRunnerModalPro
                 </button>
                 <button
                   onClick={handleResume}
-                  className="rounded-full bg-primary-600 p-4 text-white shadow-lg hover:bg-primary-700"
+                  className="rounded-full bg-primary-600 p-4 text-on-primary shadow-lg hover:bg-primary-700"
                 >
                   <CirclePlay className="h-7 w-7" />
                 </button>

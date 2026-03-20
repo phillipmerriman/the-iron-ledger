@@ -236,8 +236,8 @@ export default function WeeklyCalendar({ sessions, activations = [], onUpdateSes
               onClick={() => setSelectedDay(day)}
               className={cn(
                 'flex min-h-[80px] w-[80px] flex-shrink-0 cursor-pointer flex-col rounded-lg border p-1.5 transition-colors hover:border-primary-300 md:w-auto md:min-w-0 md:flex-shrink',
-                today ? 'border-primary-300 bg-primary-50/30' : 'border-surface-200',
-                status === 'completed' && 'border-primary-400 bg-primary-50/50',
+                today ? 'border-primary-300 bg-surface-100' : 'border-surface-300 bg-surface-50',
+                status === 'completed' && !today && 'border-primary-400 bg-surface-100',
               )}
             >
               <div className="mb-1 flex items-center justify-between">
@@ -252,7 +252,7 @@ export default function WeeklyCalendar({ sessions, activations = [], onUpdateSes
                 <span
                   className={cn(
                     'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
-                    today && 'bg-primary-500 text-white',
+                    today && 'bg-primary-500 text-on-primary',
                     status === 'completed' && !today && 'bg-primary-100 text-primary-700',
                     status === 'in_progress' && !today && 'bg-warning-500/20 text-warning-600',
                     status === 'none' && !today && 'text-surface-400',
@@ -412,7 +412,7 @@ export default function WeeklyCalendar({ sessions, activations = [], onUpdateSes
                               key={entry.id}
                               className={cn(
                                 'rounded-lg border p-2 text-sm',
-                                ex?.color ? `${color.bg} ${color.border}` : 'border-surface-200 bg-surface-50',
+                                ex?.color ? `${color.bg} ${color.border} force-light` : 'border-surface-200 bg-surface-50',
                               )}
                             >
                               <div className="flex items-center gap-1.5">

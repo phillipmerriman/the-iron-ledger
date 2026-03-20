@@ -215,7 +215,7 @@ export default function WorkoutRunnerModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/60">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="relative w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl">
           {/* Close */}
           <button
             onClick={onClose}
@@ -233,7 +233,7 @@ export default function WorkoutRunnerModal({
               <p className="mt-2 text-sm text-surface-500">{entries.length} {entries.length === 1 ? 'exercise' : 'exercises'} done</p>
               <button
                 onClick={onComplete}
-                className="mt-6 w-full rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
+                className="mt-6 w-full rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-on-primary shadow-sm hover:bg-primary-700"
               >
                 Done
               </button>
@@ -347,7 +347,7 @@ export default function WorkoutRunnerModal({
                         <button onClick={handleTimerReset} className="rounded-full p-2 text-surface-400 hover:bg-surface-100" title="Reset">
                           <RotateCcw className="h-4 w-4" />
                         </button>
-                        <button onClick={handleTimerResume} className="rounded-full bg-primary-600 p-3 text-white shadow-lg hover:bg-primary-700">
+                        <button onClick={handleTimerResume} className="rounded-full bg-primary-600 p-3 text-on-primary shadow-lg hover:bg-primary-700">
                           <CirclePlay className="h-5 w-5" />
                         </button>
                         <button onClick={handleTimerSkip} className="rounded-full p-2 text-surface-400 hover:bg-surface-100" title="Skip">
@@ -358,7 +358,7 @@ export default function WorkoutRunnerModal({
                   ) : timerFinished ? (
                     <button
                       onClick={handleNext}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-on-primary shadow-sm hover:bg-primary-700"
                     >
                       {useSetMarkers && currentSet < totalSets ? (
                         <>Complete Set <Check className="h-4 w-4" /></>
@@ -412,7 +412,7 @@ export default function WorkoutRunnerModal({
                 /* No timer — simple continue button */
                 <button
                   onClick={handleNext}
-                  className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
+                  className="mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 text-sm font-medium text-on-primary shadow-sm hover:bg-primary-700"
                 >
                   {useSetMarkers && currentSet < totalSets ? (
                     <>Complete Set <Check className="h-4 w-4" /></>
