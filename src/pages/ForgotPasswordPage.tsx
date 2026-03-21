@@ -27,15 +27,17 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-surface-900">Reset your password</h1>
-          <p className="mt-1 text-sm text-surface-500">
-            Enter your email and we&apos;ll send you a reset link
-          </p>
+          {!submitted && (
+            <p className="mt-1 text-sm text-surface-500">
+              Enter your email and we&apos;ll send you a reset link
+            </p>
+          )}
         </div>
 
         {submitted ? (
           <div className="space-y-4">
             <div className="rounded-lg bg-primary-500/10 px-4 py-3 text-sm text-primary-600">
-              Check your email for a password reset link. You can close this page.
+              Check your email for a password reset link.
             </div>
             <p className="text-center text-sm text-surface-500">
               <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
