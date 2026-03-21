@@ -25,7 +25,11 @@
       "Bash(ls -la /c/Users/phill/repos/the-iron-ledger/*.css)",
       "Bash(while read:*)",
       "Bash(do sed:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(find /c/Users/phill/repos/the-iron-ledger -type f \\\\\\(-name *.prisma -o -name *.sql -o -name *schema* \\\\\\))",
+      "Bash(find /c/Users/phill/repos/the-iron-ledger -type f \\\\\\(-name *.server.ts -o -name api.ts -o -name *routes* -o -name server.ts \\\\\\))",
+      "Bash(find /c/Users/phill/repos/the-iron-ledger -name .env* -o -name supabase.json -o -name auth.ts)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }
