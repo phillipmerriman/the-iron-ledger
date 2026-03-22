@@ -109,10 +109,11 @@ export default function TodaysWorkoutsPage() {
     const sessionName = names.length > 0 ? names.join(', ') : 'Workout'
     const totalWeight = sessionEntries.reduce((sum, entry) =>
       sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
+    const now = new Date().toISOString()
     await createSession({
       name: sessionName,
-      started_at: `${dateKey}T09:00:00.000Z`,
-      completed_at: `${dateKey}T10:00:00.000Z`,
+      started_at: now,
+      completed_at: now,
       total_weight_moved: totalWeight > 0 ? `${totalWeight.toLocaleString()} ${preferredUnit}` : null,
       notes: `session:${sessionTag}`,
     })
@@ -194,13 +195,24 @@ export default function TodaysWorkoutsPage() {
       {/* Session groups */}
       {sessionGroups.map(({ session, label, entries: sessionEntries }) => {
         const isDone = completedSessions.has(session) || completedSessions.has('all')
+        const completedSession = isDone
+          ? workoutSessions.find((ws) => {
+              if (ws.started_at.slice(0, 10) !== dateKey || !ws.completed_at) return false
+              const match = ws.notes?.match(/^session:(.+)$/)
+              const slot = match ? match[1] : 'all'
+              return slot === session || slot === 'all'
+            })
+          : null
+        const completedTime = completedSession?.completed_at
+          ? format(new Date(completedSession.completed_at), 'h:mm a')
+          : null
         return (
         <div key={session} className={cn('space-y-3', isDone && 'opacity-50')}>
           <div className="flex items-center justify-between">
             <h2 className={cn('text-sm font-semibold uppercase tracking-wide', isDone ? 'text-success-600' : 'text-surface-400')}>
               {isDone && <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" />}
               {label}
-              {isDone && ' — Done'}
+              {isDone && (completedTime ? ` — Done at ${completedTime}` : ' — Done')}
             </h2>
             {!isDone && (
               <div className="flex items-center gap-2">
@@ -294,10 +306,19 @@ export default function TodaysWorkoutsPage() {
       {/* Complete All button */}
       {dayEntries.length > 0 && (() => {
         const allDone = completedSessions.has('all') || sessionGroups.every(({ session }) => completedSessions.has(session))
+        const lastCompleted = allDone
+          ? workoutSessions
+              .filter((ws) => ws.started_at.slice(0, 10) === dateKey && ws.completed_at)
+              .sort((a, b) => b.completed_at!.localeCompare(a.completed_at!))
+              [0]
+          : null
+        const allDoneTime = lastCompleted?.completed_at
+          ? format(new Date(lastCompleted.completed_at), 'h:mm a')
+          : null
         return allDone ? (
           <div className="flex items-center justify-center gap-2 rounded-xl bg-success-50 py-3 text-sm font-medium text-success-700">
             <CheckCircle2 className="h-4 w-4" />
-            All workouts complete
+            All workouts complete{allDoneTime && ` at ${allDoneTime}`}
           </div>
         ) : (
           <Button onClick={handleCompleteAll} className="w-full">
