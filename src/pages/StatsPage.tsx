@@ -5,6 +5,7 @@ import type { ExerciseStats } from '@/hooks/useStats'
 import { getExerciseColorClasses } from '@/types/common'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
+import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
 import { cn } from '@/lib/utils'
 
 type TimeRange = 'week' | 'month' | 'year' | 'allTime'
@@ -119,6 +120,18 @@ export default function StatsPage() {
           <p className="mt-1 text-3xl font-bold">{stats.programsCompleted}</p>
         </Card>
       </div>
+
+      {/* Muscle distribution */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-surface-500">Muscle Distribution — {TIME_LABELS[range]}</h2>
+        <MuscleDistributionChart
+          exerciseStats={stats.exerciseStats}
+          exercises={stats.exercises}
+          range={range}
+          metric="volume"
+          unit={unit}
+        />
+      </Card>
 
       {/* Volume by year */}
       {Object.keys(stats.totalWeightByYear).length > 1 && (

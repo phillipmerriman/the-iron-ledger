@@ -31,7 +31,8 @@
       "Bash(find /c/Users/phill/repos/the-iron-ledger -name .env* -o -name supabase.json -o -name auth.ts)",
       "Bash(echo \"EXIT: $?\")",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(echo \"EXIT_CODE:$?\")"
+      "Bash(echo \"EXIT_CODE:$?\")",
+      "Bash(node -e \"const ts = require\\(''typescript''\\); const config = ts.readConfigFile\\(''tsconfig.app.json'', ts.sys.readFile\\); const parsed = ts.parseJsonConfigFileContent\\(config.config, ts.sys, ''.''\\); const program = ts.createProgram\\(parsed.fileNames, parsed.options\\); const diags = ts.getPreEmitDiagnostics\\(program\\); diags.forEach\\(d => { const msg = ts.flattenDiagnosticMessageText\\(d.messageText, ''\\\\n''\\); if \\(d.file\\) { const {line} = d.file.getLineAndCharacterOfPosition\\(d.start\\); console.log\\(d.file.fileName + '':'' + \\(line+1\\) + '' '' + msg\\); } else { console.log\\(msg\\); } }\\); console.log\\(''Total errors: '' + diags.length\\);\")"
     ]
   }
 }
