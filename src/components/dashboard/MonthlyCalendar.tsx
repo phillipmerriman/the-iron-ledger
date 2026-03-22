@@ -164,10 +164,11 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
       const dayStr = format(day, 'yyyy-MM-dd')
       const totalWeight = planned.reduce((sum, entry) =>
         sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
+      const now = new Date().toISOString()
       await onCreateSession({
         name: sessionName,
-        started_at: `${dayStr}T09:00:00.000Z`,
-        completed_at: `${dayStr}T10:00:00.000Z`,
+        started_at: now,
+        completed_at: now,
         total_weight_moved: totalWeight > 0 ? `${totalWeight.toLocaleString()} ${preferredUnit}` : null,
         notes: 'session:all',
       })
