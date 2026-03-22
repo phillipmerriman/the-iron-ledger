@@ -6,6 +6,8 @@ import { getExerciseColorClasses } from '@/types/common'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
+import VolumeComparisonChart from '@/components/charts/VolumeComparisonChart'
+import CumulativeVolumeChart from '@/components/charts/CumulativeVolumeChart'
 import { cn } from '@/lib/utils'
 
 type TimeRange = 'week' | 'month' | 'year' | 'allTime'
@@ -120,6 +122,18 @@ export default function StatsPage() {
           <p className="mt-1 text-3xl font-bold">{stats.programsCompleted}</p>
         </Card>
       </div>
+
+      {/* Volume comparison */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-surface-500">Volume Comparison</h2>
+        <VolumeComparisonChart volumeByDay={stats.volumeByDay} unit={unit} />
+      </Card>
+
+      {/* Cumulative volume */}
+      <Card>
+        <h2 className="mb-3 text-sm font-semibold text-surface-500">Cumulative Volume</h2>
+        <CumulativeVolumeChart volumeByDay={stats.volumeByDay} exerciseStats={stats.exerciseStats} unit={unit} />
+      </Card>
 
       {/* Muscle distribution */}
       <Card>
