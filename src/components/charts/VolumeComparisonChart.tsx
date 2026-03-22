@@ -206,7 +206,9 @@ export default function VolumeComparisonChart({ volumeByDay, unit }: VolumeCompa
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div
+          className="group relative flex items-center gap-1.5 cursor-default"
+        >
           {pctChange > 0 ? (
             <TrendingUp className="h-4 w-4 text-green-600" />
           ) : pctChange < 0 ? (
@@ -222,6 +224,15 @@ export default function VolumeComparisonChart({ volumeByDay, unit }: VolumeCompa
           >
             {pctChange > 0 ? '+' : ''}{pctChange.toFixed(1)}%
           </span>
+          {/* Hover tooltip */}
+          <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1.5 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-md group-hover:block">
+            <p className="font-medium text-surface-800">
+              {pctChange >= 0 ? '+' : ''}{(currentTotal - compTotal).toLocaleString()}{unit ? ` ${unit}` : ''}
+            </p>
+            <p className="text-surface-500">
+              {currentTotal.toLocaleString()} vs {compTotal.toLocaleString()}{unit ? ` ${unit}` : ''}
+            </p>
+          </div>
         </div>
 
         <div className="space-y-0.5 text-right">

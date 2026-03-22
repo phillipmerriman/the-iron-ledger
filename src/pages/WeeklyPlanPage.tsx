@@ -110,7 +110,12 @@ export default function WeeklyPlanPage() {
   const [creatingExercise, setCreatingExercise] = useState(false)
 
   // Clipboard for copy/paste
-  const [clipboard, setClipboard] = useState<{ type: 'day'; dateKey: string; entries: PlannedEntry[] } | { type: 'session'; dateKey: string; session: Session; entries: PlannedEntry[] } | null>(null)
+  const [clipboard, setClipboard] = useState<
+    | { type: 'day'; dateKey: string; entries: PlannedEntry[] }
+    | { type: 'session'; dateKey: string; session: Session; entries: PlannedEntry[] }
+    | { type: 'week'; entries: (PlannedEntry & { dayIndex: number })[] }
+    | null
+  >(null)
 
   // Mobile state
   const [mobileDayIndex, setMobileDayIndex] = useState(() => {
@@ -355,6 +360,48 @@ export default function WeeklyPlanPage() {
     })), session)
   }
 
+  function handleCopyWeek() {
+    const weekEntries: (PlannedEntry & { dayIndex: number })[] = []
+    for (let i = 0; i < dateKeys.length; i++) {
+      const dayEntries = getEntriesForDate(dateKeys[i])
+      for (const entry of dayEntries) {
+        weekEntries.push({ ...entry, dayIndex: i })
+      }
+    }
+    if (weekEntries.length === 0) return
+    setClipboard({ type: 'week', entries: weekEntries })
+  }
+
+  async function handlePasteWeek() {
+    if (!clipboard || clipboard.type !== 'week') return
+    const byDaySession = new Map<string, (PlannedEntry & { dayIndex: number })[]>()
+    for (const entry of clipboard.entries) {
+      const key = `${entry.dayIndex}|${entry.session}`
+      if (!byDaySession.has(key)) byDaySession.set(key, [])
+      byDaySession.get(key)!.push(entry)
+    }
+    for (const [key, groupEntries] of byDaySession) {
+      const [dayIdxStr, session] = key.split('|')
+      const dayIdx = Number(dayIdxStr)
+      const targetDate = dateKeys[dayIdx]
+      if (!targetDate) continue
+      await addEntries(targetDate, groupEntries.map((e) => ({
+        exerciseId: e.exercise_id,
+        presets: {
+          sets: e.sets,
+          reps: e.reps,
+          rep_type: e.rep_type,
+          reps_right: e.reps_right,
+          weight: e.weight,
+          weight_unit: e.weight_unit,
+          intensity: e.intensity,
+          notes: e.notes,
+          set_markers: e.set_markers,
+        },
+      })), session as Session)
+    }
+  }
+
   function handleMobileTapExercise(exerciseId: string) {
     addEntry(dateKeys[mobileDayIndex], exerciseId, getExerciseDefaults(exerciseId), mobileSession)
     flashAdded(exerciseId)
@@ -430,6 +477,18 @@ export default function WeeklyPlanPage() {
           <span className="text-xs text-surface-400">
             {format(days[0], 'MMM d')} – {format(days[6], 'MMM d, yyyy')}
           </span>
+          <div className="ml-auto flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={handleCopyWeek} title="Copy Week">
+              <Copy className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline ml-1 text-xs">Copy Week</span>
+            </Button>
+            {clipboard?.type === 'week' && (
+              <Button size="sm" variant="ghost" onClick={handlePasteWeek} title="Paste Week">
+                <ClipboardPaste className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline ml-1 text-xs">Paste Week</span>
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-3">
@@ -460,6 +519,18 @@ export default function WeeklyPlanPage() {
               Today
             </Button>
           )}
+          <div className="ml-auto flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={handleCopyWeek} title="Copy Week">
+              <Copy className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline ml-1 text-xs">Copy Week</span>
+            </Button>
+            {clipboard?.type === 'week' && (
+              <Button size="sm" variant="ghost" onClick={handlePasteWeek} title="Paste Week">
+                <ClipboardPaste className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline ml-1 text-xs">Paste Week</span>
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
