@@ -10,15 +10,20 @@ import {
 } from 'date-fns'
 import useWorkouts from '@/hooks/useWorkouts'
 import usePrograms from '@/hooks/usePrograms'
+import useStats from '@/hooks/useStats'
 import { useAuth } from '@/contexts/AuthContext'
 import { loadUserEntries, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import type { WorkoutSession } from '@/types/database'
-import { cn } from '@/lib/utils'
 import WeeklyCalendar from '@/components/dashboard/WeeklyCalendar'
 import MonthlyCalendar from '@/components/dashboard/MonthlyCalendar'
 import ActiveProgramCard from '@/components/dashboard/ActiveProgramCard'
-import Card from '@/components/ui/Card'
+import SummaryCards, { SummaryCardSettings } from '@/components/ui/SummaryCards'
+import ReorderableSections from '@/components/ui/ReorderableSections'
+import type { Section } from '@/components/ui/ReorderableSections'
+import VolumeComparisonChart from '@/components/charts/VolumeComparisonChart'
+import CumulativeVolumeChart from '@/components/charts/CumulativeVolumeChart'
+import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
@@ -26,19 +31,19 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
   const { programs, activations, loading: programsLoading } = usePrograms()
+  const chartStats = useStats()
 
   const loading = workoutsLoading || programsLoading
 
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
-  // Load planned entries for slot-aware completion checks
   const [plannedEntries, setPlannedEntries] = useState<PlannedEntry[]>([])
   useEffect(() => {
     if (!user) return
     loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setPlannedEntries)
   }, [user, activationIds])
 
-  const stats = useMemo(() => {
+  const dashStats = useMemo(() => {
     function getSessionSlot(ws: WorkoutSession): string {
       const match = ws.notes?.match(/^session:(.+)$/)
       return match ? match[1] : 'all'
@@ -65,7 +70,6 @@ export default function DashboardPage() {
       isThisWeek(new Date(s.started_at), { weekStartsOn: 1 }),
     )
 
-    // Streak: consecutive days with ALL planned slots completed going backwards from today
     let streak = 0
     let day = startOfDay(new Date())
     while (true) {
@@ -77,7 +81,6 @@ export default function DashboardPage() {
       }
     }
 
-    // Per-slot status for today
     const todayKey = format(new Date(), 'yyyy-MM-dd')
     const todayPlanned = plannedEntries.filter((e) => e.date === todayKey)
     const todaySlots: { session: Session; done: boolean }[] = []
@@ -99,10 +102,92 @@ export default function DashboardPage() {
       total: completed.length,
       thisWeek: thisWeek.length,
       streak,
-      workedOutToday: isDayFullyCompleted(new Date()),
-      todaySlots,
+      todaySlots: todaySlots.map(({ session, done }) => ({
+        label: session === 'all' ? 'Workout' : SESSION_LABELS[session],
+        done,
+      })),
     }
   }, [sessions, plannedEntries])
+
+  const unit = chartStats.preferredUnit
+
+  const dashSections: Section[] = [
+    {
+      id: 'active-programs',
+      title: 'Active Programs',
+      render: () => (
+        <>
+          {activations.length > 0 ? (
+            <div className="space-y-4">
+              {activations.map((act) => {
+                const prog = programs.find((p) => p.id === act.program_id)
+                return prog ? <ActiveProgramCard key={act.id} program={prog} activation={act} sessions={sessions} /> : null
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-surface-100 p-2">
+                <Dumbbell className="h-5 w-5 text-surface-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-surface-700">No active program</p>
+                <p className="text-xs text-surface-400">
+                  Create a program and set it as active to track progress here.
+                </p>
+              </div>
+              <Link to="/programs">
+                <Button size="sm" variant="secondary">Programs</Button>
+              </Link>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      id: 'calendars',
+      title: 'Calendars',
+      render: () => (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="min-w-0">
+            <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+          </div>
+          <div>
+            <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'volume-comparison',
+      title: 'Volume Comparison',
+      hidden: chartStats.loading,
+      render: () => (
+        <VolumeComparisonChart volumeByDay={chartStats.volumeByDay} unit={unit} />
+      ),
+    },
+    {
+      id: 'cumulative-volume',
+      title: 'Cumulative Volume',
+      hidden: chartStats.loading,
+      render: () => (
+        <CumulativeVolumeChart volumeByDay={chartStats.volumeByDay} exerciseStats={chartStats.exerciseStats} unit={unit} />
+      ),
+    },
+    {
+      id: 'muscle-distribution',
+      title: 'Muscle Distribution',
+      hidden: chartStats.loading,
+      render: () => (
+        <MuscleDistributionChart
+          exerciseStats={chartStats.exerciseStats}
+          exercises={chartStats.exercises}
+          range="allTime"
+          metric="volume"
+          unit={unit}
+        />
+      ),
+    },
+  ]
 
   if (loading) {
     return (
@@ -115,7 +200,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <SummaryCardSettings />
+        </div>
         <Link to="/workouts/today">
           <Button size="sm">
             <Plus className="h-4 w-4" />
@@ -124,77 +212,18 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <p className="text-sm text-surface-500">Total Workouts</p>
-          <p className="mt-1 text-3xl font-bold">{stats.total}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-surface-500">This Week</p>
-          <p className="mt-1 text-3xl font-bold">{stats.thisWeek}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-surface-500">Current Streak</p>
-          <p className="mt-1 text-3xl font-bold">
-            {stats.streak} {stats.streak === 1 ? 'day' : 'days'}
-          </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-surface-500">Today</p>
-          {stats.todaySlots.length > 0 ? (
-            <div className="mt-1.5 space-y-1">
-              {stats.todaySlots.map(({ session, done }) => (
-                <div key={session} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-surface-600">
-                    {session === 'all' ? 'Workout' : SESSION_LABELS[session]}
-                  </span>
-                  <span className={cn('text-sm font-bold', done ? 'text-primary-600' : 'text-surface-400')}>
-                    {done ? 'Done' : 'Pending'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-1 text-3xl font-bold">
-              <span className="text-surface-400">Rest</span>
-            </p>
-          )}
-        </Card>
-      </div>
+      {/* Summary cards — shared config with Stats page */}
+      <SummaryCards
+        weight={{ value: chartStats.totalWeightAllTime, unit }}
+        workouts={dashStats.total}
+        thisWeek={dashStats.thisWeek}
+        streak={dashStats.streak}
+        programsCompleted={chartStats.programsCompleted}
+        todaySlots={dashStats.todaySlots}
+      />
 
-      {/* Active programs */}
-      {activations.length > 0 ? (
-        activations.map((act) => {
-          const prog = programs.find((p) => p.id === act.program_id)
-          return prog ? <ActiveProgramCard key={act.id} program={prog} activation={act} sessions={sessions} /> : null
-        })
-      ) : (
-        <Card className="flex items-center gap-3">
-          <div className="rounded-lg bg-surface-100 p-2">
-            <Dumbbell className="h-5 w-5 text-surface-400" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-surface-700">No active program</p>
-            <p className="text-xs text-surface-400">
-              Create a program and set it as active to track progress here.
-            </p>
-          </div>
-          <Link to="/programs">
-            <Button size="sm" variant="secondary">Programs</Button>
-          </Link>
-        </Card>
-      )}
-
-      {/* Calendars */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="min-w-0">
-          <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
-        </Card>
-        <Card>
-          <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
-        </Card>
-      </div>
+      {/* Reorderable sections */}
+      <ReorderableSections storageKey="dashboard-section-order" sections={dashSections} />
     </div>
   )
 }

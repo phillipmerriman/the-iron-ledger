@@ -141,11 +141,11 @@ export default function WeeklyCalendar({ sessions, activations = [], onUpdateSes
       const sessionName = names.length > 0 ? names.join(', ') : 'Workout'
       const totalWeight = planned.reduce((sum, entry) =>
         sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit), 0)
-      const now = new Date().toISOString()
+      const dayStr = format(day, 'yyyy-MM-dd')
       await onCreateSession({
         name: sessionName,
-        started_at: now,
-        completed_at: now,
+        started_at: `${dayStr}T09:00:00.000Z`,
+        completed_at: `${dayStr}T10:00:00.000Z`,
         total_weight_moved: totalWeight > 0 ? `${totalWeight.toLocaleString()} ${preferredUnit}` : null,
         notes: 'session:all',
       })
