@@ -19,7 +19,7 @@ import WeeklyCalendar from '@/components/dashboard/WeeklyCalendar'
 import MonthlyCalendar from '@/components/dashboard/MonthlyCalendar'
 import ActiveProgramCard from '@/components/dashboard/ActiveProgramCard'
 import SummaryCards, { SummaryCardSettings } from '@/components/ui/SummaryCards'
-import ReorderableSections from '@/components/ui/ReorderableSections'
+import ReorderableSections, { SectionSettings } from '@/components/ui/ReorderableSections'
 import type { Section } from '@/components/ui/ReorderableSections'
 import VolumeComparisonChart from '@/components/charts/VolumeComparisonChart'
 import CumulativeVolumeChart from '@/components/charts/CumulativeVolumeChart'
@@ -203,6 +203,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <SummaryCardSettings />
+          <SectionSettings storageKey="dashboard-section-order" sections={dashSections} />
         </div>
         <Link to="/workouts/today">
           <Button size="sm">
