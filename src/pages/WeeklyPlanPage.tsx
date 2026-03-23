@@ -312,7 +312,7 @@ export default function WeeklyPlanPage() {
     if (!clipboard) return
     const clipEntries = clipboard.entries
     // Group entries by target session to preserve order within each session
-    const bySession = new Map<Session, typeof clipEntries>()
+    const bySession = new Map<Session, PlannedEntry[]>()
     for (const entry of clipEntries) {
       const targetSession = clipboard.type === 'session' ? clipboard.session : entry.session
       if (!bySession.has(targetSession)) bySession.set(targetSession, [])
