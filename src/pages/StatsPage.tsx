@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Flame, Dumbbell, Weight, Trophy } from 'lucide-react'
 import useStats from '@/hooks/useStats'
 import type { ExerciseStats } from '@/hooks/useStats'
 import { getExerciseColorClasses } from '@/types/common'
-import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
+import SummaryCards, { SummaryCardSettings } from '@/components/ui/SummaryCards'
 import ReorderableSections from '@/components/ui/ReorderableSections'
 import type { Section } from '@/components/ui/ReorderableSections'
 import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
@@ -233,7 +232,10 @@ export default function StatsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Stats</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Stats</h1>
+          <SummaryCardSettings />
+        </div>
         {/* Time range selector */}
         <div className="flex rounded-lg border border-surface-200 text-xs font-medium">
           {(['week', 'month', 'year', 'allTime'] as TimeRange[]).map((r) => (
@@ -251,40 +253,16 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Summary cards — always pinned at top */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
-            <Weight className="h-4 w-4" />
-            Total Weight Moved
-          </div>
-          <p className="mt-1 text-3xl font-bold">{volume.toLocaleString()}</p>
-          <p className="text-xs text-surface-400">{unit}</p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
-            <Dumbbell className="h-4 w-4" />
-            Workouts
-          </div>
-          <p className="mt-1 text-3xl font-bold">{workouts}</p>
-          <p className="text-xs text-surface-400">{TIME_LABELS[range]}</p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
-            <Flame className="h-4 w-4" />
-            Current Streak
-          </div>
-          <p className="mt-1 text-3xl font-bold">{stats.streak}</p>
-          <p className="text-xs text-surface-400">{stats.streak === 1 ? 'day' : 'days'}</p>
-        </Card>
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
-            <Trophy className="h-4 w-4" />
-            Programs Completed
-          </div>
-          <p className="mt-1 text-3xl font-bold">{stats.programsCompleted}</p>
-        </Card>
-      </div>
+      {/* Summary cards */}
+      <SummaryCards
+        weight={{ value: volume, unit }}
+        workouts={workouts}
+        workoutsLabel={TIME_LABELS[range]}
+        thisWeek={stats.workoutsThisWeek}
+        streak={stats.streak}
+        programsCompleted={stats.programsCompleted}
+        todaySlots={[]}
+      />
 
       {/* Reorderable chart sections */}
       <ReorderableSections storageKey="stats-section-order" sections={chartSections} />

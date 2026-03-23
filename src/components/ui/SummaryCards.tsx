@@ -1,0 +1,229 @@
+import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
+import { Weight, Dumbbell, Flame, Trophy, CalendarDays, Clock, Settings } from 'lucide-react'
+import Card from '@/components/ui/Card'
+import { cn } from '@/lib/utils'
+
+const CARD_DEFS = [
+  { id: 'weight', label: 'Total Weight Moved', defaultVisible: true },
+  { id: 'workouts', label: 'Total Workouts', defaultVisible: true },
+  { id: 'thisWeek', label: 'This Week', defaultVisible: true },
+  { id: 'streak', label: 'Current Streak', defaultVisible: false },
+  { id: 'programs', label: 'Programs Completed', defaultVisible: true },
+  { id: 'today', label: 'Today', defaultVisible: true },
+] as const
+
+export type SummaryCardId = (typeof CARD_DEFS)[number]['id']
+
+const STORAGE_KEY = 'summary-visible-cards'
+const DEFAULT_IDS = new Set(CARD_DEFS.filter((c) => c.defaultVisible).map((c) => c.id))
+
+// Shared store so all components using this hook stay in sync
+const listeners = new Set<() => void>()
+let cachedSnapshot: Set<SummaryCardId> | null = null
+
+function readFromStorage(): Set<SummaryCardId> {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) return new Set(JSON.parse(saved) as SummaryCardId[])
+  } catch { /* ignore */ }
+  return DEFAULT_IDS
+}
+
+function getSnapshot(): Set<SummaryCardId> {
+  if (!cachedSnapshot) cachedSnapshot = readFromStorage()
+  return cachedSnapshot
+}
+
+function subscribe(cb: () => void) {
+  listeners.add(cb)
+  return () => { listeners.delete(cb) }
+}
+
+function setVisibleCards(next: Set<SummaryCardId>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]))
+  cachedSnapshot = next
+  listeners.forEach((cb) => cb())
+}
+
+function useCardVisibility() {
+  const visible = useSyncExternalStore(subscribe, getSnapshot)
+
+  const toggle = useCallback((id: SummaryCardId) => {
+    const next = new Set(visible)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setVisibleCards(next)
+  }, [visible])
+
+  return { visible, toggle }
+}
+
+interface TodaySlot {
+  label: string
+  done: boolean
+}
+
+interface SummaryCardsProps {
+  weight?: { value: number; unit: string }
+  workouts?: number
+  thisWeek?: number
+  streak?: number
+  programsCompleted?: number
+  todaySlots?: TodaySlot[]
+  workoutsLabel?: string
+}
+
+/** Gear button + dropdown for toggling summary cards. Place this wherever you want in the page header. */
+export function SummaryCardSettings() {
+  const { visible, toggle } = useCardVisibility()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'rounded-lg p-1.5 transition-colors',
+          open ? 'bg-surface-100 text-surface-700' : 'text-surface-400 hover:text-surface-600',
+        )}
+        aria-label="Configure summary cards"
+      >
+        <Settings className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1 w-52 rounded-lg border border-border bg-card p-2 shadow-lg z-20">
+          {CARD_DEFS.map((card) => (
+            <label
+              key={card.id}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-surface-700 hover:bg-surface-50"
+            >
+              <input
+                type="checkbox"
+                checked={visible.has(card.id)}
+                onChange={() => toggle(card.id)}
+                className="accent-primary-600"
+              />
+              {card.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function SummaryCards({
+  weight,
+  workouts,
+  thisWeek,
+  streak,
+  programsCompleted,
+  todaySlots,
+  workoutsLabel,
+}: SummaryCardsProps) {
+  const { visible } = useCardVisibility()
+
+  const available = CARD_DEFS.filter((c) => {
+    switch (c.id) {
+      case 'weight': return weight != null
+      case 'workouts': return workouts != null
+      case 'thisWeek': return thisWeek != null
+      case 'streak': return streak != null
+      case 'programs': return programsCompleted != null
+      case 'today': return todaySlots != null
+    }
+  })
+
+  const shown = available.filter((c) => visible.has(c.id))
+
+  return (
+    <div className={cn(
+      'grid gap-4',
+      shown.length <= 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4',
+    )}>
+      {visible.has('weight') && weight != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Weight className="h-4 w-4" />
+            Total Weight Moved
+          </div>
+          <p className="mt-1 text-3xl font-bold">{weight.value.toLocaleString()}</p>
+          <p className="text-xs text-surface-400">{weight.unit}</p>
+        </Card>
+      )}
+      {visible.has('workouts') && workouts != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Dumbbell className="h-4 w-4" />
+            Total Workouts
+          </div>
+          <p className="mt-1 text-3xl font-bold">{workouts}</p>
+          {workoutsLabel && <p className="text-xs text-surface-400">{workoutsLabel}</p>}
+        </Card>
+      )}
+      {visible.has('thisWeek') && thisWeek != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <CalendarDays className="h-4 w-4" />
+            This Week
+          </div>
+          <p className="mt-1 text-3xl font-bold">{thisWeek}</p>
+        </Card>
+      )}
+      {visible.has('streak') && streak != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Flame className="h-4 w-4" />
+            Current Streak
+          </div>
+          <p className="mt-1 text-3xl font-bold">{streak}</p>
+          <p className="text-xs text-surface-400">{streak === 1 ? 'day' : 'days'}</p>
+        </Card>
+      )}
+      {visible.has('programs') && programsCompleted != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Trophy className="h-4 w-4" />
+            Programs Completed
+          </div>
+          <p className="mt-1 text-3xl font-bold">{programsCompleted}</p>
+        </Card>
+      )}
+      {visible.has('today') && todaySlots != null && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Clock className="h-4 w-4" />
+            Today
+          </div>
+          {todaySlots.length > 0 ? (
+            <div className="mt-1.5 space-y-1">
+              {todaySlots.map(({ label, done }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-surface-600">{label}</span>
+                  <span className={cn('text-sm font-bold', done ? 'text-primary-600' : 'text-surface-400')}>
+                    {done ? 'Done' : 'Pending'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-3xl font-bold">
+              <span className="text-surface-400">Rest</span>
+            </p>
+          )}
+        </Card>
+      )}
+    </div>
+  )
+}
