@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, useCallback, useRef, type ReactNode } from 'react'
 import { ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
@@ -39,7 +39,6 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
   const [order, setOrder] = useState<string[]>(() => {
     const saved = loadOrder(storageKey)
     if (!saved) return defaultOrder
-    // Merge: keep saved order for ids that still exist, append any new ones
     const validIds = new Set(defaultOrder)
     const merged = saved.filter((id) => validIds.has(id))
     for (const id of defaultOrder) {
@@ -65,13 +64,68 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
     })
   }, [storageKey])
 
+  // ── Drag and drop ─────────────────────────────────────
+  const dragId = useRef<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
+
+  function handleDragStart(id: string) {
+    dragId.current = id
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault()
+    if (dragId.current && dragId.current !== id) {
+      setDropTarget(id)
+    }
+  }
+
+  function handleDragLeave() {
+    setDropTarget(null)
+  }
+
+  function handleDrop(targetId: string) {
+    setDropTarget(null)
+    const srcId = dragId.current
+    dragId.current = null
+    if (!srcId || srcId === targetId) return
+
+    setOrder((prev) => {
+      const srcIdx = prev.indexOf(srcId)
+      const targetIdx = prev.indexOf(targetId)
+      if (srcIdx < 0 || targetIdx < 0) return prev
+      const next = [...prev]
+      next.splice(srcIdx, 1)
+      next.splice(targetIdx, 0, srcId)
+      saveOrder(storageKey, next)
+      return next
+    })
+  }
+
+  function handleDragEnd() {
+    dragId.current = null
+    setDropTarget(null)
+  }
+
   return (
     <>
       {sorted.map((section, i) => (
-        <Card key={section.id} padding={false}>
+        <Card
+          key={section.id}
+          padding={false}
+          draggable
+          onDragStart={() => handleDragStart(section.id)}
+          onDragOver={(e) => handleDragOver(e, section.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={() => handleDrop(section.id)}
+          onDragEnd={handleDragEnd}
+          className={cn(
+            'transition-shadow',
+            dropTarget === section.id && 'ring-2 ring-primary-500 ring-offset-2',
+          )}
+        >
           {/* Header with title + reorder controls */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-            <GripVertical className="h-4 w-4 shrink-0 text-surface-300" />
+            <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-surface-300 active:cursor-grabbing" />
             <h2 className="flex-1 text-sm font-semibold text-surface-500">{section.title}</h2>
             <div className="flex items-center">
               <button
