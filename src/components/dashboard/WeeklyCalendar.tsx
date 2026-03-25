@@ -8,7 +8,6 @@ import type { Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto }
 import { cn } from '@/lib/utils'
 import { getExerciseColorClasses, calcEntryVolume } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
-import Button from '@/components/ui/Button'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
