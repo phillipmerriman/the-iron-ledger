@@ -148,10 +148,15 @@ export default function SummaryCards({
   const shown = available.filter((c) => visible.has(c.id))
 
   return (
-    <div className={cn(
-      'grid gap-4',
-      shown.length <= 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4',
-    )}>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-surface-500">Summary</h2>
+        <SummaryCardSettings />
+      </div>
+      <div className={cn(
+        'grid gap-4',
+        shown.length <= 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4',
+      )}>
       {visible.has('weight') && weight != null && (
         <Card>
           <div className="flex items-center gap-2 text-sm text-surface-500">
@@ -224,6 +229,7 @@ export default function SummaryCards({
           )}
         </Card>
       )}
+      </div>
     </div>
   )
 }

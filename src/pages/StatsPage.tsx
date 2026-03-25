@@ -3,7 +3,7 @@ import useStats from '@/hooks/useStats'
 import type { ExerciseStats } from '@/hooks/useStats'
 import { getExerciseColorClasses } from '@/types/common'
 import Spinner from '@/components/ui/Spinner'
-import SummaryCards, { SummaryCardSettings } from '@/components/ui/SummaryCards'
+import SummaryCards from '@/components/ui/SummaryCards'
 import ReorderableSections from '@/components/ui/ReorderableSections'
 import type { Section } from '@/components/ui/ReorderableSections'
 import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
@@ -234,7 +234,6 @@ export default function StatsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Stats</h1>
-          <SummaryCardSettings />
         </div>
         {/* Time range selector */}
         <div className="flex rounded-lg border border-surface-200 text-xs font-medium">
