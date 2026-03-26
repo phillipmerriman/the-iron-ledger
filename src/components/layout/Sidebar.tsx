@@ -14,6 +14,9 @@ import {
   ChevronDown,
   ListChecks,
   CalendarDays,
+  UtensilsCrossed,
+  BookOpen,
+  CalendarPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,10 +37,17 @@ const workoutSubLinks = [
   { to: '/workouts', label: 'Saved Workouts', icon: ListChecks },
 ] as const
 
+const mealSubLinks = [
+  { to: '/meals/recipes', label: 'Recipes', icon: BookOpen },
+  { to: '/plan?mode=meals', label: 'Meal Plan', icon: CalendarPlus },
+] as const
+
 export default function Sidebar() {
   const location = useLocation()
   const workoutsActive = location.pathname.startsWith('/workouts')
   const [workoutsOpen, setWorkoutsOpen] = useState(workoutsActive)
+  const mealsActive = location.pathname.startsWith('/meals') || (location.pathname === '/plan' && location.search.includes('mode=meals'))
+  const [mealsOpen, setMealsOpen] = useState(mealsActive)
 
   return (
     <aside className="hidden md:flex md:w-56 md:flex-col md:border-r md:border-border md:bg-card">
@@ -84,6 +94,47 @@ export default function Sidebar() {
           {workoutsOpen && (
             <div className="ml-4 mt-1 space-y-0.5 border-l border-surface-200 pl-3">
               {workoutSubLinks.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end
+                  className={({ isActive }) =>
+                    cn(
+                      'font-display flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-surface-500 hover:bg-surface-100 hover:text-surface-900',
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Meals — expandable */}
+        <div>
+          <button
+            onClick={() => setMealsOpen((o) => !o)}
+            className={cn(
+              'font-display flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              mealsActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900',
+            )}
+          >
+            <UtensilsCrossed className="h-5 w-5" />
+            Meals
+            <ChevronDown
+              className={cn('ml-auto h-4 w-4 transition-transform', mealsOpen && 'rotate-180')}
+            />
+          </button>
+          {mealsOpen && (
+            <div className="ml-4 mt-1 space-y-0.5 border-l border-surface-200 pl-3">
+              {mealSubLinks.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}

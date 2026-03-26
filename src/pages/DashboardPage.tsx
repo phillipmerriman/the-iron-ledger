@@ -24,6 +24,7 @@ import type { Section } from '@/components/ui/ReorderableSections'
 import VolumeComparisonChart from '@/components/charts/VolumeComparisonChart'
 import CumulativeVolumeChart from '@/components/charts/CumulativeVolumeChart'
 import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
+import MealWeeklyCalendar from '@/components/meals/MealWeeklyCalendar'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
@@ -156,6 +157,11 @@ export default function DashboardPage() {
           </div>
         </div>
       ),
+    },
+    {
+      id: 'meal-plan',
+      title: 'Meal Plan',
+      render: () => <MealWeeklyCalendar />,
     },
     {
       id: 'volume-comparison',

@@ -18,6 +18,8 @@ import BodyPage from '@/pages/BodyPage'
 import SettingsPage from '@/pages/SettingsPage'
 import DataPage from '@/pages/DataPage'
 import WeeklyPlanPage from '@/pages/WeeklyPlanPage'
+import RecipesPage from '@/pages/RecipesPage'
+import RecipeDetailPage from '@/pages/RecipeDetailPage'
 import TimersPage from '@/pages/TimersPage'
 import StatsPage from '@/pages/StatsPage'
 import TodaysWorkoutsPage from '@/pages/TodaysWorkoutsPage'
@@ -46,6 +48,8 @@ export default function App() {
               <Route path="programs/:id" element={<ProgramDetailPage />} />
               <Route path="plan" element={<WeeklyPlanPage />} />
               <Route path="plan/:programId" element={<WeeklyPlanPage />} />
+              <Route path="meals/recipes" element={<RecipesPage />} />
+              <Route path="meals/recipes/:id" element={<RecipeDetailPage />} />
               <Route path="timers" element={<TimersPage />} />
               <Route path="stats" element={<StatsPage />} />
               <Route path="records" element={<RecordsPage />} />
