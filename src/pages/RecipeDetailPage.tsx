@@ -139,19 +139,19 @@ export default function RecipeDetailPage() {
             <div className="text-xs text-surface-500">Calories</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-blue-600">{Math.round(perServing.protein_g)}g</div>
+            <div className="text-lg font-bold text-blue-400">{Math.round(perServing.protein_g)}g</div>
             <div className="text-xs text-surface-500">Protein</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-amber-600">{Math.round(perServing.carbs_g)}g</div>
+            <div className="text-lg font-bold text-amber-400">{Math.round(perServing.carbs_g)}g</div>
             <div className="text-xs text-surface-500">Carbs</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-rose-600">{Math.round(perServing.fat_g)}g</div>
+            <div className="text-lg font-bold text-rose-400">{Math.round(perServing.fat_g)}g</div>
             <div className="text-xs text-surface-500">Fat</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-green-600">{Math.round(perServing.fiber_g)}g</div>
+            <div className="text-lg font-bold text-green-400">{Math.round(perServing.fiber_g)}g</div>
             <div className="text-xs text-surface-500">Fiber</div>
           </div>
         </div>

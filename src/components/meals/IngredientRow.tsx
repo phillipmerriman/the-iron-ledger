@@ -107,10 +107,10 @@ export default function IngredientRow({ ingredient, index, onChange, onRemove }:
       {/* Macro summary (always visible) */}
       <div className="flex items-center gap-3 text-xs pl-7">
         <span className="text-surface-700 font-medium">{Math.round(ingredient.calories)}cal</span>
-        <span className="text-blue-600">{ingredient.protein_g}p</span>
-        <span className="text-amber-600">{ingredient.carbs_g}c</span>
-        <span className="text-rose-600">{ingredient.fat_g}f</span>
-        <span className="text-green-600">{ingredient.fiber_g}fib</span>
+        <span className="text-blue-400">{ingredient.protein_g}p</span>
+        <span className="text-amber-400">{ingredient.carbs_g}c</span>
+        <span className="text-rose-400">{ingredient.fat_g}f</span>
+        <span className="text-green-400">{ingredient.fiber_g}fib</span>
       </div>
 
       {/* Expanded macro editing */}

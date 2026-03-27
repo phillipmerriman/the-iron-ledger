@@ -19,9 +19,9 @@ export default function NutritionBadge({ macros, className, compact }: Nutrition
   return (
     <div className={cn('flex items-center gap-2 text-xs', className)}>
       <span className="font-medium text-surface-700">{Math.round(macros.calories)}cal</span>
-      <span className="text-blue-600">{Math.round(macros.protein_g)}p</span>
-      <span className="text-amber-600">{Math.round(macros.carbs_g)}c</span>
-      <span className="text-rose-600">{Math.round(macros.fat_g)}f</span>
+      <span className="text-blue-400">{Math.round(macros.protein_g)}p</span>
+      <span className="text-amber-400">{Math.round(macros.carbs_g)}c</span>
+      <span className="text-rose-400">{Math.round(macros.fat_g)}f</span>
     </div>
   )
 }
