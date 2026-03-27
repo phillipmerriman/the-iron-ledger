@@ -80,8 +80,8 @@ export default function useNutrition() {
       return []
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        setError('Nutrition lookup failed')
-        console.error(err)
+        console.error('[useNutrition]', err)
+        setError('Could not reach the nutrition database. Check your connection and try again.')
       }
       return []
     } finally {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -20,6 +20,38 @@ interface RecipeFormProps {
   saving?: boolean
 }
 
+// ── Draft auto-save ─────────────────────────────────────
+
+interface DraftData {
+  name: string
+  description: string
+  servings: number
+  rating: number | null
+  notes: string
+  ingredients: RecipeIngredient[]
+  steps: RecipeStep[]
+  savedAt: string
+}
+
+function draftKey(recipeId?: string) {
+  return `fittrack:recipe_draft:${recipeId ?? 'new'}`
+}
+
+function loadDraft(recipeId?: string): DraftData | null {
+  try {
+    const raw = localStorage.getItem(draftKey(recipeId))
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
+function saveDraft(recipeId: string | undefined, data: DraftData) {
+  localStorage.setItem(draftKey(recipeId), JSON.stringify(data))
+}
+
+function clearDraft(recipeId?: string) {
+  localStorage.removeItem(draftKey(recipeId))
+}
+
 function emptyIngredient(sortOrder: number): RecipeIngredient {
   return {
     id: crypto.randomUUID(),
@@ -38,35 +70,78 @@ function emptyIngredient(sortOrder: number): RecipeIngredient {
 }
 
 export default function RecipeForm({ initial, initialIngredients, initialSteps, onSave, onCancel, saving }: RecipeFormProps) {
-  const [name, setName] = useState(initial?.name ?? '')
-  const [description, setDescription] = useState(initial?.description ?? '')
-  const [servings, setServings] = useState(initial?.servings ?? 1)
-  const [rating, setRating] = useState<number | null>(initial?.rating ?? null)
-  const [notes, setNotes] = useState(initial?.notes ?? '')
+  const recipeId = initial?.id
+  const draft = useRef(loadDraft(recipeId)).current
+  const [restoredDraft, setRestoredDraft] = useState(false)
+
+  const [name, setName] = useState(draft?.name ?? initial?.name ?? '')
+  const [description, setDescription] = useState(draft?.description ?? initial?.description ?? '')
+  const [servings, setServings] = useState(draft?.servings ?? initial?.servings ?? 1)
+  const [rating, setRating] = useState<number | null>(draft?.rating ?? initial?.rating ?? null)
+  const [notes, setNotes] = useState(draft?.notes ?? initial?.notes ?? '')
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>(
-    initialIngredients?.length ? initialIngredients : [emptyIngredient(0)],
+    draft?.ingredients?.length ? draft.ingredients
+    : initialIngredients?.length ? initialIngredients
+    : [emptyIngredient(0)],
   )
   const [steps, setSteps] = useState<RecipeStep[]>(
-    initialSteps?.length ? initialSteps : [],
+    draft?.steps?.length ? draft.steps
+    : initialSteps?.length ? initialSteps
+    : [],
   )
 
-  // Sync when initial props change
+  // Show restore banner if draft was loaded
+  useEffect(() => {
+    if (draft) setRestoredDraft(true)
+  }, [])
+
+  function handleDiscardDraft() {
+    clearDraft(recipeId)
+    setRestoredDraft(false)
+    // Reset to initial/empty state
+    setName(initial?.name ?? '')
+    setDescription(initial?.description ?? '')
+    setServings(initial?.servings ?? 1)
+    setRating(initial?.rating ?? null)
+    setNotes(initial?.notes ?? '')
+    setIngredients(initialIngredients?.length ? initialIngredients : [emptyIngredient(0)])
+    setSteps(initialSteps?.length ? initialSteps : [])
+  }
+
+  // Auto-save draft on changes (debounced)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => {
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      // Only save if there's meaningful content
+      const hasContent = name.trim() || ingredients.some((i) => i.name.trim()) || steps.some((s) => s.instruction.trim())
+      if (hasContent) {
+        saveDraft(recipeId, { name, description, servings, rating, notes, ingredients, steps, savedAt: new Date().toISOString() })
+      }
+    }, 800)
+    return () => clearTimeout(timerRef.current)
+  }, [name, description, servings, rating, notes, ingredients, steps, recipeId])
+
+  // Sync when initial props change (e.g. navigating between recipes)
   useEffect(() => {
     if (initial) {
-      setName(initial.name)
-      setDescription(initial.description ?? '')
-      setServings(initial.servings)
-      setRating(initial.rating)
-      setNotes(initial.notes ?? '')
+      const d = loadDraft(initial.id)
+      if (!d) {
+        setName(initial.name)
+        setDescription(initial.description ?? '')
+        setServings(initial.servings)
+        setRating(initial.rating)
+        setNotes(initial.notes ?? '')
+      }
     }
   }, [initial?.id])
 
   useEffect(() => {
-    if (initialIngredients?.length) setIngredients(initialIngredients)
+    if (initialIngredients?.length && !loadDraft(recipeId)) setIngredients(initialIngredients)
   }, [initialIngredients])
 
   useEffect(() => {
-    if (initialSteps?.length) setSteps(initialSteps)
+    if (initialSteps?.length && !loadDraft(recipeId)) setSteps(initialSteps)
   }, [initialSteps])
 
   const totalMacros = sumMacros(ingredients, 1)
@@ -109,6 +184,8 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
     e.preventDefault()
     if (!name.trim()) return
 
+    clearDraft(recipeId)
+    setRestoredDraft(false)
     onSave(
       { name: name.trim(), description: description.trim() || null, servings, rating, notes: notes.trim() || null },
       ingredients
@@ -136,6 +213,15 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {restoredDraft && (
+        <div className="flex items-center justify-between rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-700">
+          <span>Unsaved draft restored.</span>
+          <button type="button" onClick={handleDiscardDraft} className="font-medium underline hover:text-primary-900">
+            Discard draft
+          </button>
+        </div>
+      )}
+
       {/* Basic info */}
       <div className="space-y-3">
         <Input

@@ -22,9 +22,7 @@ export default function IngredientSearch({ onSelect, quantity, unit, initialQuer
   async function handleLookup() {
     if (!query.trim()) return
     const items = await lookup(query, quantity, unit)
-    if (items.length > 0) {
-      setShowDropdown(true)
-    }
+    setShowDropdown(true)
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -67,7 +65,12 @@ export default function IngredientSearch({ onSelect, quantity, unit, initialQuer
         </button>
       </div>
 
-      {error && <p className="mt-1 text-xs text-danger-600">{error}</p>}
+      {error && (
+        <p className="mt-1 text-xs text-danger-400">
+          {error}{' '}
+          <button type="button" onClick={() => { clear(); setShowDropdown(false) }} className="underline hover:text-danger-300">Dismiss</button>
+        </p>
+      )}
 
       {showDropdown && results.length > 0 && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-card shadow-lg">
@@ -101,7 +104,7 @@ export default function IngredientSearch({ onSelect, quantity, unit, initialQuer
         </div>
       )}
 
-      {showDropdown && results.length === 0 && !loading && (
+      {showDropdown && results.length === 0 && !loading && !error && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-card p-3 text-sm text-surface-500 shadow-lg">
           No results found. Try a simpler food name (e.g. "chicken breast").
         </div>
