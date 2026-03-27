@@ -704,6 +704,28 @@ export interface Database {
         }
         Relationships: []
       }
+      nutrition_cache: {
+        Row: {
+          id: string
+          query: string
+          source: 'usda'
+          results: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          query: string
+          source?: 'usda'
+          results: Json
+          created_at?: string
+        }
+        Update: {
+          query?: string
+          source?: 'usda'
+          results?: Json
+        }
+        Relationships: []
+      }
       program_activations: {
         Row: {
           id: string
@@ -766,6 +788,7 @@ export type RecipeStepRow = Tables<'recipe_steps'>
 export type PlannedMealRow = Tables<'planned_meals'>
 export type MealIngredientRow = Tables<'meal_ingredients'>
 export type DietRow = Tables<'diets'>
+export type NutritionCacheRow = Tables<'nutrition_cache'>
 
 /** A single activation of a program template with a specific start date */
 export interface ProgramActivation {

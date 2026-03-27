@@ -97,7 +97,10 @@ export default function IngredientRow({ ingredient, index, onChange, onRemove }:
       {showLookup && (
         <IngredientSearch
           onSelect={handleNutritionSelect}
-          placeholder={`e.g. "${ingredient.quantity || 1} ${ingredient.unit} ${ingredient.name || 'chicken breast'}"`}
+          initialQuery={ingredient.name || ''}
+          quantity={ingredient.quantity || 1}
+          unit={ingredient.unit || 'g'}
+          placeholder="e.g. &quot;walleye&quot;"
         />
       )}
 
