@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Dumbbell } from 'lucide-react'
 import {
@@ -11,9 +11,8 @@ import {
 import useWorkouts from '@/hooks/useWorkouts'
 import usePrograms from '@/hooks/usePrograms'
 import useStats from '@/hooks/useStats'
-import { useAuth } from '@/contexts/AuthContext'
-import { loadUserEntries, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
-import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
+import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
+import type { Session } from '@/hooks/useWeeklyPlan'
 import type { WorkoutSession } from '@/types/database'
 import WeeklyCalendar from '@/components/dashboard/WeeklyCalendar'
 import MonthlyCalendar from '@/components/dashboard/MonthlyCalendar'
@@ -29,20 +28,14 @@ import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
 export default function DashboardPage() {
-  const { user } = useAuth()
   const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
   const { programs, activations, loading: programsLoading } = usePrograms()
-  const chartStats = useStats()
+  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
+  const chartStats = useStats({ sessions, programs, activationIds })
 
   const loading = workoutsLoading || programsLoading
 
-  const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
-
-  const [plannedEntries, setPlannedEntries] = useState<PlannedEntry[]>([])
-  useEffect(() => {
-    if (!user) return
-    loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setPlannedEntries)
-  }, [user, activationIds])
+  const plannedEntries = chartStats.entries
 
   const dashStats = useMemo(() => {
     function getSessionSlot(ws: WorkoutSession): string {
@@ -150,10 +143,10 @@ export default function DashboardPage() {
       render: () => (
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="min-w-0">
-            <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+            <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} exercises={chartStats.exercises} plannedEntries={plannedEntries} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
           </div>
           <div>
-            <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
+            <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} exercises={chartStats.exercises} plannedEntries={plannedEntries} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
           </div>
         </div>
       ),

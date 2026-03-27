@@ -68,46 +68,67 @@ export interface StatsData {
   preferredUnit: WeightUnit
 }
 
-export default function useStats() {
+export interface UseStatsOptions {
+  /** Pre-fetched sessions — skips the workout_sessions query when provided */
+  sessions?: WorkoutSession[]
+  /** Pre-fetched programs — skips the programs query when provided */
+  programs?: Program[]
+  /** Activation IDs to scope planned entries (includes both program-scoped and unscoped) */
+  activationIds?: string[]
+}
+
+export default function useStats(options: UseStatsOptions = {}) {
   const { user, profile } = useAuth()
   const preferredUnit = (profile?.preferred_weight_unit as WeightUnit) ?? 'lbs'
 
-  const [sessions, setSessions] = useState<WorkoutSession[]>([])
+  const [ownSessions, setOwnSessions] = useState<WorkoutSession[]>([])
   const [entries, setEntries] = useState<PlannedEntry[]>([])
-  const [programs, setPrograms] = useState<Program[]>([])
+  const [ownPrograms, setOwnPrograms] = useState<Program[]>([])
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
+
+  const sessions = options.sessions ?? ownSessions
+  const programs = options.programs ?? ownPrograms
 
   const fetch = useCallback(async () => {
     if (!user) return
     setLoading(true)
 
     if (isDev) {
-      const allSessions = localDb.getAll('workout_sessions').filter((s) => s.user_id === user.id) as WorkoutSession[]
-      const allPrograms = localDb.getAll('programs').filter((p) => p.user_id === user.id) as Program[]
-      const allExercises = localDb.getAll('exercises').filter((e) => e.user_id === user.id) as Exercise[]
-      const allEntries = await loadUserEntries(user.id)
-
-      setSessions(allSessions)
-      setEntries(allEntries)
-      setPrograms(allPrograms)
-      setExercises(allExercises)
+      if (!options.sessions) {
+        setOwnSessions(localDb.getAll('workout_sessions').filter((s) => s.user_id === user.id) as WorkoutSession[])
+      }
+      if (!options.programs) {
+        setOwnPrograms(localDb.getAll('programs').filter((p) => p.user_id === user.id) as Program[])
+      }
+      setExercises(localDb.getAll('exercises').filter((e) => e.user_id === user.id) as Exercise[])
+      setEntries(await loadUserEntries(user.id, options.activationIds?.length ? options.activationIds : undefined))
     } else {
-      const [sessRes, progRes, exRes] = await Promise.all([
-        supabase.from('workout_sessions').select('*').eq('user_id', user.id),
-        supabase.from('programs').select('*').eq('user_id', user.id),
-        supabase.from('exercises').select('*').eq('user_id', user.id),
-      ])
-      const allEntries = await loadUserEntries(user.id)
+      const fetches: Promise<void>[] = []
 
-      setSessions(sessRes.data ?? [])
-      setPrograms(progRes.data ?? [])
-      setExercises(exRes.data ?? [])
-      setEntries(allEntries)
+      if (!options.sessions) {
+        fetches.push(
+          supabase.from('workout_sessions').select('*').eq('user_id', user.id)
+            .then(({ data }) => { setOwnSessions(data ?? []) }),
+        )
+      }
+      if (!options.programs) {
+        fetches.push(
+          supabase.from('programs').select('*').eq('user_id', user.id)
+            .then(({ data }) => { setOwnPrograms(data ?? []) }),
+        )
+      }
+      fetches.push(
+        supabase.from('exercises').select('*').eq('user_id', user.id)
+          .then(({ data }) => { setExercises(data ?? []) }),
+      )
+      fetches.push(loadUserEntries(user.id, options.activationIds?.length ? options.activationIds : undefined).then(setEntries))
+
+      await Promise.all(fetches)
     }
 
     setLoading(false)
-  }, [user])
+  }, [user, !!options.sessions, !!options.programs, options.activationIds])
 
   useEffect(() => { fetch() }, [fetch])
 
@@ -279,5 +300,5 @@ export default function useStats() {
     }
   }, [sessions, entries, programs, exercises, preferredUnit])
 
-  return { ...stats, loading, exercises }
+  return { ...stats, loading, exercises, entries }
 }

@@ -91,6 +91,8 @@ interface UseWeeklyPlanOptions {
   /** Pass multiple IDs to include entries from several activations */
   programIds?: string[]
   includeUnscoped?: boolean
+  /** Pre-fetched entries — skips the Supabase query and filters these instead */
+  prefetchedEntries?: PlannedEntry[]
 }
 
 export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
@@ -101,9 +103,10 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     programId = null,
     programIds,
     includeUnscoped = false,
+    prefetchedEntries,
   } = options
 
-  const [entries, setEntries] = useState<PlannedEntry[]>([])
+  const [fetchedEntries, setFetchedEntries] = useState<PlannedEntry[]>([])
 
   const weekStart = startOfWeek(addWeeks(startDate, weekOffset), { weekStartsOn: 0 })
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
@@ -111,7 +114,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   const dateKeys = days.map((d) => format(d, 'yyyy-MM-dd'))
 
   const fetch = useCallback(async () => {
-    if (!user) return
+    if (!user || prefetchedEntries) return
     const hasMultiple = programIds && programIds.length > 0
 
     if (isDev) {
@@ -125,7 +128,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
               ? (e.program_id === programId || (includeUnscoped && e.program_id == null))
               : e.program_id == null),
       )
-      setEntries(all)
+      setFetchedEntries(all)
     } else {
       let query = supabase
         .from('planned_entries')
@@ -149,11 +152,16 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
 
       const { data, error } = await query.order('sort_order')
       if (error) throw error
-      setEntries(asEntries(data ?? []))
+      setFetchedEntries(asEntries(data ?? []))
     }
-  }, [user, dateKeys.join(','), programId, programIds?.join(','), includeUnscoped])
+  }, [user, dateKeys.join(','), programId, programIds?.join(','), includeUnscoped, !!prefetchedEntries])
 
   useEffect(() => { fetch() }, [fetch])
+
+  // When prefetched entries are provided, filter them to this week's dates client-side
+  const entries = prefetchedEntries
+    ? prefetchedEntries.filter((e) => dateKeys.includes(e.date))
+    : fetchedEntries
 
   function getEntriesForDate(dateKey: string) {
     const sessionOrder = { all: 0, morning: 1, noon: 2, night: 3 }

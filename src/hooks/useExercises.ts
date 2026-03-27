@@ -6,13 +6,13 @@ import type { Exercise, InsertDto, UpdateDto } from '@/types/database'
 
 const sortByName = (a: Exercise, b: Exercise) => a.name.localeCompare(b.name)
 
-export default function useExercises() {
+export default function useExercises(options?: { skip?: boolean }) {
   const { user } = useAuth()
   const [exercises, setExercises] = useState<Exercise[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!options?.skip)
 
   const fetch = useCallback(async () => {
-    if (!user) return
+    if (!user || options?.skip) return
     setLoading(true)
     if (isDev) {
       const all = localDb.getAll('exercises').filter((e) => e.user_id === user.id)
