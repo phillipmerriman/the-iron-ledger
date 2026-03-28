@@ -1,6 +1,6 @@
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { format, isToday } from 'date-fns'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import useMealPlan from '@/hooks/useMealPlan'
 import useRecipes from '@/hooks/useRecipes'
 import { MEAL_SLOTS, MEAL_SLOT_LABELS } from '@/types/meal-types'
@@ -42,8 +42,8 @@ export default function MealWeeklyCalendar() {
     <div className="rounded-xl border border-border bg-card">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <h2 className="font-display text-sm font-semibold text-text">Meal Plan</h2>
         <div className="flex items-center gap-1.5">
+          <h2 className="font-display text-sm font-semibold text-text">Meal Plan</h2>
           <button
             onClick={() => setWeekDelta((w) => w - 1)}
             className="rounded p-1 text-surface-400 hover:bg-surface-100 hover:text-surface-600"
@@ -65,6 +65,13 @@ export default function MealWeeklyCalendar() {
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
+        <Link
+          to={`/plan?mode=meals${weekDelta !== 0 ? `&mealweek=${weekDelta}` : ''}`}
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50"
+        >
+          <Pencil className="h-3 w-3" />
+          Plan
+        </Link>
       </div>
 
       {/* Days */}
