@@ -606,6 +606,7 @@ export interface Database {
           servings: number
           rating: number | null
           notes: string | null
+          eaten_at: string | null
           created_at: string
         }
         Insert: {
@@ -619,6 +620,7 @@ export interface Database {
           servings?: number
           rating?: number | null
           notes?: string | null
+          eaten_at?: string | null
           created_at?: string
         }
         Update: {
@@ -630,6 +632,7 @@ export interface Database {
           servings?: number
           rating?: number | null
           notes?: string | null
+          eaten_at?: string | null
         }
         Relationships: []
       }

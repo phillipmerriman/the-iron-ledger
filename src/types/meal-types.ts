@@ -87,6 +87,7 @@ export interface PlannedMeal {
   servings: number
   rating: number | null
   notes: string | null
+  eaten_at: string | null   // set when user marks meal as eaten
   created_at: string
 }
 
@@ -118,7 +119,7 @@ export interface Diet {
 }
 
 export type PlannedMealUpdate = Partial<Pick<PlannedMeal,
-  'recipe_id' | 'meal_slot' | 'servings' | 'rating' | 'notes'
+  'recipe_id' | 'meal_slot' | 'servings' | 'rating' | 'notes' | 'eaten_at'
 >>
 
 /** Sum macros from an array of ingredients, optionally scaled by servings */

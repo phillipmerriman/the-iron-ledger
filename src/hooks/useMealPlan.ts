@@ -31,6 +31,7 @@ function loadAll(): PlannedMeal[] {
     servings: e.servings ?? 1,
     rating: e.rating ?? null,
     notes: e.notes ?? null,
+    eaten_at: e.eaten_at ?? null,
     created_at: e.created_at ?? new Date().toISOString(),
   }))
 }
@@ -128,6 +129,7 @@ export default function useMealPlan(options: UseMealPlanOptions = {}) {
       servings,
       rating: null,
       notes: null,
+      eaten_at: null,
       created_at: new Date().toISOString(),
     }
 
@@ -251,6 +253,24 @@ export default function useMealPlan(options: UseMealPlanOptions = {}) {
     setEntries((prev) => prev.filter((e) => e.date !== dateKey))
   }
 
+  async function markEaten(id: string, eaten: boolean) {
+    const eaten_at = eaten ? new Date().toISOString() : null
+    if (isDev) {
+      const all = loadAll()
+      const idx = all.findIndex((e) => e.id === id)
+      if (idx === -1) return
+      all[idx].eaten_at = eaten_at
+      saveAll(all)
+    } else {
+      const { error } = await supabase
+        .from('planned_meals')
+        .update({ eaten_at })
+        .eq('id', id)
+      if (error) throw error
+    }
+    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, eaten_at } : e)))
+  }
+
   async function clearSlot(dateKey: string, slot: MealSlot) {
     if (!user) return
     if (isDev) {
@@ -283,6 +303,7 @@ export default function useMealPlan(options: UseMealPlanOptions = {}) {
     addMeal,
     updateMeal,
     removeMeal,
+    markEaten,
     moveMeal,
     clearDate,
     clearSlot,

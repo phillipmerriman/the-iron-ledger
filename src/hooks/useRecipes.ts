@@ -281,3 +281,19 @@ export function useRecipeSteps(recipeId: string) {
 
   return { steps, loading, refetch: fetch, add, update, remove }
 }
+
+/** Load recipe ingredients for a single recipe (non-hook, for imperative use) */
+export async function loadRecipeIngredients(recipeId: string): Promise<RecipeIngredient[]> {
+  if (isDev) {
+    return localDb.getAll('recipe_ingredients')
+      .filter((i) => (i as unknown as RecipeIngredient).recipe_id === recipeId)
+      .sort((a, b) => (a as unknown as RecipeIngredient).sort_order - (b as unknown as RecipeIngredient).sort_order) as unknown as RecipeIngredient[]
+  }
+  const { data, error } = await supabase
+    .from('recipe_ingredients')
+    .select('*')
+    .eq('recipe_id', recipeId)
+    .order('sort_order')
+  if (error) throw error
+  return (data ?? []) as unknown as RecipeIngredient[]
+}
