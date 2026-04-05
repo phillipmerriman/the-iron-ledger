@@ -225,7 +225,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       })
       if (error) throw error
     }
-    setEntries((prev) => [...prev, entry])
+    setFetchedEntries((prev) => [...prev, entry])
   }
 
   async function addEntries(dateKey: string, items: { exerciseId: string; presets?: PlannedEntryUpdate }[], session: Session = 'all') {
@@ -279,7 +279,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       )
       if (error) throw error
     }
-    setEntries((prev) => [...prev, ...newEntries])
+    setFetchedEntries((prev) => [...prev, ...newEntries])
   }
 
   async function updateEntry(id: string, values: PlannedEntryUpdate) {
@@ -293,7 +293,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       const { error } = await supabase.from('planned_entries').update(values).eq('id', id)
       if (error) throw error
     }
-    setEntries((prev) =>
+    setFetchedEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...values } : e)),
     )
   }
@@ -306,7 +306,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       const { error } = await supabase.from('planned_entries').delete().eq('id', id)
       if (error) throw error
     }
-    setEntries((prev) => prev.filter((e) => e.id !== id))
+    setFetchedEntries((prev) => prev.filter((e) => e.id !== id))
   }
 
   async function moveEntry(entryId: string, toDateKey: string, toIndex: number, toSession?: Session) {
@@ -331,7 +331,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       })
 
       saveAll(all)
-      setEntries(
+      setFetchedEntries(
         all.filter((e) => e.user_id === user?.id && dateKeys.includes(e.date) && (programId ? e.program_id === programId : true)),
       )
     } else {
@@ -377,7 +377,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       const { error } = await query
       if (error) throw error
     }
-    setEntries((prev) => prev.filter((e) => e.date !== dateKey))
+    setFetchedEntries((prev) => prev.filter((e) => e.date !== dateKey))
   }
 
   async function clearSession(dateKey: string, session: Session) {
@@ -398,7 +398,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       const { error } = await query
       if (error) throw error
     }
-    setEntries((prev) => prev.filter((e) => !(e.date === dateKey && e.session === session)))
+    setFetchedEntries((prev) => prev.filter((e) => !(e.date === dateKey && e.session === session)))
   }
 
   return {

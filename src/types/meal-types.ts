@@ -66,6 +66,53 @@ export interface RecipeIngredient {
   fiber_g: number
   rating: number | null
   sort_order: number
+  /** Whether the entered macros represent totals for all qty, or macros per single unit */
+  macro_mode?: 'total' | 'per_unit'
+  /** Additional label nutrients and micronutrients, keyed by nutrient id */
+  extra_nutrients?: Record<string, number>
+}
+
+export const LABEL_NUTRIENTS = [
+  { key: 'saturated_fat_g',       label: 'Saturated Fat',    unit: 'g'   },
+  { key: 'trans_fat_g',           label: 'Trans Fat',        unit: 'g'   },
+  { key: 'polyunsaturated_fat_g', label: 'Polyunsat. Fat',   unit: 'g'   },
+  { key: 'monounsaturated_fat_g', label: 'Monounsat. Fat',   unit: 'g'   },
+  { key: 'cholesterol_mg',        label: 'Cholesterol',      unit: 'mg'  },
+  { key: 'sodium_mg',             label: 'Sodium',           unit: 'mg'  },
+  { key: 'sugars_g',              label: 'Total Sugars',     unit: 'g'   },
+  { key: 'added_sugars_g',        label: 'Added Sugars',     unit: 'g'   },
+  { key: 'sugar_alcohols_g',      label: 'Sugar Alcohols',   unit: 'g'   },
+] as const
+
+export const MICRONUTRIENTS = [
+  { key: 'vitamin_d_mcg',   label: 'Vitamin D',   unit: 'mcg' },
+  { key: 'calcium_mg',      label: 'Calcium',     unit: 'mg'  },
+  { key: 'iron_mg',         label: 'Iron',        unit: 'mg'  },
+  { key: 'potassium_mg',    label: 'Potassium',   unit: 'mg'  },
+  { key: 'vitamin_a_mcg',   label: 'Vitamin A',   unit: 'mcg' },
+  { key: 'vitamin_c_mg',    label: 'Vitamin C',   unit: 'mg'  },
+  { key: 'vitamin_b12_mcg', label: 'Vitamin B12', unit: 'mcg' },
+  { key: 'vitamin_b6_mg',   label: 'Vitamin B6',  unit: 'mg'  },
+  { key: 'magnesium_mg',    label: 'Magnesium',   unit: 'mg'  },
+  { key: 'zinc_mg',         label: 'Zinc',        unit: 'mg'  },
+  { key: 'phosphorus_mg',   label: 'Phosphorus',  unit: 'mg'  },
+  { key: 'folate_mcg',      label: 'Folate',      unit: 'mcg' },
+  { key: 'thiamin_mg',      label: 'Thiamin',     unit: 'mg'  },
+  { key: 'riboflavin_mg',   label: 'Riboflavin',  unit: 'mg'  },
+  { key: 'niacin_mg',       label: 'Niacin',      unit: 'mg'  },
+  { key: 'selenium_mcg',    label: 'Selenium',    unit: 'mcg' },
+] as const
+
+/** Returns the effective total macros for an ingredient, accounting for macro_mode */
+export function effectiveIngredientMacros(ing: RecipeIngredient): MacroData {
+  const multiplier = ing.macro_mode === 'per_unit' ? (ing.quantity || 1) : 1
+  return {
+    calories: ing.calories * multiplier,
+    protein_g: ing.protein_g * multiplier,
+    carbs_g: ing.carbs_g * multiplier,
+    fat_g: ing.fat_g * multiplier,
+    fiber_g: ing.fiber_g * multiplier,
+  }
 }
 
 export interface RecipeStep {

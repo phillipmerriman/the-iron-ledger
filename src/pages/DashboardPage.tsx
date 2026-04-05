@@ -24,6 +24,8 @@ import VolumeComparisonChart from '@/components/charts/VolumeComparisonChart'
 import CumulativeVolumeChart from '@/components/charts/CumulativeVolumeChart'
 import MuscleDistributionChart from '@/components/charts/MuscleDistributionChart'
 import MealWeeklyCalendar from '@/components/meals/MealWeeklyCalendar'
+import useMealSummary from '@/hooks/useMealSummary'
+import useRecipes from '@/hooks/useRecipes'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 
@@ -32,6 +34,9 @@ export default function DashboardPage() {
   const { programs, activations, loading: programsLoading } = usePrograms()
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
   const chartStats = useStats({ sessions, programs, activationIds })
+  const { recipes } = useRecipes()
+  const recipeNames = useMemo(() => Object.fromEntries(recipes.map((r) => [r.id, r.name])), [recipes])
+  const mealSummary = useMealSummary(recipeNames)
 
   const loading = workoutsLoading || programsLoading
 
@@ -219,6 +224,9 @@ export default function DashboardPage() {
         streak={dashStats.streak}
         programsCompleted={chartStats.programsCompleted}
         todaySlots={dashStats.todaySlots}
+        todayMacros={mealSummary.todayMacros}
+        weekMacros={mealSummary.weekMacros}
+        nextMeal={mealSummary.nextMeal}
       />
 
       {/* Reorderable sections */}

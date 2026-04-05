@@ -6,7 +6,7 @@ import RecipeForm from '@/components/meals/RecipeForm'
 import NutritionBadge from '@/components/meals/NutritionBadge'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
-import { sumMacros } from '@/types/meal-types'
+import { sumMacros, effectiveIngredientMacros } from '@/types/meal-types'
 import type { Recipe, RecipeIngredient, RecipeStep } from '@/types/meal-types'
 
 export default function RecipeDetailPage() {
@@ -23,8 +23,8 @@ export default function RecipeDetailPage() {
 
   const loading = recipesLoading || ingredientsLoading || stepsLoading
 
-  const perServing = sumMacros(ingredients, recipe?.servings ?? 1)
-  const totalMacros = sumMacros(ingredients, 1)
+  const perServing = sumMacros(ingredients.map(effectiveIngredientMacros), recipe?.servings ?? 1)
+  const totalMacros = sumMacros(ingredients.map(effectiveIngredientMacros), 1)
 
   async function handleSave(
     recipeData: Omit<Recipe, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
@@ -124,9 +124,14 @@ export default function RecipeDetailPage() {
           <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
             <Pencil className="h-4 w-4" /> Edit
           </Button>
-          <Button size="sm" variant="danger" onClick={handleDelete}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="rounded-lg p-1.5 text-surface-400 hover:text-danger-500 hover:bg-danger-50 transition-colors"
+            aria-label="Delete recipe"
+          >
             <Trash2 className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       </div>
 

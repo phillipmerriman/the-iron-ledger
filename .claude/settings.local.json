@@ -43,7 +43,12 @@
       "Bash(curl -s \"https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=Cannellini%20Beans&pageSize=5\")",
       "Bash(python -m json.tool)",
       "Bash(curl -s \"https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=Cannellini%20Beans&pageSize=3\")",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(GIT_TRACE=1 git commit --dry-run -m \"test\")",
+      "Bash(env)",
+      "Bash(git reset:*)"
     ]
   }
 }

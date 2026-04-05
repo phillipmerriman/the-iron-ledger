@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Pencil, Check, Undo2 } from 'lucide-react'
 import useMealPlan from '@/hooks/useMealPlan'
 import useRecipes from '@/hooks/useRecipes'
 import { loadRecipeIngredients } from '@/hooks/useRecipes'
-import { MEAL_SLOTS, MEAL_SLOT_LABELS, sumMacros } from '@/types/meal-types'
+import { MEAL_SLOTS, MEAL_SLOT_LABELS, sumMacros, effectiveIngredientMacros } from '@/types/meal-types'
 import type { MealSlot, PlannedMeal, MacroData } from '@/types/meal-types'
 import Modal from '@/components/ui/Modal'
 import { cn } from '@/lib/utils'
@@ -68,7 +68,7 @@ export default function MealWeeklyCalendar() {
       missing.map(async (id) => {
         try {
           const ings = await loadRecipeIngredients(id)
-          return [id, sumMacros(ings, 1)] as [string, MacroData]
+          return [id, sumMacros(ings.map(effectiveIngredientMacros), 1)] as [string, MacroData]
         } catch {
           return null
         }
@@ -272,7 +272,16 @@ export default function MealWeeklyCalendar() {
         title={selectedDay ? format(selectedDay.date, 'EEEE, MMM d') : ''}
       >
         {selectedEntries.length === 0 ? (
-          <p className="py-4 text-center text-sm text-surface-400">No meals planned for this day</p>
+          <div className="flex flex-col items-center gap-3 py-4">
+            <p className="text-center text-sm text-surface-400">No meals planned for this day</p>
+            <Link
+              to={`/plan?mode=meals${weekDelta !== 0 ? `&mealweek=${weekDelta}` : ''}`}
+              onClick={() => setSelectedDay(null)}
+              className="text-sm text-primary-600"
+            >
+              Plan a meal! →
+            </Link>
+          </div>
         ) : (
           <div className="space-y-4">
             {/* Eaten meals */}

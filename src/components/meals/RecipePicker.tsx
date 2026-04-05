@@ -1,5 +1,6 @@
 import { useState, useMemo, type DragEvent } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import type { Recipe, MacroData } from '@/types/meal-types'
 import NutritionBadge from './NutritionBadge'
 import { cn } from '@/lib/utils'
@@ -22,7 +23,16 @@ export default function RecipePicker({ recipes, recipeMacros, onDragStart, onDra
 
   return (
     <div className="flex flex-col h-full">
-      <h3 className="font-display text-sm font-semibold text-text mb-2">Recipes</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-display text-sm font-semibold text-text">Recipes</h3>
+        <Link
+          to="/meals/recipes"
+          className="rounded p-0.5 text-primary-600 hover:bg-primary-50 transition-colors"
+          title="Create new recipe"
+        >
+          <Plus className="h-4 w-4" />
+        </Link>
+      </div>
 
       <div className="relative mb-2">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-surface-400" />

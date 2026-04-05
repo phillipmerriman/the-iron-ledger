@@ -282,6 +282,52 @@ export function useRecipeSteps(recipeId: string) {
   return { steps, loading, refetch: fetch, add, update, remove }
 }
 
+/** Insert a single ingredient for a recipe (non-hook, for imperative use) */
+export async function addRecipeIngredient(
+  recipeId: string,
+  values: Omit<InsertDto<'recipe_ingredients'>, 'recipe_id'>,
+): Promise<void> {
+  if (isDev) {
+    const row: RecipeIngredient = {
+      id: crypto.randomUUID(),
+      recipe_id: recipeId,
+      name: values.name,
+      quantity: values.quantity,
+      unit: values.unit,
+      calories: values.calories ?? 0,
+      protein_g: values.protein_g ?? 0,
+      carbs_g: values.carbs_g ?? 0,
+      fat_g: values.fat_g ?? 0,
+      fiber_g: values.fiber_g ?? 0,
+      rating: values.rating ?? null,
+      sort_order: values.sort_order ?? 0,
+    }
+    localDb.insert('recipe_ingredients', row as never)
+    return
+  }
+  const { error } = await supabase.from('recipe_ingredients').insert({ ...values, recipe_id: recipeId })
+  if (error) throw error
+}
+
+/** Insert a single step for a recipe (non-hook, for imperative use) */
+export async function addRecipeStep(
+  recipeId: string,
+  values: Omit<InsertDto<'recipe_steps'>, 'recipe_id'>,
+): Promise<void> {
+  if (isDev) {
+    const row: RecipeStep = {
+      id: crypto.randomUUID(),
+      recipe_id: recipeId,
+      step_number: values.step_number,
+      instruction: values.instruction,
+    }
+    localDb.insert('recipe_steps', row as never)
+    return
+  }
+  const { error } = await supabase.from('recipe_steps').insert({ ...values, recipe_id: recipeId })
+  if (error) throw error
+}
+
 /** Load recipe ingredients for a single recipe (non-hook, for imperative use) */
 export async function loadRecipeIngredients(recipeId: string): Promise<RecipeIngredient[]> {
   if (isDev) {

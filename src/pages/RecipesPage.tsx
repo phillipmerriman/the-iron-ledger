@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
-import useRecipes from '@/hooks/useRecipes'
+import useRecipes, { addRecipeIngredient, addRecipeStep } from '@/hooks/useRecipes'
 import RecipeCard from '@/components/meals/RecipeCard'
 import RecipeForm from '@/components/meals/RecipeForm'
 import Modal from '@/components/ui/Modal'
@@ -25,14 +25,17 @@ export default function RecipesPage() {
 
   async function handleSave(
     recipe: Omit<Recipe, 'id' | 'user_id' | 'created_at' | 'updated_at'>,
-    _ingredients: Omit<RecipeIngredient, 'id' | 'recipe_id'>[],
-    _steps: Omit<RecipeStep, 'id' | 'recipe_id'>[],
+    ingredients: Omit<RecipeIngredient, 'id' | 'recipe_id'>[],
+    steps: Omit<RecipeStep, 'id' | 'recipe_id'>[],
   ) {
     setSaving(true)
     try {
       const created = await create(recipe)
       if (created) {
-        // Navigate to detail page where user can manage ingredients/steps
+        await Promise.all([
+          ...ingredients.map((ing) => addRecipeIngredient(created.id, ing)),
+          ...steps.map((step) => addRecipeStep(created.id, step)),
+        ])
         navigate(`/meals/recipes/${created.id}`)
       }
       setModalOpen(false)
@@ -92,7 +95,7 @@ export default function RecipesPage() {
       )}
 
       {/* Create modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Recipe">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Recipe" size="lg">
         <RecipeForm
           onSave={handleSave}
           onCancel={() => setModalOpen(false)}

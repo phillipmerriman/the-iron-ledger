@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useSyncExternalStore, useCallback } from 'react'
-import { Weight, Dumbbell, Flame, Trophy, CalendarDays, Clock, Settings } from 'lucide-react'
+import { Weight, Dumbbell, Flame, Trophy, CalendarDays, Clock, Settings, UtensilsCrossed, ChartBar, Salad } from 'lucide-react'
+import { format, isToday, parseISO } from 'date-fns'
 import Card from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
+import type { MacroData, MealSlot } from '@/types/meal-types'
+import { MEAL_SLOT_LABELS } from '@/types/meal-types'
 
 const CARD_DEFS = [
   { id: 'weight', label: 'Total Weight Moved', defaultVisible: true },
@@ -10,6 +13,9 @@ const CARD_DEFS = [
   { id: 'streak', label: 'Current Streak', defaultVisible: false },
   { id: 'programs', label: 'Programs Completed', defaultVisible: true },
   { id: 'today', label: 'Today', defaultVisible: true },
+  { id: 'todayMacros', label: "Today's Macros", defaultVisible: true },
+  { id: 'weekMacros', label: "Week's Macros", defaultVisible: false },
+  { id: 'nextMeal', label: 'Next Meal', defaultVisible: true },
 ] as const
 
 export type SummaryCardId = (typeof CARD_DEFS)[number]['id']
@@ -71,6 +77,9 @@ interface SummaryCardsProps {
   programsCompleted?: number
   todaySlots?: TodaySlot[]
   workoutsLabel?: string
+  todayMacros?: MacroData | null
+  weekMacros?: MacroData | null
+  nextMeal?: { slot: MealSlot; recipeName: string | null; date: string } | null
 }
 
 /** Gear button + dropdown for toggling summary cards. Place this wherever you want in the page header. */
@@ -131,6 +140,9 @@ export default function SummaryCards({
   programsCompleted,
   todaySlots,
   workoutsLabel,
+  todayMacros,
+  weekMacros,
+  nextMeal,
 }: SummaryCardsProps) {
   const { visible } = useCardVisibility()
 
@@ -142,6 +154,9 @@ export default function SummaryCards({
       case 'streak': return streak != null
       case 'programs': return programsCompleted != null
       case 'today': return todaySlots != null
+      case 'todayMacros': return todayMacros !== undefined
+      case 'weekMacros': return weekMacros !== undefined
+      case 'nextMeal': return nextMeal !== undefined
     }
   })
 
@@ -226,6 +241,77 @@ export default function SummaryCards({
             <p className="mt-1 text-3xl font-bold">
               <span className="text-surface-400">Rest</span>
             </p>
+          )}
+        </Card>
+      )}
+
+      {visible.has('todayMacros') && todayMacros !== undefined && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <UtensilsCrossed className="h-4 w-4" />
+            Today's Macros
+          </div>
+          {todayMacros ? (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold">{todayMacros.calories}</span>
+                <span className="text-xs text-surface-400">cal eaten</span>
+              </div>
+              <div className="flex gap-3 text-xs">
+                <span><span className="font-semibold text-blue-400">{todayMacros.protein_g}g</span> <span className="text-surface-400">protein</span></span>
+                <span><span className="font-semibold text-amber-400">{todayMacros.carbs_g}g</span> <span className="text-surface-400">carbs</span></span>
+                <span><span className="font-semibold text-rose-400">{todayMacros.fat_g}g</span> <span className="text-surface-400">fat</span></span>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-surface-400">No meals eaten today</p>
+          )}
+        </Card>
+      )}
+
+      {visible.has('weekMacros') && weekMacros !== undefined && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <ChartBar className="h-4 w-4" />
+            Week's Macros
+          </div>
+          {weekMacros ? (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold">{weekMacros.calories.toLocaleString()}</span>
+                <span className="text-xs text-surface-400">cal this week</span>
+              </div>
+              <div className="flex gap-3 text-xs">
+                <span><span className="font-semibold text-blue-400">{weekMacros.protein_g}g</span> <span className="text-surface-400">protein</span></span>
+                <span><span className="font-semibold text-amber-400">{weekMacros.carbs_g}g</span> <span className="text-surface-400">carbs</span></span>
+                <span><span className="font-semibold text-rose-400">{weekMacros.fat_g}g</span> <span className="text-surface-400">fat</span></span>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-surface-400">No meals eaten this week</p>
+          )}
+        </Card>
+      )}
+
+      {visible.has('nextMeal') && nextMeal !== undefined && (
+        <Card>
+          <div className="flex items-center gap-2 text-sm text-surface-500">
+            <Salad className="h-4 w-4" />
+            Next Meal
+          </div>
+          {nextMeal ? (
+            <div className="mt-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-surface-400">
+                {isToday(parseISO(nextMeal.date))
+                  ? MEAL_SLOT_LABELS[nextMeal.slot]
+                  : `${format(parseISO(nextMeal.date), 'EEE MMM d')} · ${MEAL_SLOT_LABELS[nextMeal.slot]}`}
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-text leading-snug">
+                {nextMeal.recipeName ?? 'Custom meal'}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-surface-400">No upcoming meals planned</p>
           )}
         </Card>
       )}

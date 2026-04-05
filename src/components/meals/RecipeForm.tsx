@@ -4,7 +4,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import IngredientRow from './IngredientRow'
 import NutritionBadge from './NutritionBadge'
-import { sumMacros } from '@/types/meal-types'
+import { sumMacros, effectiveIngredientMacros } from '@/types/meal-types'
 import type { Recipe, RecipeIngredient, RecipeStep } from '@/types/meal-types'
 
 interface RecipeFormProps {
@@ -66,6 +66,8 @@ function emptyIngredient(sortOrder: number): RecipeIngredient {
     fiber_g: 0,
     rating: null,
     sort_order: sortOrder,
+    macro_mode: 'total',
+    extra_nutrients: {},
   }
 }
 
@@ -144,12 +146,24 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
     if (initialSteps?.length && !loadDraft(recipeId)) setSteps(initialSteps)
   }, [initialSteps])
 
-  const totalMacros = sumMacros(ingredients, 1)
-  const perServing = sumMacros(ingredients, servings)
+  const totalMacros = sumMacros(ingredients.map(effectiveIngredientMacros), 1)
+  const perServing = sumMacros(ingredients.map(effectiveIngredientMacros), servings)
 
   function handleIngredientChange(id: string, field: string, value: string | number | null) {
     setIngredients((prev) =>
       prev.map((ing) => (ing.id === id ? { ...ing, [field]: value } : ing)),
+    )
+  }
+
+  function handleExtraNutrientChange(id: string, key: string, value: number | null) {
+    setIngredients((prev) =>
+      prev.map((ing) => {
+        if (ing.id !== id) return ing
+        const next = { ...ing.extra_nutrients }
+        if (value == null) delete next[key]
+        else next[key] = value
+        return { ...ing, extra_nutrients: next }
+      }),
     )
   }
 
@@ -201,6 +215,8 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
           fiber_g: i.fiber_g,
           rating: i.rating,
           sort_order: idx,
+          macro_mode: i.macro_mode ?? 'total',
+          extra_nutrients: i.extra_nutrients ?? {},
         })),
       steps
         .filter((s) => s.instruction.trim())
@@ -269,16 +285,7 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
 
       {/* Ingredients */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-text">Ingredients</h3>
-          <button
-            type="button"
-            onClick={handleAddIngredient}
-            className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
-          >
-            <Plus className="h-3.5 w-3.5" /> Add
-          </button>
-        </div>
+        <h3 className="text-sm font-semibold text-text mb-2">Ingredients</h3>
         <div className="space-y-2">
           {ingredients.map((ing, i) => (
             <IngredientRow
@@ -286,10 +293,18 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
               ingredient={ing}
               index={i}
               onChange={handleIngredientChange}
+              onExtraNutrientChange={handleExtraNutrientChange}
               onRemove={handleRemoveIngredient}
             />
           ))}
         </div>
+        <button
+          type="button"
+          onClick={handleAddIngredient}
+          className="mt-2 flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Ingredient
+        </button>
 
         {/* Macro totals */}
         {ingredients.some((i) => i.calories > 0) && (
