@@ -104,7 +104,7 @@ export default function useStats(options: UseStatsOptions = {}) {
       setExercises(localDb.getAll('exercises').filter((e) => e.user_id === user.id) as Exercise[])
       setEntries(await loadUserEntries(user.id, options.activationIds?.length ? options.activationIds : undefined))
     } else {
-      const fetches: Promise<void>[] = []
+      const fetches: PromiseLike<void>[] = []
 
       if (!options.sessions) {
         fetches.push(

@@ -4,7 +4,6 @@ import { Sunrise, Sun, Sunset, Cookie, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MEAL_SLOTS, MEAL_SLOT_LABELS } from '@/types/meal-types'
 import type { PlannedMeal, PlannedMealUpdate, MealSlot, Recipe, MacroData } from '@/types/meal-types'
-import { sumMacros } from '@/types/meal-types'
 import NutritionBadge from './NutritionBadge'
 import MealEntryDetail from './MealEntryDetail'
 

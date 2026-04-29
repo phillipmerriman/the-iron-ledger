@@ -21,7 +21,7 @@ export default function IngredientSearch({ onSelect, quantity, unit, initialQuer
 
   async function handleLookup() {
     if (!query.trim()) return
-    const items = await lookup(query, quantity, unit)
+    await lookup(query, quantity, unit)
     setShowDropdown(true)
   }
 

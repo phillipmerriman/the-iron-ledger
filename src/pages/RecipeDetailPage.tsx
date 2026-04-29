@@ -15,8 +15,8 @@ export default function RecipeDetailPage() {
   const { recipes, loading: recipesLoading, update: updateRecipe, remove: removeRecipe } = useRecipes()
   const recipe = recipes.find((r) => r.id === id)
 
-  const { ingredients, loading: ingredientsLoading, add: addIngredient, update: updateIngredient, remove: removeIngredient } = useRecipeIngredients(id!)
-  const { steps, loading: stepsLoading, add: addStep, update: updateStep, remove: removeStep } = useRecipeSteps(id!)
+  const { ingredients, loading: ingredientsLoading, add: addIngredient, remove: removeIngredient } = useRecipeIngredients(id!)
+  const { steps, loading: stepsLoading, add: addStep, remove: removeStep } = useRecipeSteps(id!)
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -31,7 +31,6 @@ export default function RecipeDetailPage() {
   const loading = recipesLoading || ingredientsLoading || stepsLoading
 
   const perServing = sumMacros(ingredients.map(effectiveIngredientMacros), recipe?.servings ?? 1)
-  const totalMacros = sumMacros(ingredients.map(effectiveIngredientMacros), 1)
 
   async function handleSave(
     recipeData: Omit<Recipe, 'id' | 'user_id' | 'created_at' | 'updated_at'>,

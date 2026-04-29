@@ -56,7 +56,7 @@ export default function WeeklyPlanPage() {
   }
 
   // Meal planning hooks
-  const { recipes, loading: recipesLoading } = useRecipes()
+  const { recipes } = useRecipes()
 
   const program = programId ? programs.find((p) => p.id === programId) : null
   const totalWeeks = program?.weeks ?? 1
@@ -98,7 +98,7 @@ export default function WeeklyPlanPage() {
   })
 
   // Compute per-serving macros for each recipe (used by meal planner)
-  const [recipeMacrosMap, setRecipeMacrosMap] = useState<Map<string, MacroData>>(new Map())
+  const recipeMacrosMap = new Map<string, MacroData>()
 
   // Meal drag state
   const [mealDragRecipeId, setMealDragRecipeId] = useState<string | null>(null)

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import IngredientRow from './IngredientRow'
@@ -112,7 +112,7 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
   }
 
   // Auto-save draft on changes (debounced)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {

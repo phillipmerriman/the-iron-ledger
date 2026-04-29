@@ -3,7 +3,6 @@ import { Search, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Recipe, MacroData } from '@/types/meal-types'
 import NutritionBadge from './NutritionBadge'
-import { cn } from '@/lib/utils'
 
 interface RecipePickerProps {
   recipes: Recipe[]

@@ -60,6 +60,7 @@ export default function useMealSummary(recipeNames: Record<string, string>): Mea
 
   useEffect(() => {
     if (!user) return
+    const userId = user.id
     let cancelled = false
 
     async function compute() {
@@ -73,15 +74,15 @@ export default function useMealSummary(recipeNames: Record<string, string>): Mea
       let futureMeals: PlannedMeal[] = []
 
       if (isDev) {
-        const all = loadAll().filter((e) => e.user_id === user.id)
+        const all = loadAll().filter((e) => e.user_id === userId)
         todayMeals = all.filter((e) => e.date === todayKey)
         weekMeals = all.filter((e) => e.date >= weekStart && e.date <= weekEnd)
         futureMeals = all.filter((e) => e.date > todayKey && e.date <= futureEnd)
       } else {
         const [todayRes, weekRes, futureRes] = await Promise.all([
-          supabase.from('planned_meals').select('*').eq('user_id', user.id).eq('date', todayKey),
-          supabase.from('planned_meals').select('*').eq('user_id', user.id).gte('date', weekStart).lte('date', weekEnd),
-          supabase.from('planned_meals').select('*').eq('user_id', user.id).gt('date', todayKey).lte('date', futureEnd).order('date').order('sort_order'),
+          supabase.from('planned_meals').select('*').eq('user_id', userId).eq('date', todayKey),
+          supabase.from('planned_meals').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
+          supabase.from('planned_meals').select('*').eq('user_id', userId).gt('date', todayKey).lte('date', futureEnd).order('date').order('sort_order'),
         ])
         todayMeals = (todayRes.data ?? []) as unknown as PlannedMeal[]
         weekMeals = (weekRes.data ?? []) as unknown as PlannedMeal[]
