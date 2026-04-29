@@ -103,6 +103,8 @@ export default function WeeklyPlanPage() {
   // Meal drag state
   const [mealDragRecipeId, setMealDragRecipeId] = useState<string | null>(null)
   const [mealDropTarget, setMealDropTarget] = useState<{ dateKey: string; slot: MealSlot } | null>(null)
+  const [pendingMealDrop, setPendingMealDrop] = useState<{ dateKey: string; slot: MealSlot; recipeId: string } | null>(null)
+  const [pendingServings, setPendingServings] = useState(1)
 
   function handleMealRecipeDragStart(e: DragEvent, recipeId: string) {
     setMealDragRecipeId(recipeId)
@@ -129,9 +131,16 @@ export default function WeeklyPlanPage() {
     e.preventDefault()
     setMealDropTarget(null)
     if (mealDragRecipeId) {
-      mealPlan.addMeal(dateKey, mealDragRecipeId, slot)
+      setPendingMealDrop({ dateKey, slot, recipeId: mealDragRecipeId })
+      setPendingServings(1)
     }
     setMealDragRecipeId(null)
+  }
+
+  function handleConfirmMealDrop() {
+    if (!pendingMealDrop) return
+    mealPlan.addMeal(pendingMealDrop.dateKey, pendingMealDrop.recipeId, pendingMealDrop.slot, pendingServings)
+    setPendingMealDrop(null)
   }
 
   const activeExercises = exercises.filter((e) => !e.is_archived)
@@ -1182,6 +1191,61 @@ export default function WeeklyPlanPage() {
           onCancel={() => setNewExerciseOpen(false)}
           loading={creatingExercise}
         />
+      </Modal>
+
+      {/* Servings prompt on recipe drop */}
+      <Modal
+        open={!!pendingMealDrop}
+        onClose={() => setPendingMealDrop(null)}
+        title="How many servings?"
+      >
+        {pendingMealDrop && (() => {
+          const recipe = recipes.find((r) => r.id === pendingMealDrop.recipeId)
+          return (
+            <div className="space-y-4">
+              {recipe && (
+                <p className="text-sm text-surface-600">
+                  Adding <span className="font-semibold text-text">{recipe.name}</span>
+                </p>
+              )}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPendingServings((s) => Math.max(0.5, s - 0.5))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-surface-500 hover:bg-surface-50 transition-colors text-lg font-medium"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={pendingServings}
+                  min={0.5}
+                  step={0.5}
+                  onChange={(e) => setPendingServings(Math.max(0.5, Number(e.target.value)))}
+                  className="w-20 rounded-lg border border-input-border bg-input-bg px-3 py-1.5 text-center text-sm font-semibold text-text focus:outline-none focus:ring-1 focus:border-primary-500 focus:ring-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPendingServings((s) => s + 0.5)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-surface-500 hover:bg-surface-50 transition-colors text-lg font-medium"
+                >
+                  +
+                </button>
+                <span className="text-sm text-surface-400">
+                  {pendingServings === 1 ? 'serving' : 'servings'}
+                </span>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="secondary" onClick={() => setPendingMealDrop(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleConfirmMealDrop}>
+                  Add to Plan
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )

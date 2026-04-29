@@ -17,6 +17,7 @@ interface RecipeFormProps {
     steps: Omit<RecipeStep, 'id' | 'recipe_id'>[],
   ) => void
   onCancel?: () => void
+  cancelLabel?: string
   saving?: boolean
 }
 
@@ -66,12 +67,12 @@ function emptyIngredient(sortOrder: number): RecipeIngredient {
     fiber_g: 0,
     rating: null,
     sort_order: sortOrder,
-    macro_mode: 'total',
+    macro_mode: 'per_unit',
     extra_nutrients: {},
   }
 }
 
-export default function RecipeForm({ initial, initialIngredients, initialSteps, onSave, onCancel, saving }: RecipeFormProps) {
+export default function RecipeForm({ initial, initialIngredients, initialSteps, onSave, onCancel, cancelLabel = 'Cancel', saving }: RecipeFormProps) {
   const recipeId = initial?.id
   const draft = useRef(loadDraft(recipeId)).current
   const [restoredDraft, setRestoredDraft] = useState(false)
@@ -373,7 +374,7 @@ export default function RecipeForm({ initial, initialIngredients, initialSteps, 
       {/* Actions */}
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={onCancel}>{cancelLabel}</Button>
         )}
         <Button type="submit" disabled={!name.trim() || saving}>
           {saving ? 'Saving...' : initial ? 'Update Recipe' : 'Save Recipe'}

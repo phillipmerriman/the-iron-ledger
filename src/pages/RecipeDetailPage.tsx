@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Pencil, Trash2, Star } from 'lucide-react'
 import useRecipes, { useRecipeIngredients, useRecipeSteps } from '@/hooks/useRecipes'
@@ -20,6 +20,13 @@ export default function RecipeDetailPage() {
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 3000)
+    return () => clearTimeout(t)
+  }, [saved])
 
   const loading = recipesLoading || ingredientsLoading || stepsLoading
 
@@ -44,6 +51,7 @@ export default function RecipeDetailPage() {
       for (const step of newSteps) await addStep(step)
 
       setEditing(false)
+      setSaved(true)
     } finally {
       setSaving(false)
     }
@@ -90,6 +98,7 @@ export default function RecipeDetailPage() {
           initialSteps={steps}
           onSave={handleSave}
           onCancel={() => setEditing(false)}
+          cancelLabel="Go Back"
           saving={saving}
         />
       </div>
@@ -98,6 +107,12 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="space-y-6">
+      {saved && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 border border-green-200">
+          <span className="font-medium">Recipe updated successfully.</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

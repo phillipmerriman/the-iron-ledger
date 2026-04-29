@@ -1,11 +1,12 @@
 import { useState, type DragEvent } from 'react'
 import { format, isToday } from 'date-fns'
-import { Sunrise, Sun, Sunset, Cookie, X, Trash2 } from 'lucide-react'
+import { Sunrise, Sun, Sunset, Cookie, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MEAL_SLOTS, MEAL_SLOT_LABELS } from '@/types/meal-types'
 import type { PlannedMeal, PlannedMealUpdate, MealSlot, Recipe, MacroData } from '@/types/meal-types'
 import { sumMacros } from '@/types/meal-types'
 import NutritionBadge from './NutritionBadge'
+import MealEntryDetail from './MealEntryDetail'
 
 const SLOT_ICONS: Record<MealSlot, typeof Sun> = {
   breakfast: Sunrise,
@@ -46,6 +47,7 @@ export default function MealPlannerDayColumn({
   onSlotDrop,
   dropTarget,
 }: MealPlannerDayColumnProps) {
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null)
   const today = isToday(day)
   const dayName = format(day, 'EEE')
   const dayDate = format(day, 'M/d')
@@ -131,36 +133,48 @@ export default function MealPlannerDayColumn({
                 <div className="space-y-1">
                   {slotEntries.map((entry) => {
                     const macros = entry.recipe_id ? recipeMacros.get(entry.recipe_id) : null
+                    const recipe = entry.recipe_id ? recipes.find((r) => r.id === entry.recipe_id) ?? null : null
+                    const isEditing = editingEntryId === entry.id
                     return (
-                      <div
-                        key={entry.id}
-                        className="group flex items-center justify-between rounded bg-surface-50 px-2 py-1 text-xs"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <span className="font-medium text-text truncate block">
-                            {getRecipeName(entry.recipe_id)}
-                          </span>
-                          {macros && (
-                            <NutritionBadge
-                              macros={{
-                                ...macros,
-                                calories: macros.calories * (entry.servings || 1),
-                                protein_g: macros.protein_g * (entry.servings || 1),
-                                carbs_g: macros.carbs_g * (entry.servings || 1),
-                                fat_g: macros.fat_g * (entry.servings || 1),
-                                fiber_g: macros.fiber_g * (entry.servings || 1),
-                              }}
-                              className="mt-0.5"
-                            />
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onRemoveMeal(entry.id)}
-                          className="ml-1 rounded p-0.5 text-surface-300 opacity-0 group-hover:opacity-100 hover:text-danger-600 transition-all"
+                      <div key={entry.id} className="relative">
+                        <div
+                          className="group flex items-center justify-between rounded bg-surface-50 px-2 py-1 text-xs cursor-pointer hover:bg-surface-100 transition-colors"
+                          onClick={() => setEditingEntryId(isEditing ? null : entry.id)}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium text-text truncate block">
+                              {getRecipeName(entry.recipe_id)}
+                            </span>
+                            {macros && (
+                              <NutritionBadge
+                                macros={{
+                                  ...macros,
+                                  calories: macros.calories * (entry.servings || 1),
+                                  protein_g: macros.protein_g * (entry.servings || 1),
+                                  carbs_g: macros.carbs_g * (entry.servings || 1),
+                                  fat_g: macros.fat_g * (entry.servings || 1),
+                                  fiber_g: macros.fiber_g * (entry.servings || 1),
+                                }}
+                                className="mt-0.5"
+                              />
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onRemoveMeal(entry.id) }}
+                            className="ml-1 rounded p-0.5 text-surface-300 opacity-0 group-hover:opacity-100 hover:text-danger-600 transition-all"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {isEditing && (
+                          <MealEntryDetail
+                            entry={entry}
+                            recipe={recipe}
+                            onUpdate={onUpdateMeal}
+                            onClose={() => setEditingEntryId(null)}
+                          />
+                        )}
                       </div>
                     )
                   })}

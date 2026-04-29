@@ -26,6 +26,8 @@ export default function IngredientRow({ ingredient, index, onChange, onExtraNutr
     onChange(ingredient.id, 'carbs_g', Math.round(result.carbs_total_g * 10) / 10)
     onChange(ingredient.id, 'fat_g', Math.round(result.fat_total_g * 10) / 10)
     onChange(ingredient.id, 'fiber_g', Math.round(result.fiber_g * 10) / 10)
+    // API returns macros for the full queried quantity, so treat as total
+    onChange(ingredient.id, 'macro_mode', 'total')
     if (!ingredient.name) {
       onChange(ingredient.id, 'name', result.name)
     }
