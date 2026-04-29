@@ -37,7 +37,18 @@
       "Bash(node ./node_modules/.bin/tsc --noEmit)",
       "Bash(node node_modules/typescript/bin/tsc --noEmit)",
       "Bash(node -e \"const {execSync} = require\\(''child_process''\\); console.log\\(execSync\\(''npx tsc --noEmit'', {encoding: ''utf8'', timeout: 60000}\\)\\);\")",
-      "Bash(node -e \"const {execSync} = require\\(''child_process''\\); try { execSync\\(''npx tsc --noEmit'', {stdio: ''inherit'', timeout: 60000}\\); } catch\\(e\\) { process.exit\\(e.status\\); }\")"
+      "Bash(node -e \"const {execSync} = require\\(''child_process''\\); try { execSync\\(''npx tsc --noEmit'', {stdio: ''inherit'', timeout: 60000}\\); } catch\\(e\\) { process.exit\\(e.status\\); }\")",
+      "WebSearch",
+      "WebFetch(domain:api.nal.usda.gov)",
+      "Bash(curl -s \"https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=Cannellini%20Beans&pageSize=5\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&query=Cannellini%20Beans&pageSize=3\")",
+      "Bash(python -c \":*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(GIT_TRACE=1 git commit --dry-run -m \"test\")",
+      "Bash(env)",
+      "Bash(git reset:*)"
     ]
   }
 }

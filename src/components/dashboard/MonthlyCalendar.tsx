@@ -18,7 +18,7 @@ import { loadUserEntries } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { calcEntryVolume } from '@/types/common'
 import { cn } from '@/lib/utils'
 import DayDetailModal from './DayDetailModal'
@@ -28,13 +28,15 @@ interface MonthlyCalendarProps {
   sessions: WorkoutSession[]
   activations?: ProgramActivation[]
   programs?: Program[]
+  exercises?: Exercise[]
+  plannedEntries?: PlannedEntry[]
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ sessions, activations = [], programs: _programs = [], onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
-  const { user } = useAuth()
+export default function MonthlyCalendar({ sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+  const { user, profile } = useAuth()
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
@@ -45,18 +47,19 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
   const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
 
-  const { exercises } = useExercises()
-  const { profile } = useAuth()
+  const { exercises: fetchedExercises } = useExercises({ skip: !!exercisesProp })
+  const exercises = exercisesProp ?? fetchedExercises
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
 
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
-  // Load all planned entries (scoped to activations if any exist)
-  const [plannedEntries, setPlannedEntries] = useState<PlannedEntry[]>([])
+  // Load all planned entries (scoped to activations if any exist) — skip if provided via prop
+  const [internalEntries, setInternalEntries] = useState<PlannedEntry[]>([])
   useEffect(() => {
-    if (!user) return
-    loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setPlannedEntries)
-  }, [activationIds, user])
+    if (entriesProp || !user) return
+    loadUserEntries(user.id, activationIds.length > 0 ? activationIds : undefined).then(setInternalEntries)
+  }, [activationIds, user, !!entriesProp])
+  const plannedEntries = entriesProp ?? internalEntries
 
   const plannedDates = useMemo(() => {
     return new Set(plannedEntries.map((e) => e.date))

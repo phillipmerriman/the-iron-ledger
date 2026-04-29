@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type DragEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal, Check } from 'lucide-react'
+import { ArrowLeft, X, Trash2, ChevronLeft, ChevronRight, Plus, Save, Copy, ClipboardPaste, MoreHorizontal, Check, Dumbbell, UtensilsCrossed } from 'lucide-react'
 import { format, parseISO, isToday } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import useWeeklyPlan from '@/hooks/useWeeklyPlan'
@@ -9,6 +9,11 @@ import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
+import useMealPlan from '@/hooks/useMealPlan'
+import useRecipes from '@/hooks/useRecipes'
+import type { MealSlot, MacroData } from '@/types/meal-types'
+import MealPlannerDayColumn from '@/components/meals/MealPlannerDayColumn'
+import RecipePicker from '@/components/meals/RecipePicker'
 import type { ExerciseType, ExerciseRate, MuscleGroup, Equipment, RepType, WeightUnit } from '@/types/common'
 import { getExerciseColorClasses } from '@/types/common'
 import ExerciseForm from '@/components/exercises/ExerciseForm'
@@ -18,6 +23,8 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
+
+type PlanMode = 'workouts' | 'meals'
 
 function formatLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -36,6 +43,20 @@ export default function WeeklyPlanPage() {
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
+
+  // Plan mode toggle (workouts vs meals)
+  const planMode = (searchParams.get('mode') as PlanMode) || 'workouts'
+  function setPlanMode(mode: PlanMode) {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (mode === 'workouts') params.delete('mode')
+      else params.set('mode', mode)
+      return params
+    }, { replace: true })
+  }
+
+  // Meal planning hooks
+  const { recipes } = useRecipes()
 
   const program = programId ? programs.find((p) => p.id === programId) : null
   const totalWeeks = program?.weeks ?? 1
@@ -70,6 +91,57 @@ export default function WeeklyPlanPage() {
     programId: programId ?? null,
     programIds: activationIds,
   })
+
+  const mealPlan = useMealPlan({
+    startDate: programStart,
+    weekOffset,
+  })
+
+  // Compute per-serving macros for each recipe (used by meal planner)
+  const recipeMacrosMap = new Map<string, MacroData>()
+
+  // Meal drag state
+  const [mealDragRecipeId, setMealDragRecipeId] = useState<string | null>(null)
+  const [mealDropTarget, setMealDropTarget] = useState<{ dateKey: string; slot: MealSlot } | null>(null)
+  const [pendingMealDrop, setPendingMealDrop] = useState<{ dateKey: string; slot: MealSlot; recipeId: string } | null>(null)
+  const [pendingServings, setPendingServings] = useState(1)
+
+  function handleMealRecipeDragStart(e: DragEvent, recipeId: string) {
+    setMealDragRecipeId(recipeId)
+    e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('text/plain', recipeId)
+  }
+
+  function handleMealDragEnd() {
+    setMealDragRecipeId(null)
+    setMealDropTarget(null)
+  }
+
+  function handleMealSlotDragOver(e: DragEvent, dateKey: string, slot: MealSlot) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setMealDropTarget({ dateKey, slot })
+  }
+
+  function handleMealSlotDragLeave() {
+    setMealDropTarget(null)
+  }
+
+  function handleMealSlotDrop(e: DragEvent, dateKey: string, slot: MealSlot) {
+    e.preventDefault()
+    setMealDropTarget(null)
+    if (mealDragRecipeId) {
+      setPendingMealDrop({ dateKey, slot, recipeId: mealDragRecipeId })
+      setPendingServings(1)
+    }
+    setMealDragRecipeId(null)
+  }
+
+  function handleConfirmMealDrop() {
+    if (!pendingMealDrop) return
+    mealPlan.addMeal(pendingMealDrop.dateKey, pendingMealDrop.recipeId, pendingMealDrop.slot, pendingServings)
+    setPendingMealDrop(null)
+  }
 
   const activeExercises = exercises.filter((e) => !e.is_archived)
 
@@ -446,11 +518,48 @@ export default function WeeklyPlanPage() {
             {program ? `Plan: ${program.name}` : 'Plan Your Week'}
           </h1>
           <p className="text-sm text-surface-500">
-            <span className="hidden md:inline">Drag exercises or saved workouts from the pool into each day.</span>
-            <span className="md:hidden">Tap + to add exercises to your day.</span>
+            {planMode === 'workouts' ? (
+              <>
+                <span className="hidden md:inline">Drag exercises or saved workouts from the pool into each day.</span>
+                <span className="md:hidden">Tap + to add exercises to your day.</span>
+              </>
+            ) : (
+              <>
+                <span className="hidden md:inline">Drag recipes from the sidebar into each day's meal slots.</span>
+                <span className="md:hidden">Tap a recipe to add it to your meal plan.</span>
+              </>
+            )}
           </p>
         </div>
       </div>
+
+      {/* Mode toggle: Workouts / Meals */}
+      {!programId && (
+        <div className="flex rounded-lg border border-border bg-surface-50 p-0.5 w-fit">
+          <button
+            onClick={() => setPlanMode('workouts')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              planMode === 'workouts'
+                ? 'bg-card text-primary-700 shadow-sm'
+                : 'text-surface-500 hover:text-surface-700',
+            )}
+          >
+            <Dumbbell className="h-4 w-4" /> Workouts
+          </button>
+          <button
+            onClick={() => setPlanMode('meals')}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              planMode === 'meals'
+                ? 'bg-card text-primary-700 shadow-sm'
+                : 'text-surface-500 hover:text-surface-700',
+            )}
+          >
+            <UtensilsCrossed className="h-4 w-4" /> Meals
+          </button>
+        </div>
+      )}
 
       {/* Week navigation */}
       {program && totalWeeks > 1 ? (
@@ -534,8 +643,8 @@ export default function WeeklyPlanPage() {
         </div>
       )}
 
-      {/* ---- Mobile day-by-day view ---- */}
-      <div className="md:hidden">
+      {/* ---- Mobile day-by-day view (workouts) ---- */}
+      {planMode === 'workouts' && <div className="md:hidden">
         {/* Day tabs */}
         <div className="mb-3 flex gap-1 overflow-x-auto">
           {days.map((day, i) => (
@@ -777,10 +886,74 @@ export default function WeeklyPlanPage() {
             </button>
           </div>
         </Modal>
-      </div>
+      </div>}
+
+      {/* ---- Meals Desktop layout ---- */}
+      {planMode === 'meals' && (
+        <div className="hidden md:flex md:gap-4">
+          <div className="grid flex-1 grid-cols-7 gap-2">
+            {mealPlan.days.map((day, i) => {
+              const dateKey = mealPlan.dateKeys[i]
+              return (
+                <MealPlannerDayColumn
+                  key={dateKey}
+                  day={day}
+                  dateKey={dateKey}
+                  recipes={recipes}
+                  recipeMacros={recipeMacrosMap}
+                  getEntriesForDateSlot={mealPlan.getEntriesForDateSlot}
+                  onUpdateMeal={mealPlan.updateMeal}
+                  onRemoveMeal={mealPlan.removeMeal}
+                  onSlotDragOver={handleMealSlotDragOver}
+                  onSlotDragLeave={handleMealSlotDragLeave}
+                  onSlotDrop={handleMealSlotDrop}
+                  dropTarget={mealDropTarget}
+                />
+              )
+            })}
+          </div>
+
+          {/* Recipe sidebar */}
+          <div className="w-56 shrink-0">
+            <div className="sticky top-6 rounded-xl border border-surface-200 bg-card p-3 max-h-[80vh]">
+              <RecipePicker
+                recipes={recipes}
+                recipeMacros={recipeMacrosMap}
+                onDragStart={handleMealRecipeDragStart}
+                onDragEnd={handleMealDragEnd}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Meals Mobile layout ---- */}
+      {planMode === 'meals' && (
+        <div className="md:hidden space-y-3">
+          {mealPlan.days.map((day, i) => {
+            const dateKey = mealPlan.dateKeys[i]
+            return (
+              <MealPlannerDayColumn
+                key={dateKey}
+                day={day}
+                dateKey={dateKey}
+                recipes={recipes}
+                recipeMacros={recipeMacrosMap}
+                getEntriesForDateSlot={mealPlan.getEntriesForDateSlot}
+                onUpdateMeal={mealPlan.updateMeal}
+                onRemoveMeal={mealPlan.removeMeal}
+                onSlotDragOver={handleMealSlotDragOver}
+                onSlotDragLeave={handleMealSlotDragLeave}
+                onSlotDrop={handleMealSlotDrop}
+                dropTarget={mealDropTarget}
+              />
+            )
+          })}
+        </div>
+      )}
 
       {/* ---- Desktop layout ---- */}
-      <div className="hidden md:flex md:gap-4">
+      {planMode === 'workouts' && <div className="hidden md:flex md:gap-4">
         {/* Day columns */}
         <div className="grid flex-1 grid-cols-7 gap-2">
           {days.map((day, i) => {
@@ -1009,7 +1182,7 @@ export default function WeeklyPlanPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* New exercise modal */}
       <Modal open={newExerciseOpen} onClose={() => setNewExerciseOpen(false)} title="New Exercise">
@@ -1018,6 +1191,61 @@ export default function WeeklyPlanPage() {
           onCancel={() => setNewExerciseOpen(false)}
           loading={creatingExercise}
         />
+      </Modal>
+
+      {/* Servings prompt on recipe drop */}
+      <Modal
+        open={!!pendingMealDrop}
+        onClose={() => setPendingMealDrop(null)}
+        title="How many servings?"
+      >
+        {pendingMealDrop && (() => {
+          const recipe = recipes.find((r) => r.id === pendingMealDrop.recipeId)
+          return (
+            <div className="space-y-4">
+              {recipe && (
+                <p className="text-sm text-surface-600">
+                  Adding <span className="font-semibold text-text">{recipe.name}</span>
+                </p>
+              )}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPendingServings((s) => Math.max(0.5, s - 0.5))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-surface-500 hover:bg-surface-50 transition-colors text-lg font-medium"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  value={pendingServings}
+                  min={0.5}
+                  step={0.5}
+                  onChange={(e) => setPendingServings(Math.max(0.5, Number(e.target.value)))}
+                  className="w-20 rounded-lg border border-input-border bg-input-bg px-3 py-1.5 text-center text-sm font-semibold text-text focus:outline-none focus:ring-1 focus:border-primary-500 focus:ring-primary-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPendingServings((s) => s + 0.5)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-surface-500 hover:bg-surface-50 transition-colors text-lg font-medium"
+                >
+                  +
+                </button>
+                <span className="text-sm text-surface-400">
+                  {pendingServings === 1 ? 'serving' : 'servings'}
+                </span>
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="secondary" onClick={() => setPendingMealDrop(null)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleConfirmMealDrop}>
+                  Add to Plan
+                </Button>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )

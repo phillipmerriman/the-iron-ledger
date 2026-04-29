@@ -496,6 +496,239 @@ export interface Database {
         }
         Relationships: []
       }
+      // ── Meal / Nutrition tables ──────────────────────────────
+      recipes: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          servings: number
+          rating: number | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          servings?: number
+          rating?: number | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          servings?: number
+          rating?: number | null
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          id: string
+          recipe_id: string
+          name: string
+          quantity: number
+          unit: string
+          calories: number
+          protein_g: number
+          carbs_g: number
+          fat_g: number
+          fiber_g: number
+          rating: number | null
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          recipe_id: string
+          name: string
+          quantity: number
+          unit: string
+          calories?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          rating?: number | null
+          sort_order?: number
+        }
+        Update: {
+          recipe_id?: string
+          name?: string
+          quantity?: number
+          unit?: string
+          calories?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          rating?: number | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      recipe_steps: {
+        Row: {
+          id: string
+          recipe_id: string
+          step_number: number
+          instruction: string
+        }
+        Insert: {
+          id?: string
+          recipe_id: string
+          step_number: number
+          instruction: string
+        }
+        Update: {
+          recipe_id?: string
+          step_number?: number
+          instruction?: string
+        }
+        Relationships: []
+      }
+      planned_meals: {
+        Row: {
+          id: string
+          user_id: string
+          diet_id: string | null
+          recipe_id: string | null
+          date: string
+          meal_slot: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+          sort_order: number
+          servings: number
+          rating: number | null
+          notes: string | null
+          eaten_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          diet_id?: string | null
+          recipe_id?: string | null
+          date: string
+          meal_slot?: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+          sort_order?: number
+          servings?: number
+          rating?: number | null
+          notes?: string | null
+          eaten_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          diet_id?: string | null
+          recipe_id?: string | null
+          date?: string
+          meal_slot?: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+          sort_order?: number
+          servings?: number
+          rating?: number | null
+          notes?: string | null
+          eaten_at?: string | null
+        }
+        Relationships: []
+      }
+      meal_ingredients: {
+        Row: {
+          id: string
+          planned_meal_id: string
+          name: string
+          quantity: number
+          unit: string
+          calories: number
+          protein_g: number
+          carbs_g: number
+          fat_g: number
+          fiber_g: number
+          rating: number | null
+        }
+        Insert: {
+          id?: string
+          planned_meal_id: string
+          name: string
+          quantity: number
+          unit: string
+          calories?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          rating?: number | null
+        }
+        Update: {
+          planned_meal_id?: string
+          name?: string
+          quantity?: number
+          unit?: string
+          calories?: number
+          protein_g?: number
+          carbs_g?: number
+          fat_g?: number
+          fiber_g?: number
+          rating?: number | null
+        }
+        Relationships: []
+      }
+      diets: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          rating: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          rating?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          rating?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nutrition_cache: {
+        Row: {
+          id: string
+          query: string
+          source: 'usda'
+          results: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          query: string
+          source?: 'usda'
+          results: Json
+          created_at?: string
+        }
+        Update: {
+          query?: string
+          source?: 'usda'
+          results?: Json
+        }
+        Relationships: []
+      }
       program_activations: {
         Row: {
           id: string
@@ -552,6 +785,13 @@ export type BodyMeasurement = Tables<'body_measurements'>
 export type PlannedEntryRow = Tables<'planned_entries'>
 export type Timer = Tables<'timers'>
 export type TimerInterval = Tables<'timer_intervals'>
+export type RecipeRow = Tables<'recipes'>
+export type RecipeIngredientRow = Tables<'recipe_ingredients'>
+export type RecipeStepRow = Tables<'recipe_steps'>
+export type PlannedMealRow = Tables<'planned_meals'>
+export type MealIngredientRow = Tables<'meal_ingredients'>
+export type DietRow = Tables<'diets'>
+export type NutritionCacheRow = Tables<'nutrition_cache'>
 
 /** A single activation of a program template with a specific start date */
 export interface ProgramActivation {

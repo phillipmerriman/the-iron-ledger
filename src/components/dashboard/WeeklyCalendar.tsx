@@ -4,7 +4,7 @@ import { format, isToday, isSameDay, isFuture } from 'date-fns'
 import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
-import type { Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { getExerciseColorClasses, calcEntryVolume } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,12 +16,14 @@ interface WeeklyCalendarProps {
   sessions: WorkoutSession[]
   activations?: ProgramActivation[]
   programs?: Program[]
+  exercises?: Exercise[]
+  plannedEntries?: PlannedEntry[]
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function WeeklyCalendar({ sessions, activations = [], onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ sessions, activations = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
@@ -45,8 +47,10 @@ export default function WeeklyCalendar({ sessions, activations = [], onUpdateSes
     weekOffset: weekDelta,
     programIds: activationIds.length > 0 ? activationIds : undefined,
     includeUnscoped: true,
+    prefetchedEntries: entriesProp,
   })
-  const { exercises } = useExercises()
+  const { exercises: fetchedExercises } = useExercises({ skip: !!exercisesProp })
+  const exercises = exercisesProp ?? fetchedExercises
 
   function getExercise(exerciseId: string) {
     return exercises.find((e) => e.id === exerciseId)

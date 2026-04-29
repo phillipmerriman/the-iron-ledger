@@ -5,12 +5,14 @@ import {
   ClipboardList,
   CalendarRange,
   Timer,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/workouts', label: 'Workouts', icon: Dumbbell },
+  { to: '/meals/recipes', label: 'Meals', icon: UtensilsCrossed },
   { to: '/exercises', label: 'Exercises', icon: ClipboardList },
   { to: '/programs', label: 'Programs', icon: CalendarRange },
   { to: '/timers', label: 'Timers', icon: Timer },
