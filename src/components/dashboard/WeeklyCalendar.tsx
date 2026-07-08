@@ -43,7 +43,7 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
   }
   const isCurrentWeek = weekDelta === 0
 
-  const { days, dateKeys, getEntriesForDate } = useWeeklyPlan({
+  const { days, dateKeys, getEntriesForDate, removeEntry, updateEntry } = useWeeklyPlan({
     weekOffset: weekDelta,
     programIds: activationIds.length > 0 ? activationIds : undefined,
     includeUnscoped: true,
@@ -348,6 +348,8 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
         isSlotCompleted={isSlotCompleted}
         onToggleComplete={onUpdateSession ? handleToggleComplete : undefined}
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
+        onRemoveEntry={removeEntry}
+        onUpdateEntry={updateEntry}
       />
 
       <WorkoutCompleteModal
