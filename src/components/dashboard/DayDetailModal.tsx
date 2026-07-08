@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
-import { Check, Undo2 } from 'lucide-react'
+import { Check, Undo2, Pencil, Trash2 } from 'lucide-react'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
-import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
 import type { Exercise, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
 import { getExerciseColorClasses, calcEntryVolume, formatReps, formatWeightWithConversion } from '@/types/common'
@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
+import { useState } from 'react'
 
 interface DayDetailModalProps {
   selectedDay: Date | null
@@ -22,6 +23,8 @@ interface DayDetailModalProps {
   isSlotCompleted: (day: Date, slot: string) => boolean
   onToggleComplete?: (session: WorkoutSession) => void
   onMarkDayComplete?: (day: Date) => void
+  onRemoveEntry?: (id: string) => Promise<void>
+  onUpdateEntry?: (id: string, values: PlannedEntryUpdate) => Promise<void>
 }
 
 export default function DayDetailModal({
@@ -36,13 +39,56 @@ export default function DayDetailModal({
   isSlotCompleted,
   onToggleComplete,
   onMarkDayComplete,
+  onRemoveEntry,
+  onUpdateEntry,
 }: DayDetailModalProps) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<{ sets: string; reps: string; weight: string }>({ sets: '', reps: '', weight: '' })
+  const [saving, setSaving] = useState(false)
+
   function getExercise(exerciseId: string) {
     return exercises.find((e) => e.id === exerciseId)
   }
 
   function getExerciseName(exerciseId: string) {
     return exercises.find((e) => e.id === exerciseId)?.name ?? 'Unknown'
+  }
+
+  function startEdit(entry: PlannedEntry) {
+    setEditingId(entry.id)
+    setEditValues({
+      sets: entry.sets != null ? String(entry.sets) : '',
+      reps: entry.reps != null ? String(entry.reps) : '',
+      weight: entry.weight != null ? String(entry.weight) : '',
+    })
+  }
+
+  async function saveEdit(entry: PlannedEntry) {
+    if (!onUpdateEntry) return
+    setSaving(true)
+    try {
+      const updates: PlannedEntryUpdate = {}
+      const sets = parseInt(editValues.sets)
+      const reps = parseInt(editValues.reps)
+      const weight = parseFloat(editValues.weight)
+      if (!isNaN(sets)) updates.sets = sets
+      else if (editValues.sets === '') updates.sets = null
+      if (!isNaN(reps)) updates.reps = reps
+      else if (editValues.reps === '') updates.reps = null
+      if (entry.weight_unit !== 'bodyweight') {
+        if (!isNaN(weight)) updates.weight = weight
+        else if (editValues.weight === '') updates.weight = null
+      }
+      await onUpdateEntry(entry.id, updates)
+      setEditingId(null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleRemove(id: string) {
+    if (!onRemoveEntry) return
+    await onRemoveEntry(id)
   }
 
   return (
@@ -119,6 +165,7 @@ export default function DayDetailModal({
                         const vol = entrySlotDone
                           ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                           : 0
+                        const isEditing = editingId === entry.id
                         return (
                           <div
                             key={entry.id}
@@ -141,23 +188,97 @@ export default function DayDetailModal({
                                   {entry.intensity}
                                 </span>
                               )}
-                              {vol > 0 && (
-                                <span className="ml-auto text-xs font-semibold text-primary-600">
-                                  {vol.toLocaleString()} {preferredUnit}
-                                </span>
-                              )}
+                              <div className="ml-auto flex items-center gap-1.5">
+                                {vol > 0 && (
+                                  <span className="text-xs font-semibold text-primary-600">
+                                    {vol.toLocaleString()} {preferredUnit}
+                                  </span>
+                                )}
+                                {!isEditing && (
+                                  <>
+                                    {onUpdateEntry && (
+                                      <button
+                                        onClick={() => startEdit(entry)}
+                                        className="rounded p-0.5 text-surface-500 hover:text-surface-800 transition-colors"
+                                        title="Edit"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                    {onRemoveEntry && (
+                                      <button
+                                        onClick={() => handleRemove(entry.id)}
+                                        className="rounded p-0.5 text-surface-400 hover:text-danger-600 transition-colors"
+                                        title="Remove"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <p className="mt-0.5 text-xs text-surface-500">
-                              {[
-                                entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,
-                                repsDisplay && `${repsDisplay}`,
-                                entry.weight_unit === 'bodyweight'
-                                  ? 'BW'
-                                  : entry.weight != null
-                                    ? formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)
-                                    : null,
-                              ].filter(Boolean).join(' × ')}
-                            </p>
+                            {isEditing ? (
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="Sets"
+                                  value={editValues.sets}
+                                  onChange={(e) => setEditValues((v) => ({ ...v, sets: e.target.value }))}
+                                  className="w-14 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                />
+                                <span className="text-xs text-surface-400">×</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="Reps"
+                                  value={editValues.reps}
+                                  onChange={(e) => setEditValues((v) => ({ ...v, reps: e.target.value }))}
+                                  className="w-14 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                />
+                                {entry.weight_unit !== 'bodyweight' && (
+                                  <>
+                                    <span className="text-xs text-surface-400">×</span>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.5"
+                                      placeholder="Wt"
+                                      value={editValues.weight}
+                                      onChange={(e) => setEditValues((v) => ({ ...v, weight: e.target.value }))}
+                                      className="w-16 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                    />
+                                    <span className="text-xs text-surface-400">{entry.weight_unit}</span>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => saveEdit(entry)}
+                                  disabled={saving}
+                                  className="ml-1 rounded bg-primary-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingId(null)}
+                                  className="rounded px-2 py-0.5 text-xs font-medium text-surface-500 hover:text-surface-800 transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="mt-0.5 text-xs text-surface-500">
+                                {[
+                                  entry.sets != null && `${entry.sets} ${entry.sets === 1 ? 'set' : 'sets'}`,
+                                  repsDisplay && `${repsDisplay}`,
+                                  entry.weight_unit === 'bodyweight'
+                                    ? 'BW'
+                                    : entry.weight != null
+                                      ? formatWeightWithConversion(entry.weight, entry.weight_unit, preferredUnit)
+                                      : null,
+                                ].filter(Boolean).join(' × ')}
+                              </p>
+                            )}
                           </div>
                         )
                       })}

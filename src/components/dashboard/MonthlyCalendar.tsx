@@ -15,7 +15,8 @@ import {
 } from 'date-fns'
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { loadUserEntries } from '@/hooks/useWeeklyPlan'
-import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
+import { supabase, isDev } from '@/lib/supabase'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
@@ -64,6 +65,38 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
   const plannedDates = useMemo(() => {
     return new Set(plannedEntries.map((e) => e.date))
   }, [plannedEntries])
+
+  async function handleRemoveEntry(id: string) {
+    if (isDev) {
+      const STORAGE_KEY = 'fittrack:weekly_plan'
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const all = JSON.parse(raw) as PlannedEntry[]
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(all.filter((e) => e.id !== id)))
+      }
+    } else {
+      const { error } = await supabase.from('planned_entries').delete().eq('id', id)
+      if (error) throw error
+    }
+    setInternalEntries((prev) => prev.filter((e) => e.id !== id))
+  }
+
+  async function handleUpdateEntry(id: string, values: PlannedEntryUpdate) {
+    if (isDev) {
+      const STORAGE_KEY = 'fittrack:weekly_plan'
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const all = JSON.parse(raw) as PlannedEntry[]
+        const idx = all.findIndex((e) => e.id === id)
+        if (idx !== -1) Object.assign(all[idx], values)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
+      }
+    } else {
+      const { error } = await supabase.from('planned_entries').update(values).eq('id', id)
+      if (error) throw error
+    }
+    setInternalEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...values } : e)))
+  }
 
   function getSessionSlot(ws: WorkoutSession): string {
     const match = ws.notes?.match(/^session:(.+)$/)
@@ -286,6 +319,8 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
         isSlotCompleted={isSlotCompleted}
         onToggleComplete={onUpdateSession ? handleToggleComplete : undefined}
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
+        onRemoveEntry={handleRemoveEntry}
+        onUpdateEntry={handleUpdateEntry}
       />
 
       <WorkoutCompleteModal
