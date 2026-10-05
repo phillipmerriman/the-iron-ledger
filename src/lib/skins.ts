@@ -13,11 +13,13 @@ export interface SkinDef {
   monthLayout: 'dots' | 'cells'
   /** Dashboard: week and month calendars as two side-by-side panels instead of one "Calendars" panel. */
   splitCalendars: boolean
+  /** Dashboard: large title with today's date under it and a full-size call-to-action button. */
+  heroHeader: boolean
 }
 
 export const SKINS: Record<SkinId, SkinDef> = {
-  classic: { id: 'classic', label: 'Classic', mode: 'switchable', nav: 'sidebar', weekLayout: 'grid', monthLayout: 'dots', splitCalendars: false },
-  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'dark', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells', splitCalendars: true },
+  classic: { id: 'classic', label: 'Classic', mode: 'switchable', nav: 'sidebar', weekLayout: 'grid', monthLayout: 'dots', splitCalendars: false, heroHeader: false },
+  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'dark', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells', splitCalendars: true, heroHeader: true },
 }
 
 /** Active skin. Becomes a user setting once the design picker is added. */

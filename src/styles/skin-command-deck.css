@@ -500,3 +500,51 @@
   color: var(--color-danger-500);
   filter: drop-shadow(0 0 4px rgba(255, 92, 108, 0.55));
 }
+
+/* ---------- Dashboard hero header (mockup sizes) ---------- */
+
+:root[data-skin="command-deck"] .ui-hero-title {
+  font-size: 2.375rem;
+  line-height: 1.1;
+  letter-spacing: 0.18em;
+  color: #eafffa;
+}
+
+:root[data-skin="command-deck"] .ui-hero-date {
+  margin-top: 4px;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cd-amber);
+}
+
+/* Big call-to-action: vertical amber gradient, so the two corners are cut with clip-path
+   (the gradient-drawn cuts used for other primary buttons can't carry a gradient fill).
+   The focus outline sits inside the shape so the clipping can't hide it. */
+:root[data-skin="command-deck"] .ui-btn-primary.ui-btn-hero {
+  min-height: 52px;
+  padding: 0 34px;
+  gap: 10px;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: #1a0f00;
+  background: linear-gradient(180deg, var(--cd-amber-hi), #e8920c);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+:root[data-skin="command-deck"] .ui-btn-hero:focus-visible {
+  outline: 2px solid #1a0f00;
+  outline-offset: -5px;
+}
+
+:root[data-skin="command-deck"] .ui-btn-hero svg.lucide {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.6;
+}
+
+/* Dates shown as text (subtitles, ranges, date modal titles) share the dashboard date's amber.
+   Calendar structure (weekday column labels, month headings, chart axes) keeps its own colors. */
+:root[data-skin="command-deck"] .ui-date {
+  color: var(--cd-amber);
+}

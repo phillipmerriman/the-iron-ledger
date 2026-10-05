@@ -43,7 +43,7 @@ export default function ActiveProgramCard({ program, activation, sessions }: Act
             )}
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Badge variant="primary">Active</Badge>
-              <Badge>{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</Badge>
+              <Badge className="ui-date">{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</Badge>
               <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
             </div>
           </div>

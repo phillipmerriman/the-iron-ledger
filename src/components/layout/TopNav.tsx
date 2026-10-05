@@ -33,7 +33,8 @@ export default function TopNav() {
   }, [openGroup])
 
   return (
-    <nav ref={ref} aria-label="Main" className="ui-topnav hidden border-b border-border px-4 xl:block">
+    // relative z-30: lift the bar (and its dropdowns) above positioned page content, below modals (z-50)
+    <nav ref={ref} aria-label="Main" className="ui-topnav relative z-30 hidden border-b border-border px-4 xl:block">
       <div className="flex flex-wrap gap-1">
         {NAV_ITEMS.map((item) =>
           item.type === 'group' ? (

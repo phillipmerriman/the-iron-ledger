@@ -206,7 +206,7 @@ export default function ProgramDetailPage() {
                       title="Click to deactivate"
                     >
                       <OctagonX className="h-4 w-4" />
-                      Active: {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}
+                      Active: <span className="ui-date">{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</span>
                     </button>
                   )
                 })}

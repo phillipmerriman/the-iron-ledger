@@ -30,6 +30,7 @@ import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatWeekLabel } from '@/lib/week-label'
+import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
@@ -246,13 +247,20 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <SectionSettings storageKey="dashboard-section-order" sections={dashSections} />
+      <div className={cn('flex items-center justify-between', skinDef.heroHeader && 'flex-wrap items-start gap-4')}>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className={cn('text-2xl font-bold', skinDef.heroHeader && 'ui-hero-title')}>Dashboard</h1>
+            <SectionSettings storageKey="dashboard-section-order" sections={dashSections} />
+          </div>
+          {skinDef.heroHeader && (
+            <p className="ui-hero-date">
+              {format(new Date(), 'EEE dd MMM yyyy')} · {dashStats.todaySlots.length === 0 ? 'Rest day' : 'Training day'}
+            </p>
+          )}
         </div>
         <Link to="/workouts/today">
-          <Button size="sm">
+          <Button size="sm" className={cn(skinDef.heroHeader && 'ui-btn-hero')}>
             <Plus className="h-4 w-4" />
             Get After It
           </Button>

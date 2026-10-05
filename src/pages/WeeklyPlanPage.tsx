@@ -583,7 +583,7 @@ export default function WeeklyPlanPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="text-xs text-surface-400">
+          <span className="ui-date text-xs text-surface-400">
             {format(days[0], 'MMM d')} – {format(days[6], 'MMM d, yyyy')}
           </span>
           <div className="ml-auto flex items-center gap-1">
@@ -608,7 +608,7 @@ export default function WeeklyPlanPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-semibold text-surface-700">
+          <span className="ui-date text-sm font-semibold text-surface-700">
             {format(days[0], 'MMM d')} – {format(days[6], 'MMM d, yyyy')}
           </span>
           <Button
@@ -774,7 +774,7 @@ export default function WeeklyPlanPage() {
         </button>
 
         {/* Mobile exercise pool modal */}
-        <Modal open={exercisePoolOpen} onClose={() => setExercisePoolOpen(false)} title={<>Add Exercise<br /><span className="text-sm font-normal text-surface-500">{format(days[mobileDayIndex], 'EEEE, MMM d')}</span></>}>
+        <Modal open={exercisePoolOpen} onClose={() => setExercisePoolOpen(false)} title={<>Add Exercise<br /><span className="ui-date text-sm font-normal text-surface-500">{format(days[mobileDayIndex], 'EEEE, MMM d')}</span></>}>
           <div className="space-y-3">
             {/* Session picker */}
             <div className="flex gap-1">

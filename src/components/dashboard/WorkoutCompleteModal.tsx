@@ -51,7 +51,7 @@ export default function WorkoutCompleteModal({
           <Trophy className="h-7 w-7 text-primary-600" />
         </div>
         <h2 className="mt-3 text-xl font-bold text-surface-900">{sessionPrefix}Workout Complete!</h2>
-        <p className="mt-1 text-sm text-surface-500">{dayLabel}</p>
+        <p className="ui-date mt-1 text-sm text-surface-500">{dayLabel}</p>
       </div>
 
       {entries.length > 0 && (

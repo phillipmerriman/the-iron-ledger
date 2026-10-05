@@ -154,8 +154,8 @@ export default function StartDatePicker({ value, onChange, programWeeks, activat
       {/* Selected date confirmation */}
       {value && (
         <p className="mt-2 text-center text-xs font-medium text-surface-600">
-          Starts Sunday, {format(new Date(value + 'T00:00:00'), 'MMM d, yyyy')}
-          {rangeEnd && <> — ends {format(rangeEnd, 'MMM d, yyyy')}</>}
+          Starts <span className="ui-date">Sunday, {format(new Date(value + 'T00:00:00'), 'MMM d, yyyy')}</span>
+          {rangeEnd && <> — ends <span className="ui-date">{format(rangeEnd, 'MMM d, yyyy')}</span></>}
         </p>
       )}
     </div>

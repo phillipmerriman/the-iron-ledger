@@ -95,7 +95,7 @@ export default function DayDetailModal({
     <Modal
       open={!!selectedDay}
       onClose={onClose}
-      title={selectedDay ? format(selectedDay, 'EEEE, MMM d') : ''}
+      title={selectedDay ? <span className="ui-date">{format(selectedDay, 'EEEE, MMM d')}</span> : ''}
     >
       {daySessions.length === 0 && dayPlanned.length === 0 ? (
         <p className="py-4 text-center text-sm text-surface-400">No workouts on this day</p>

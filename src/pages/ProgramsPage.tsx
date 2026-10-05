@@ -78,7 +78,7 @@ export default function ProgramsPage() {
                   <p className="font-medium text-surface-900">{program.name}</p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <Badge variant="primary">Active</Badge>
-                    <Badge>
+                    <Badge className="ui-date">
                       <Calendar className="mr-1 inline h-3 w-3" />
                       {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}
                     </Badge>
