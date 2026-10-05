@@ -79,7 +79,20 @@
       "Bash(node -e \"const r=JSON.parse\\(require\\('fs'\\).readFileSync\\(0\\)\\);r.forEach\\(f=>f.messages.forEach\\(m=>console.log\\(f.filePath.split\\('src'\\)[1],m.line,m.ruleId\\)\\)\\)\")",
       "Bash(node -e \"const r=JSON.parse\\(require\\('fs'\\).readFileSync\\(0\\)\\);r.forEach\\(f=>f.messages.forEach\\(m=>console.log\\('HEAD',m.line,m.ruleId\\)\\)\\)\")",
       "Bash(git apply *)",
-      "Bash(node __TRACKED_VAR__/shoot.mjs __TRACKED_VAR__/shots4 modal)"
+      "Bash(node __TRACKED_VAR__/shoot.mjs __TRACKED_VAR__/shots4 modal)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots6 dashboard)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots6 exercises)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots6 probe)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots7 dashboard)",
+      "Bash(node __TRACKED_VAR__/shoot.mjs __TRACKED_VAR__/shots7 dashboard)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots8 dashboard)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots8 chipzoom)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots9 chipzoom)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots9 exercises)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots10 migrate)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots11 heading)",
+      "Bash(sed -i 's#// HUD header to match the week list: teal title left, square prev/next buttons right#// HUD header to match the week list: teal title left, square prev/next buttons right \\(left, under the panel heading, when hideTitle\\)#' src/components/dashboard/MonthlyCalendar.tsx)",
+      "Bash(node C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shoot.mjs C:/Users/phill/AppData/Local/Temp/claude/c--Users-phill-repos-the-iron-ledger/acc908ab-7d86-4a3c-b4e8-250c2b3faefa/scratchpad/shots12 heading)"
     ]
   }
 }

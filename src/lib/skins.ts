@@ -11,11 +11,13 @@ export interface SkinDef {
   weekLayout: 'grid' | 'list'
   /** Dashboard month calendar: round day dots, or bordered square cells with a status label. */
   monthLayout: 'dots' | 'cells'
+  /** Dashboard: week and month calendars as two side-by-side panels instead of one "Calendars" panel. */
+  splitCalendars: boolean
 }
 
 export const SKINS: Record<SkinId, SkinDef> = {
-  classic: { id: 'classic', label: 'Classic', mode: 'switchable', nav: 'sidebar', weekLayout: 'grid', monthLayout: 'dots' },
-  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'dark', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells' },
+  classic: { id: 'classic', label: 'Classic', mode: 'switchable', nav: 'sidebar', weekLayout: 'grid', monthLayout: 'dots', splitCalendars: false },
+  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'dark', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells', splitCalendars: true },
 }
 
 /** Active skin. Becomes a user setting once the design picker is added. */

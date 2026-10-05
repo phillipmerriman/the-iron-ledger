@@ -278,7 +278,8 @@
 
 /* ---------- Palette remap ----------
  * Pastel shades (exercise colors, status chips) become dark tints; dark text shades become bright.
- * 400/500 are already vivid on dark and stay as-is. Mirrors the mockup chips: tinted fill, mid border, bright text.
+ * 400/500 are already vivid on dark and stay as-is. 700 (the text shade) is a fixed vivid HUD hue taken from
+ * the mockup chip palette, so exercise names and chips read in full color.
  */
 
 :root[data-skin="command-deck"] {
@@ -287,105 +288,105 @@
   --color-slate-200: color-mix(in oklab, var(--color-slate-400) 26%, #0a141c);
   --color-slate-300: color-mix(in oklab, var(--color-slate-400) 50%, #0a141c);
   --color-slate-600: color-mix(in oklab, var(--color-slate-400) 82%, white);
-  --color-slate-700: color-mix(in oklab, var(--color-slate-400) 68%, white);
+  --color-slate-700: #a9bccb;
 
   --color-red-50: color-mix(in oklab, var(--color-red-400) 10%, #0a141c);
   --color-red-100: color-mix(in oklab, var(--color-red-400) 16%, #0a141c);
   --color-red-200: color-mix(in oklab, var(--color-red-400) 26%, #0a141c);
   --color-red-300: color-mix(in oklab, var(--color-red-400) 50%, #0a141c);
   --color-red-600: color-mix(in oklab, var(--color-red-400) 82%, white);
-  --color-red-700: color-mix(in oklab, var(--color-red-400) 68%, white);
+  --color-red-700: #ff6b6b;
 
   --color-orange-50: color-mix(in oklab, var(--color-orange-400) 10%, #0a141c);
   --color-orange-100: color-mix(in oklab, var(--color-orange-400) 16%, #0a141c);
   --color-orange-200: color-mix(in oklab, var(--color-orange-400) 26%, #0a141c);
   --color-orange-300: color-mix(in oklab, var(--color-orange-400) 50%, #0a141c);
   --color-orange-600: color-mix(in oklab, var(--color-orange-400) 82%, white);
-  --color-orange-700: color-mix(in oklab, var(--color-orange-400) 68%, white);
+  --color-orange-700: #ff9f43;
 
   --color-amber-50: color-mix(in oklab, var(--color-amber-400) 10%, #0a141c);
   --color-amber-100: color-mix(in oklab, var(--color-amber-400) 16%, #0a141c);
   --color-amber-200: color-mix(in oklab, var(--color-amber-400) 26%, #0a141c);
   --color-amber-300: color-mix(in oklab, var(--color-amber-400) 50%, #0a141c);
   --color-amber-600: color-mix(in oklab, var(--color-amber-400) 82%, white);
-  --color-amber-700: color-mix(in oklab, var(--color-amber-400) 68%, white);
+  --color-amber-700: #ffc078;
 
   --color-yellow-50: color-mix(in oklab, var(--color-yellow-400) 10%, #0a141c);
   --color-yellow-100: color-mix(in oklab, var(--color-yellow-400) 16%, #0a141c);
   --color-yellow-200: color-mix(in oklab, var(--color-yellow-400) 26%, #0a141c);
   --color-yellow-300: color-mix(in oklab, var(--color-yellow-400) 50%, #0a141c);
   --color-yellow-600: color-mix(in oklab, var(--color-yellow-400) 82%, white);
-  --color-yellow-700: color-mix(in oklab, var(--color-yellow-400) 68%, white);
+  --color-yellow-700: #ffd85c;
 
   --color-lime-50: color-mix(in oklab, var(--color-lime-400) 10%, #0a141c);
   --color-lime-100: color-mix(in oklab, var(--color-lime-400) 16%, #0a141c);
   --color-lime-200: color-mix(in oklab, var(--color-lime-400) 26%, #0a141c);
   --color-lime-300: color-mix(in oklab, var(--color-lime-400) 50%, #0a141c);
   --color-lime-600: color-mix(in oklab, var(--color-lime-400) 82%, white);
-  --color-lime-700: color-mix(in oklab, var(--color-lime-400) 68%, white);
+  --color-lime-700: #c6f25c;
 
   --color-green-50: color-mix(in oklab, var(--color-green-400) 10%, #0a141c);
   --color-green-100: color-mix(in oklab, var(--color-green-400) 16%, #0a141c);
   --color-green-200: color-mix(in oklab, var(--color-green-400) 26%, #0a141c);
   --color-green-300: color-mix(in oklab, var(--color-green-400) 50%, #0a141c);
   --color-green-600: color-mix(in oklab, var(--color-green-400) 82%, white);
-  --color-green-700: color-mix(in oklab, var(--color-green-400) 68%, white);
+  --color-green-700: #5fe89a;
 
   --color-teal-50: color-mix(in oklab, var(--color-teal-400) 10%, #0a141c);
   --color-teal-100: color-mix(in oklab, var(--color-teal-400) 16%, #0a141c);
   --color-teal-200: color-mix(in oklab, var(--color-teal-400) 26%, #0a141c);
   --color-teal-300: color-mix(in oklab, var(--color-teal-400) 50%, #0a141c);
   --color-teal-600: color-mix(in oklab, var(--color-teal-400) 82%, white);
-  --color-teal-700: color-mix(in oklab, var(--color-teal-400) 68%, white);
+  --color-teal-700: #3fe0c5;
 
   --color-cyan-50: color-mix(in oklab, var(--color-cyan-400) 10%, #0a141c);
   --color-cyan-100: color-mix(in oklab, var(--color-cyan-400) 16%, #0a141c);
   --color-cyan-200: color-mix(in oklab, var(--color-cyan-400) 26%, #0a141c);
   --color-cyan-300: color-mix(in oklab, var(--color-cyan-400) 50%, #0a141c);
   --color-cyan-600: color-mix(in oklab, var(--color-cyan-400) 82%, white);
-  --color-cyan-700: color-mix(in oklab, var(--color-cyan-400) 68%, white);
+  --color-cyan-700: #5cf0ff;
 
   --color-blue-50: color-mix(in oklab, var(--color-blue-400) 10%, #0a141c);
   --color-blue-100: color-mix(in oklab, var(--color-blue-400) 16%, #0a141c);
   --color-blue-200: color-mix(in oklab, var(--color-blue-400) 26%, #0a141c);
   --color-blue-300: color-mix(in oklab, var(--color-blue-400) 50%, #0a141c);
   --color-blue-600: color-mix(in oklab, var(--color-blue-400) 82%, white);
-  --color-blue-700: color-mix(in oklab, var(--color-blue-400) 68%, white);
+  --color-blue-700: #7aa8ff;
 
   --color-indigo-50: color-mix(in oklab, var(--color-indigo-400) 10%, #0a141c);
   --color-indigo-100: color-mix(in oklab, var(--color-indigo-400) 16%, #0a141c);
   --color-indigo-200: color-mix(in oklab, var(--color-indigo-400) 26%, #0a141c);
   --color-indigo-300: color-mix(in oklab, var(--color-indigo-400) 50%, #0a141c);
   --color-indigo-600: color-mix(in oklab, var(--color-indigo-400) 82%, white);
-  --color-indigo-700: color-mix(in oklab, var(--color-indigo-400) 68%, white);
+  --color-indigo-700: #9db9ff;
 
   --color-violet-50: color-mix(in oklab, var(--color-violet-400) 10%, #0a141c);
   --color-violet-100: color-mix(in oklab, var(--color-violet-400) 16%, #0a141c);
   --color-violet-200: color-mix(in oklab, var(--color-violet-400) 26%, #0a141c);
   --color-violet-300: color-mix(in oklab, var(--color-violet-400) 50%, #0a141c);
   --color-violet-600: color-mix(in oklab, var(--color-violet-400) 82%, white);
-  --color-violet-700: color-mix(in oklab, var(--color-violet-400) 68%, white);
+  --color-violet-700: #b8a1ff;
 
   --color-purple-50: color-mix(in oklab, var(--color-purple-400) 10%, #0a141c);
   --color-purple-100: color-mix(in oklab, var(--color-purple-400) 16%, #0a141c);
   --color-purple-200: color-mix(in oklab, var(--color-purple-400) 26%, #0a141c);
   --color-purple-300: color-mix(in oklab, var(--color-purple-400) 50%, #0a141c);
   --color-purple-600: color-mix(in oklab, var(--color-purple-400) 82%, white);
-  --color-purple-700: color-mix(in oklab, var(--color-purple-400) 68%, white);
+  --color-purple-700: #d692ff;
 
   --color-pink-50: color-mix(in oklab, var(--color-pink-400) 10%, #0a141c);
   --color-pink-100: color-mix(in oklab, var(--color-pink-400) 16%, #0a141c);
   --color-pink-200: color-mix(in oklab, var(--color-pink-400) 26%, #0a141c);
   --color-pink-300: color-mix(in oklab, var(--color-pink-400) 50%, #0a141c);
   --color-pink-600: color-mix(in oklab, var(--color-pink-400) 82%, white);
-  --color-pink-700: color-mix(in oklab, var(--color-pink-400) 68%, white);
+  --color-pink-700: #ff7ab8;
 
   --color-rose-50: color-mix(in oklab, var(--color-rose-400) 10%, #0a141c);
   --color-rose-100: color-mix(in oklab, var(--color-rose-400) 16%, #0a141c);
   --color-rose-200: color-mix(in oklab, var(--color-rose-400) 26%, #0a141c);
   --color-rose-300: color-mix(in oklab, var(--color-rose-400) 50%, #0a141c);
   --color-rose-600: color-mix(in oklab, var(--color-rose-400) 82%, white);
-  --color-rose-700: color-mix(in oklab, var(--color-rose-400) 68%, white);
+  --color-rose-700: #ff6f91;
 }
 
 /* ---------- Dashboard ---------- */
@@ -418,9 +419,16 @@
   letter-spacing: 0.2em;
 }
 
-/* Exercise chips: angled corner like the mockup */
+/* Exercise chips, built exactly like the mockup's: one vivid hue (the chip's text color) at full
+ * strength for text, ~33% for the outline and ~13% for a see-through fill, so the outline reads
+ * stronger than the fill. Square corners with one angled top-right corner. */
 :root[data-skin="command-deck"] .ui-chip {
-  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%);
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+  border-radius: 0;
+  border-color: color-mix(in srgb, currentColor 33%, transparent);
+  background-color: color-mix(in srgb, currentColor 13%, transparent);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 /* Today in the week list: amber */
@@ -430,11 +438,65 @@
   box-shadow: 0 0 14px rgba(255, 176, 32, 0.22);
 }
 
-:root[data-skin="command-deck"] .ui-week-today .ui-week-label {
-  color: var(--cd-amber);
-}
-
 /* Exercise color picker: pastel fills are dark tints here, so show the bright hue instead */
 :root[data-skin="command-deck"] .ui-swatch {
   background-color: currentColor;
+}
+
+/* ---------- Icons ----------
+ * Lucide icons restyled as thin, hard-edged HUD glyphs: lighter stroke, square caps, mitered corners.
+ * Only icons at Lucide's default stroke-width (2) are touched; icons drawn heavier on purpose
+ * (e.g. strokeWidth={3} checkmarks) keep their weight. CSS overrides the SVG presentation attributes.
+ */
+:root[data-skin="command-deck"] svg.lucide[stroke-width="2"] {
+  stroke-width: 1.5;
+}
+
+:root[data-skin="command-deck"] svg.lucide {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+/* Glow on icons that mark "you are here" or headline a panel */
+:root[data-skin="command-deck"] .ui-sidebar a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-drawer a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-bottomnav a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-menu a[aria-current='page'] svg.lucide {
+  filter: drop-shadow(0 0 4px rgba(63, 224, 197, 0.65));
+}
+
+/* Stat card icons in teal with a soft glow (amber on the rest-day card) */
+:root[data-skin="command-deck"] .ui-stat-label svg.lucide {
+  color: var(--cd-teal);
+  filter: drop-shadow(0 0 3px rgba(63, 224, 197, 0.55));
+}
+
+:root[data-skin="command-deck"] .ui-stat-alert .ui-stat-label svg.lucide {
+  color: var(--cd-amber);
+  filter: drop-shadow(0 0 3px rgba(255, 176, 32, 0.55));
+}
+
+/* Icons inside the amber call-to-action stay crisp and dark */
+:root[data-skin="command-deck"] .ui-btn-primary svg.lucide {
+  stroke-width: 2.25;
+}
+
+/* Small icon-only controls (settings cog, hide/reorder arrows, chevrons, edit/delete, close):
+ * the dim gray they use elsewhere nearly vanishes against this skin's thin strokes, so tint them
+ * a muted teal and light them up on hover. Matches buttons whose only element is an icon;
+ * nav chrome and disabled buttons are left alone. */
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled) > svg.lucide:only-child {
+  color: #5fa89d;
+  transition: color 0.15s, filter 0.15s;
+}
+
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child {
+  color: var(--cd-teal);
+  filter: drop-shadow(0 0 4px rgba(63, 224, 197, 0.6));
+}
+
+/* Delete buttons warn on hover instead (higher specificity than the teal hover above) */
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child:is(.lucide-trash-2, .lucide-trash2, .lucide-trash) {
+  color: var(--color-danger-500);
+  filter: drop-shadow(0 0 4px rgba(255, 92, 108, 0.55));
 }

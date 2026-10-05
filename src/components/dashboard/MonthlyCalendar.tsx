@@ -27,6 +27,11 @@ import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 
 interface MonthlyCalendarProps {
+  /** Shown month, when the parent controls it (e.g. to display it in a panel heading) */
+  month?: Date
+  onMonthChange?: (month: Date) => void
+  /** Omit the title in the cells header (the surrounding panel shows it) */
+  hideTitle?: boolean
   sessions: WorkoutSession[]
   activations?: ProgramActivation[]
   programs?: Program[]
@@ -37,11 +42,17 @@ interface MonthlyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
   const { user, profile } = useAuth()
   const { skinDef } = useTheme()
   const cells = skinDef.monthLayout === 'cells'
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [ownMonth, setOwnMonth] = useState(new Date())
+  const currentMonth = month ?? ownMonth
+  function setCurrentMonth(update: (m: Date) => Date) {
+    const next = update(currentMonth)
+    if (onMonthChange) onMonthChange(next)
+    else setOwnMonth(next)
+  }
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
 
@@ -216,6 +227,32 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
 
   return (
     <div>
+      {cells ? (
+        // HUD header to match the week list: teal title left, square prev/next buttons right (left, under the panel heading, when hideTitle)
+        <div className={cn('mb-4 flex items-center gap-2', hideTitle ? 'justify-start' : 'justify-between')}>
+          {!hideTitle && (
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-primary-600">
+              {format(currentMonth, 'MMMM yyyy')}
+            </h3>
+          )}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
+              className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
+              className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-surface-700">
           {format(currentMonth, 'MMMM yyyy')}
@@ -237,6 +274,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
           </button>
         </div>
       </div>
+      )}
 
       {/* Day headers */}
       <div className="mb-1 grid grid-cols-7 text-center">

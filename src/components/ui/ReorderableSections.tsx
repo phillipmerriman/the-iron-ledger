@@ -7,8 +7,30 @@ export interface Section {
   id: string
   title: string
   render: () => ReactNode
+  /** Shown in the panel header instead of `title` (which still names the section in menus) */
+  heading?: ReactNode
   /** If true, section is hidden when it has no data (caller controls this) */
   hidden?: boolean
+  /** Half width on wide screens, so two consecutive half sections sit side by side */
+  half?: boolean
+  /** Ids of sections this one takes over from (e.g. after a split); it inherits their saved position and visibility */
+  replaces?: string[]
+}
+
+/** Swap ids that no current section uses for the sections that replace them, keeping position. */
+function expandReplaced(ids: string[], sections: Section[]): string[] {
+  const known = new Set(sections.map((s) => s.id))
+  const out: string[] = []
+  for (const id of ids) {
+    if (known.has(id)) {
+      if (!out.includes(id)) out.push(id)
+      continue
+    }
+    for (const s of sections) {
+      if (s.replaces?.includes(id) && !out.includes(s.id)) out.push(s.id)
+    }
+  }
+  return out
 }
 
 interface ReorderableSectionsProps {
@@ -64,7 +86,7 @@ function setVisibility(storageKey: string, next: Set<string>) {
   getVisListeners(storageKey).forEach((cb) => cb())
 }
 
-function useSectionVisibility(storageKey: string, allIds: string[]) {
+function useSectionVisibility(storageKey: string, allIds: string[], sections: Section[]) {
   const subscribe = useCallback(
     (cb: () => void) => {
       const ls = getVisListeners(storageKey)
@@ -74,8 +96,8 @@ function useSectionVisibility(storageKey: string, allIds: string[]) {
     [storageKey],
   )
   const snap = useSyncExternalStore(subscribe, () => getVisSnapshot(storageKey))
-  // null means "show all" (first-time user)
-  const visible = snap ?? new Set(allIds)
+  // null means "show all" (first-time user). Saved ids of replaced sections count for their replacements.
+  const visible = snap ? new Set(expandReplaced([...snap], sections)) : new Set(allIds)
 
   const toggle = useCallback(
     (id: string) => {
@@ -102,7 +124,7 @@ function useSectionVisibility(storageKey: string, allIds: string[]) {
 /** Gear button + dropdown for toggling dashboard sections. Place in the page header. */
 export function SectionSettings({ storageKey, sections }: { storageKey: string; sections: Section[] }) {
   const allIds = sections.filter((s) => !s.hidden).map((s) => s.id)
-  const { visible, toggle } = useSectionVisibility(storageKey, allIds)
+  const { visible, toggle } = useSectionVisibility(storageKey, allIds, sections)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -156,7 +178,7 @@ export function SectionSettings({ storageKey, sections }: { storageKey: string; 
 export default function ReorderableSections({ storageKey, sections }: ReorderableSectionsProps) {
   const dataSections = sections.filter((s) => !s.hidden)
   const allIds = dataSections.map((s) => s.id)
-  const { visible, hide } = useSectionVisibility(storageKey, allIds)
+  const { visible, hide } = useSectionVisibility(storageKey, allIds, sections)
   const visibleSections = dataSections.filter((s) => visible.has(s.id))
   const defaultOrder = visibleSections.map((s) => s.id)
 
@@ -164,7 +186,7 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
     const saved = loadOrder(storageKey)
     if (!saved) return defaultOrder
     const validIds = new Set(defaultOrder)
-    const merged = saved.filter((id) => validIds.has(id))
+    const merged = expandReplaced(saved, sections).filter((id) => validIds.has(id))
     for (const id of defaultOrder) {
       if (!merged.includes(id)) merged.push(id)
     }
@@ -242,7 +264,7 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
   }
 
   return (
-    <>
+    <div className="grid items-start gap-6 lg:grid-cols-2">
       {sorted.map((section, i) => (
         <Card
           key={section.id}
@@ -254,14 +276,15 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
           onDrop={() => handleDrop(section.id)}
           onDragEnd={handleDragEnd}
           className={cn(
-            'transition-shadow',
+            'min-w-0 transition-shadow',
+            !section.half && 'lg:col-span-2',
             dropTarget === section.id && 'ring-2 ring-primary-500 ring-offset-2',
           )}
         >
           {/* Header with title + reorder controls */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">
             <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-surface-300 active:cursor-grabbing" />
-            <h2 className="ui-section-title flex-1 text-sm font-semibold text-surface-500">{section.title}</h2>
+            <h2 className="ui-section-title flex-1 text-sm font-semibold text-surface-500">{section.heading ?? section.title}</h2>
             <div className="flex items-center">
               <button
                 onClick={() => hide(section.id)}
@@ -301,6 +324,6 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
           </div>
         </Card>
       ))}
-    </>
+    </div>
   )
 }
