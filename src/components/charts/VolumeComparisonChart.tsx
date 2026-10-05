@@ -283,8 +283,8 @@ export default function VolumeComparisonChart({ volumeByDay, unit }: VolumeCompa
             iconType="square"
             iconSize={10}
           />
-          <Bar dataKey="current" name={currentLabel} fill="#3b82f6" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="comparison" name={comparisonLabel} fill="#cbd5e1" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="current" name={currentLabel} fill="var(--color-chart-primary)" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="comparison" name={comparisonLabel} fill="var(--color-chart-muted)" radius={[3, 3, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

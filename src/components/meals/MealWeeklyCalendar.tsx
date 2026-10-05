@@ -269,7 +269,7 @@ export default function MealWeeklyCalendar() {
       <Modal
         open={!!selectedDay}
         onClose={() => setSelectedDay(null)}
-        title={selectedDay ? format(selectedDay.date, 'EEEE, MMM d') : ''}
+        title={selectedDay ? <span className="ui-date">{format(selectedDay.date, 'EEEE, MMM d')}</span> : ''}
       >
         {selectedEntries.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-4">

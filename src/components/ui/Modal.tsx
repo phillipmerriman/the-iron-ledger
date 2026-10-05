@@ -30,13 +30,13 @@ export default function Modal({ open, onClose, title, size = 'md', children }: M
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40">
+    <div className="ui-modal-backdrop fixed inset-0 z-50 overflow-y-auto bg-black/40">
       <div
         ref={backdropRef}
         className="flex min-h-full items-center justify-center p-4"
         onClick={(e) => { if (e.target === backdropRef.current) onClose() }}
       >
-        <div className={`flex w-full ${sizeClasses[size]} max-h-[85vh] flex-col rounded-xl bg-card p-4 md:p-6 shadow-xl`}>
+        <div className={`ui-card ui-modal flex w-full ${sizeClasses[size]} max-h-[85vh] flex-col rounded-xl bg-card p-4 md:p-6 shadow-xl`}>
           <div className="mb-4 flex shrink-0 items-start justify-between">
             <h2 className="text-lg font-semibold text-surface-900">{title}</h2>
             <button

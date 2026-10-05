@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Iron Ledger Dashboard Deep Space</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050912}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<div style="display:flex;flex-wrap:wrap;min-height:1040px;font-family:'Exo 2',system-ui,sans-serif;color:#cfe8f2;background-color:#050912;background-image:radial-gradient(1px 1px at 20px 30px,rgba(255,255,255,0.45) 50%,transparent 51%),radial-gradient(1px 1px at 120px 90px,rgba(120,240,255,0.5) 50%,transparent 51%),radial-gradient(1px 1px at 70px 150px,rgba(255,255,255,0.3) 50%,transparent 51%),radial-gradient(900px 520px at 85% -10%,rgba(20,90,140,0.35),transparent);background-size:190px 170px,270px 230px,150px 210px,auto">
+
+<!-- SIDEBAR -->
+<nav style="flex:0 0 236px;max-width:100%;box-sizing:border-box;display:flex;flex-direction:column;background:linear-gradient(180deg,#0a1626,#070e1a);border-right:1px solid #17384d">
+<div style="display:flex;align-items:center;gap:12px;padding:22px 20px;border-bottom:1px solid #17384d">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2de2e6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>
+<div style="font-family:Orbitron,sans-serif;font-weight:700;font-size:15px;letter-spacing:0.16em;color:#e6fbff">IRON LEDGER</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:4px;padding:16px 12px">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+<a href="#" style="display:flex;align-items:center;gap:12px;padding:11px 12px;min-height:44px;box-sizing:border-box;border:1px solid {{n.bd}};background:{{n.bg}};color:{{n.fg}};font-size:14px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.icon}}"/></svg>
+<span style="flex:1">{{n.label}}</span>
+<sc-if value="{{n.menu}}" hint-placeholder-val="{{ false }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></sc-if>
+</a>
+</sc-for>
+</div>
+</nav>
+
+<!-- MAIN -->
+<main style="flex:999 1 560px;min-width:0;box-sizing:border-box;padding:0 32px 32px;display:flex;flex-direction:column;gap:24px">
+
+<header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:18px 0;border-bottom:1px solid #17384d">
+<div style="font-size:12px;letter-spacing:0.18em;color:#7fa3b5;text-transform:uppercase">Commander</div>
+<div style="display:flex;align-items:center;gap:14px">
+<div style="font-size:13px;letter-spacing:0.1em;color:#cfe8f2">DEV | Phillip</div>
+<button aria-label="Log out" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #1d4560;color:#8fe9f5;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H5v16h4M16 8l4 4-4 4M20 12H9"/></svg></button>
+</div>
+</header>
+
+<div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px">
+<div>
+<h1 style="margin:0;font-family:Orbitron,sans-serif;font-weight:700;font-size:30px;letter-spacing:0.14em;text-transform:uppercase;color:#e6fbff">Dashboard</h1>
+<div style="margin-top:6px;font-size:13px;letter-spacing:0.14em;color:#7fa3b5;text-transform:uppercase">Sunday &middot; 04 October 2026</div>
+</div>
+<button style="min-height:48px;padding:0 28px;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(45,226,230,0.28),rgba(45,226,230,0.1));border:1px solid #2de2e6;color:#e6fbff;font-family:Orbitron,sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;box-shadow:0 0 18px rgba(45,226,230,0.28);cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Get After It</button>
+</div>
+
+<!-- RESOURCE BAR -->
+<section aria-label="Summary" style="display:flex;flex-wrap:wrap;border:1px solid #1d4560;background:linear-gradient(180deg,#0e1b2d,#0a1321);box-shadow:inset 0 0 0 1px rgba(45,226,230,0.05),0 0 30px rgba(10,60,100,0.25)">
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+<div style="flex:1 1 210px;display:flex;align-items:center;gap:14px;padding:18px 22px;border-right:1px solid #17384d">
+<div style="width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid #2de2e666;background:rgba(45,226,230,0.08)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2de2e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{s.icon}}"/></svg></div>
+<div>
+<div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#7fa3b5">{{s.label}}</div>
+<div style="font-family:Orbitron,sans-serif;font-weight:700;font-size:26px;color:{{s.color}}">{{s.value}}<span style="font-family:'Exo 2',sans-serif;font-weight:400;font-size:12px;letter-spacing:0.1em;color:#7fa3b5"> {{s.unit}}</span></div>
+</div>
+</div>
+</sc-for>
+</section>
+
+<!-- CALENDARS -->
+<section style="position:relative;border:1px solid #1d4560;background:linear-gradient(180deg,#0e1b2d,#0a1321);padding:20px 22px;display:flex;flex-direction:column;gap:18px;box-shadow:inset 0 0 0 1px rgba(45,226,230,0.05)">
+<div style="position:absolute;top:-1px;left:-1px;width:14px;height:14px;border-top:2px solid #2de2e6;border-left:2px solid #2de2e6"></div>
+<div style="position:absolute;bottom:-1px;right:-1px;width:14px;height:14px;border-bottom:2px solid #2de2e6;border-right:2px solid #2de2e6"></div>
+<div style="display:flex;align-items:center;gap:14px">
+<h2 style="margin:0;font-family:Orbitron,sans-serif;font-weight:500;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#8fe9f5">Calendars</h2>
+<div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(45,226,230,0.4),transparent)"></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:28px">
+
+<!-- week -->
+<div style="flex:1.5 1 520px;min-width:0;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:6px">
+<button aria-label="Previous week" style="width:44px;height:44px;background:transparent;border:1px solid #1d4560;color:#8fe9f5;cursor:pointer;font-size:18px">&lsaquo;</button>
+<div style="font-family:Orbitron,sans-serif;font-weight:500;font-size:14px;letter-spacing:0.14em;text-transform:uppercase;padding:0 10px">This Week</div>
+<button aria-label="Next week" style="width:44px;height:44px;background:transparent;border:1px solid #1d4560;color:#8fe9f5;cursor:pointer;font-size:18px">&rsaquo;</button>
+</div>
+<a href="#" style="display:flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:#2de2e6"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3"/></svg>Plan</a>
+</div>
+<div style="overflow-x:auto">
+<div style="display:flex;gap:6px;min-width:600px">
+<sc-for list="{{week}}" as="d" hint-placeholder-count="7">
+<div style="flex:1 1 0;min-width:78px;min-height:200px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid {{d.bd}};background:{{d.bg}};box-shadow:{{d.glow}}">
+<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:{{d.fg}}"><span>{{d.dow}}</span><span style="font-family:Orbitron,sans-serif;font-weight:700;font-size:13px">{{d.num}}</span></div>
+<sc-if value="{{d.rest}}" hint-placeholder-val="{{ false }}"><div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#4f7184">Rest</div></sc-if>
+<sc-for list="{{d.g1}}" as="c" hint-placeholder-count="2">
+<div style="font-size:11px;line-height:1;padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{c.fg}};background:{{c.bg}};border:1px solid {{c.bd}}">{{c.label}}</div>
+</sc-for>
+<sc-if value="{{d.divider}}" hint-placeholder-val="{{ true }}"><div style="height:1px;background:linear-gradient(90deg,transparent,#2de2e655,transparent);margin:2px 0"></div></sc-if>
+<sc-for list="{{d.g2}}" as="c" hint-placeholder-count="3">
+<div style="font-size:11px;line-height:1;padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:{{c.fg}};background:{{c.bg}};border:1px solid {{c.bd}}">{{c.label}}</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<!-- month -->
+<div style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<div style="font-family:Orbitron,sans-serif;font-weight:500;font-size:14px;letter-spacing:0.14em;text-transform:uppercase;padding:0 4px">October 2026</div>
+<div style="display:flex;gap:6px">
+<button aria-label="Previous month" style="width:44px;height:44px;background:transparent;border:1px solid #1d4560;color:#8fe9f5;cursor:pointer;font-size:18px">&lsaquo;</button>
+<button aria-label="Next month" style="width:44px;height:44px;background:transparent;border:1px solid #1d4560;color:#8fe9f5;cursor:pointer;font-size:18px">&rsaquo;</button>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));gap:2px;text-align:center">
+<sc-for list="{{dow}}" as="w" hint-placeholder-count="7"><div style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#7fa3b5;padding:6px 0">{{w}}</div></sc-for>
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="14">
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;min-height:48px">
+<div style="width:30px;height:30px;border-radius:50%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:Orbitron,sans-serif;font-size:12px;background:{{c.bg}};color:{{c.fg}};border:1px solid {{c.ring}}">{{c.n}}</div>
+<div style="font-size:9px;line-height:10px;letter-spacing:0.14em;color:{{c.mc}}">{{c.mark}}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;padding-top:6px;font-size:12px;color:#9ab8c6">
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#2de2e6"></span>Completed</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#ffb347"></span>In Progress</span>
+<span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:#6f8cff"></span>Planned</span>
+</div>
+</div>
+
+</div>
+</section>
+
+<!-- ACTIVE PROGRAMS -->
+<section style="position:relative;border:1px solid #1d4560;background:linear-gradient(180deg,#0e1b2d,#0a1321);padding:20px 22px;display:flex;flex-direction:column;gap:16px;box-shadow:inset 0 0 0 1px rgba(45,226,230,0.05)">
+<div style="position:absolute;top:-1px;left:-1px;width:14px;height:14px;border-top:2px solid #2de2e6;border-left:2px solid #2de2e6"></div>
+<div style="position:absolute;bottom:-1px;right:-1px;width:14px;height:14px;border-bottom:2px solid #2de2e6;border-right:2px solid #2de2e6"></div>
+<div style="display:flex;align-items:center;gap:14px">
+<h2 style="margin:0;font-family:Orbitron,sans-serif;font-weight:500;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#8fe9f5">Active Programs</h2>
+<div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(45,226,230,0.4),transparent)"></div>
+</div>
+<a href="#" style="display:flex;align-items:center;gap:18px;padding:18px 20px;border:1px solid #1d4560;background:rgba(45,226,230,0.04)">
+<div style="width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;border:1px solid #2de2e666;background:rgba(45,226,230,0.08)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2de2e6" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v15H4zM4 10h16M8 3v4M16 3v4M8 14h3"/></svg></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+<div style="font-weight:600;font-size:18px;color:#e6fbff">Kettlebell C&amp;P + Swing + TGU + PU</div>
+<div style="font-size:14px;line-height:1.5;color:#9ab8c6">A combination of Mark Wildman's C&amp;P and Swing programs, plus my own implementation of TGU and Pull Ups based on those 2 programs and various yt videos from his channel.</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12px;letter-spacing:0.08em">
+<span style="padding:4px 10px;color:#06121c;background:#2de2e6;font-weight:600;text-transform:uppercase">Active</span>
+<span style="padding:4px 10px;border:1px solid #1d4560;color:#cfe8f2">Mar 15 &mdash; Apr 12, 2026</span>
+<span style="padding:4px 10px;border:1px solid #1d4560;color:#cfe8f2">4 weeks</span>
+<span style="color:#7fa3b5">112 sessions completed</span>
+</div>
+</div>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7fa3b5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+</a>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const navDefs = [
+      ['Dashboard','M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',false],
+      ['Workouts','M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12',true],
+      ['Meals','M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2 6 0 8v10',true],
+      ['Exercises','M6 3h12v18H6zM9 8h6M9 12h6M9 16h4',false],
+      ['Programs','M4 5h16v15H4zM4 10h16M8 3v4M16 3v4',false],
+      ['Stats','M4 20V10M10 20V4M16 20v-8M22 20H2',false],
+      ['Records','M8 4h8v5a4 4 0 0 1-8 0zM12 13v4M8 20h8M4 5h4M16 5h4',false],
+      ['Body','M12 4v.01M6 21l2-9h8l2 9M8 12l-3-3M16 12l3-3',false],
+      ['Timers','M12 8v5l3 2M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16M9 2h6',false],
+      ['Data','M4 6c0-2 16-2 16 0v12c0 2-16 2-16 0zM4 12c0 2 16 2 16 0',false],
+      ['Settings','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',false]
+    ];
+    const nav = navDefs.map((n, i) => {
+      const on = i === 0;
+      return { label: n[0], icon: n[1], menu: n[2], fg: on ? '#2de2e6' : '#9ab8c6', bg: on ? 'rgba(45,226,230,0.12)' : 'transparent', bd: on ? 'rgba(45,226,230,0.5)' : 'transparent' };
+    });
+    const stats = [
+      { label: 'Total Weight Moved', value: '900,043', unit: 'lbs', color: '#e6fbff', icon: 'M6 8h12l2 12H4zM9 8a3 3 0 0 1 6 0' },
+      { label: 'Total Workouts', value: '154', unit: '', color: '#e6fbff', icon: 'M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12' },
+      { label: 'This Week', value: '6', unit: '', color: '#e6fbff', icon: 'M4 5h16v15H4zM4 10h16M8 3v4M16 3v4' },
+      { label: 'Today', value: 'Rest', unit: '', color: '#ffb347', icon: 'M12 8v5l3 2M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16' }
+    ];
+    const T = {
+      mace: '#ff9f43', horse: '#ffd85c', warm: '#ff6b6b', clean: '#ffc078', cool: '#5cf0ff',
+      pull: '#7aa8ff', hang: '#ffe066', cp: '#9db9ff', push: '#ff7ab8', snatch: '#ff9f43', squat: '#ff7ab8', shin: '#ff7ab8'
+    };
+    const chip = (label, t) => ({ label, fg: T[t], bg: T[t] + '22', bd: T[t] + '55' });
+    const mk = (dow, num, g1, g2, today) => ({
+      dow, num, g1, g2, today,
+      rest: false,
+      divider: g1.length > 0 && g2.length > 0,
+      fg: today ? '#2de2e6' : '#cfe8f2',
+      bd: today ? '#2de2e6' : '#17384d',
+      bg: today ? 'rgba(45,226,230,0.07)' : 'rgba(5,12,22,0.5)',
+      glow: today ? '0 0 14px rgba(45,226,230,0.25)' : 'none'
+    });
+    const base = [chip('Mace', 'mace'), chip('Horse S…', 'horse')];
+    const week = [
+      Object.assign(mk('Sun', 4, [], [], true), { rest: true }),
+      mk('Mon', 5, base, [chip('Warm Up', 'warm'), chip('Clean', 'clean'), chip('Cool D…', 'cool')], false),
+      mk('Tue', 6, base, [chip('Warm Up', 'warm'), chip('Pull-Up', 'pull'), chip('Hanging…', 'hang'), chip('Cool D…', 'cool')], false),
+      mk('Wed', 7, base, [chip('Warm Up', 'warm'), chip('C&P | C…', 'cp'), chip('Push Pr…', 'push'), chip('Cool D…', 'cool')], false),
+      mk('Thu', 8, base, [chip('Warm Up', 'warm'), chip('Snatch', 'snatch'), chip('Squats…', 'squat'), chip('Cool D…', 'cool')], false),
+      mk('Fri', 9, base, [chip('Warm Up', 'warm'), chip('Clean', 'clean'), chip('Cool D…', 'cool')], false),
+      mk('Sat', 10, [chip('Shin Bo…', 'shin')], [], false)
+    ];
+    const cells = [];
+    for (let i = 0; i < 35; i++) {
+      const n = i < 4 ? 27 + i : i - 3;
+      let bg = 'transparent', fg = '#cfe8f2', ring = 'transparent', mark = 'REST', mc = '#4f7184';
+      if (i === 0) { fg = '#4f7184'; mark = ''; }
+      else if (i <= 6) { bg = '#2de2e6'; fg = '#06121c'; ring = '#2de2e6'; mark = '✓'; mc = '#2de2e6'; }
+      else if (i === 7) { ring = '#2de2e6'; fg = '#2de2e6'; }
+      else if (i <= 13) { mark = '•'; mc = '#6f8cff'; }
+      cells.push({ n, bg, fg, ring, mark, mc });
+    }
+    return { nav, stats, week, cells, dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
+  }
+}
+</script>
+</body>
+</html>

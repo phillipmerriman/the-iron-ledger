@@ -19,6 +19,7 @@ import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
 import { supabase, isDev } from '@/lib/supabase'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { calcEntryVolume } from '@/types/common'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,11 @@ import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 
 interface MonthlyCalendarProps {
+  /** Shown month, when the parent controls it (e.g. to display it in a panel heading) */
+  month?: Date
+  onMonthChange?: (month: Date) => void
+  /** Omit the title in the cells header (the surrounding panel shows it) */
+  hideTitle?: boolean
   sessions: WorkoutSession[]
   activations?: ProgramActivation[]
   programs?: Program[]
@@ -36,9 +42,17 @@ interface MonthlyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
   const { user, profile } = useAuth()
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const { skinDef } = useTheme()
+  const cells = skinDef.monthLayout === 'cells'
+  const [ownMonth, setOwnMonth] = useState(new Date())
+  const currentMonth = month ?? ownMonth
+  function setCurrentMonth(update: (m: Date) => Date) {
+    const next = update(currentMonth)
+    if (onMonthChange) onMonthChange(next)
+    else setOwnMonth(next)
+  }
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
 
@@ -213,6 +227,32 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
 
   return (
     <div>
+      {cells ? (
+        // HUD header to match the week list: teal title left, square prev/next buttons right (left, under the panel heading, when hideTitle)
+        <div className={cn('mb-4 flex items-center gap-2', hideTitle ? 'justify-start' : 'justify-between')}>
+          {!hideTitle && (
+            <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-primary-600">
+              {format(currentMonth, 'MMMM yyyy')}
+            </h3>
+          )}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
+              className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
+              className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
+              aria-label="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-surface-700">
           {format(currentMonth, 'MMMM yyyy')}
@@ -234,6 +274,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
           </button>
         </div>
       </div>
+      )}
 
       {/* Day headers */}
       <div className="mb-1 grid grid-cols-7 text-center">
@@ -243,7 +284,7 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
       </div>
 
       {/* Day grid */}
-      <div className="grid grid-cols-7 gap-px">
+      <div className={cn('grid grid-cols-7', cells ? 'gap-1' : 'gap-px')}>
         {days.map((day) => {
           const inMonth = isSameMonth(day, currentMonth)
           const today = isToday(day)
@@ -251,6 +292,45 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
           const completed = isCompleted(day)
           const planned = isPlanned(day)
           const isSelected = selectedDay && isSameDay(day, selectedDay)
+
+          if (cells) {
+            const inProgress = worked && !completed && today
+            const partial = worked && !completed && !today
+            return (
+              <button
+                key={day.toISOString()}
+                type="button"
+                onClick={() => inMonth && setSelectedDay(day)}
+                disabled={!inMonth}
+                className={cn(
+                  'flex min-h-[48px] flex-col items-center justify-center gap-0.5 border transition-colors',
+                  !inMonth && 'border-surface-100 text-surface-300',
+                  inMonth && 'cursor-pointer border-surface-200 text-surface-700 hover:border-primary-300',
+                  inMonth && planned && !worked && 'border-info-500/50',
+                  inMonth && partial && 'border-primary-300 bg-primary-100 text-primary-700',
+                  inMonth && inProgress && 'bg-warning-500/15',
+                  inMonth && today && !completed && 'border-warning-500 text-warning-500',
+                  inMonth && completed && 'border-primary-500 bg-primary-500 text-on-primary hover:bg-primary-600',
+                  isSelected && 'ring-2 ring-primary-500 ring-offset-1 ring-offset-card',
+                )}
+              >
+                <span className="text-[15px] font-bold leading-none">{format(day, 'd')}</span>
+                {inMonth && (
+                  <span className="flex h-2.5 items-center text-[9px] font-semibold uppercase leading-none tracking-[0.14em]">
+                    {completed ? (
+                      <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                    ) : today ? (
+                      'Today'
+                    ) : planned || partial ? (
+                      <span className={cn('h-1 w-1 rounded-full', partial ? 'bg-primary-400' : 'bg-info-500')} />
+                    ) : !worked ? (
+                      <span className="text-surface-400">Rest</span>
+                    ) : null}
+                  </span>
+                )}
+              </button>
+            )
+          }
 
           return (
             <div
@@ -290,18 +370,18 @@ export default function MonthlyCalendar({ sessions, activations = [], programs: 
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-surface-400">
+      <div className={cn('mt-3 flex flex-wrap items-center gap-3 text-[11px] text-surface-400', cells && 'justify-center gap-4 text-xs')}>
         <div className="flex items-center gap-1">
-          <div className="h-2.5 w-2.5 rounded-full bg-primary-500" />
+          <div className={cn('h-2.5 w-2.5 bg-primary-500', !cells && 'rounded-full')} />
           Completed
         </div>
         <div className="flex items-center gap-1">
-          <div className="h-2.5 w-2.5 rounded-full bg-warning-500/40" />
+          <div className={cn('h-2.5 w-2.5', cells ? 'bg-warning-500' : 'rounded-full bg-warning-500/40')} />
           In Progress
         </div>
         {activations.length > 0 && (
           <div className="flex items-center gap-1">
-            <div className="h-2.5 w-2.5 rounded-full bg-primary-200" />
+            <div className={cn('h-2.5 w-2.5', cells ? 'bg-info-500' : 'rounded-full bg-primary-200')} />
             Planned
           </div>
         )}

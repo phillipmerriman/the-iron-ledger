@@ -1,33 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import {
-  X,
-  CalendarDays,
-  ListChecks,
-  BarChart3,
-  Trophy,
-  Scale,
-  Database,
-  Settings,
-} from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-type DrawerHeading = { type: 'heading'; label: string }
-type DrawerDivider = { type: 'divider' }
-type DrawerLink = { type: 'link'; to: string; label: string; icon: typeof CalendarDays }
-type DrawerItem = DrawerHeading | DrawerDivider | DrawerLink
-
-const drawerItems: DrawerItem[] = [
-  { type: 'heading', label: 'Workouts' },
-  { type: 'link', to: '/workouts/today', label: "Today's Workouts", icon: CalendarDays },
-  { type: 'link', to: '/workouts', label: 'Saved Workouts', icon: ListChecks },
-  { type: 'heading', label: 'More' },
-  { type: 'link', to: '/stats', label: 'Stats', icon: BarChart3 },
-  { type: 'link', to: '/records', label: 'Records', icon: Trophy },
-  { type: 'link', to: '/body', label: 'Body', icon: Scale },
-  { type: 'link', to: '/data', label: 'Data', icon: Database },
-  { type: 'divider' },
-  { type: 'link', to: '/settings', label: 'Settings', icon: Settings },
-]
+import { DRAWER_ITEMS } from './nav-links'
 
 interface MobileDrawerProps {
   open: boolean
@@ -49,7 +23,7 @@ export default function MobileDrawer({ open, onClose }: MobileDrawerProps) {
       {/* Drawer */}
       <div
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-xl transition-transform duration-200 ease-in-out md:hidden',
+          'ui-drawer fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-xl transition-transform duration-200 ease-in-out md:hidden',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -66,7 +40,7 @@ export default function MobileDrawer({ open, onClose }: MobileDrawerProps) {
 
         {/* Links */}
         <nav className="space-y-1 px-2 py-3">
-          {drawerItems.map((item, i) => {
+          {DRAWER_ITEMS.map((item, i) => {
             if (item.type === 'divider') {
               return <div key={i} className="my-2 border-t border-surface-100" />
             }

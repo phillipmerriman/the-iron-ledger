@@ -95,7 +95,7 @@ export default function DayDetailModal({
     <Modal
       open={!!selectedDay}
       onClose={onClose}
-      title={selectedDay ? format(selectedDay, 'EEEE, MMM d') : ''}
+      title={selectedDay ? <span className="ui-date">{format(selectedDay, 'EEEE, MMM d')}</span> : ''}
     >
       {daySessions.length === 0 && dayPlanned.length === 0 ? (
         <p className="py-4 text-center text-sm text-surface-400">No workouts on this day</p>
@@ -157,6 +157,7 @@ export default function DayDetailModal({
                           <div className="h-px flex-1 bg-surface-200" />
                         </div>
                       )}
+                      <div className="space-y-1.5">
                       {group.entries.map((entry) => {
                         const ex = getExercise(entry.exercise_id)
                         const color = getExerciseColorClasses(ex?.color ?? null)
@@ -226,7 +227,7 @@ export default function DayDetailModal({
                                   placeholder="Sets"
                                   value={editValues.sets}
                                   onChange={(e) => setEditValues((v) => ({ ...v, sets: e.target.value }))}
-                                  className="w-14 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                  className="w-14 rounded border border-input-border bg-input-bg px-1.5 py-0.5 text-xs text-text"
                                 />
                                 <span className="text-xs text-surface-400">×</span>
                                 <input
@@ -235,7 +236,7 @@ export default function DayDetailModal({
                                   placeholder="Reps"
                                   value={editValues.reps}
                                   onChange={(e) => setEditValues((v) => ({ ...v, reps: e.target.value }))}
-                                  className="w-14 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                  className="w-14 rounded border border-input-border bg-input-bg px-1.5 py-0.5 text-xs text-text"
                                 />
                                 {entry.weight_unit !== 'bodyweight' && (
                                   <>
@@ -247,7 +248,7 @@ export default function DayDetailModal({
                                       placeholder="Wt"
                                       value={editValues.weight}
                                       onChange={(e) => setEditValues((v) => ({ ...v, weight: e.target.value }))}
-                                      className="w-16 rounded border border-surface-300 bg-white px-1.5 py-0.5 text-xs text-surface-800"
+                                      className="w-16 rounded border border-input-border bg-input-bg px-1.5 py-0.5 text-xs text-text"
                                     />
                                     <span className="text-xs text-surface-400">{entry.weight_unit}</span>
                                   </>
@@ -255,7 +256,7 @@ export default function DayDetailModal({
                                 <button
                                   onClick={() => saveEdit(entry)}
                                   disabled={saving}
-                                  className="ml-1 rounded bg-primary-500 px-2 py-0.5 text-xs font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+                                  className="ml-1 rounded bg-primary-500 px-2 py-0.5 text-xs font-medium text-on-primary hover:bg-primary-600 disabled:opacity-50"
                                 >
                                   Save
                                 </button>
@@ -282,6 +283,7 @@ export default function DayDetailModal({
                           </div>
                         )
                       })}
+                      </div>
                     </div>
                   ))
                 })()}

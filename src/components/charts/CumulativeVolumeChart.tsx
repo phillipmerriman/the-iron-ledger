@@ -242,8 +242,8 @@ export default function CumulativeVolumeChart({ volumeByDay, exerciseStats, unit
           <AreaChart data={data}>
             <defs>
               <linearGradient id="cumulativeVolumeGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="var(--color-chart-primary)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--color-chart-primary)" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-surface-100)" />
@@ -275,7 +275,7 @@ export default function CumulativeVolumeChart({ volumeByDay, exerciseStats, unit
                 return (
                   <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-md">
                     <p className="mb-1 font-medium text-surface-800">{label}</p>
-                    <p className="text-blue-600">
+                    <p className="text-chart-primary-strong">
                       Total: {d.total.toLocaleString()}{unit ? ` ${unit}` : ''}
                     </p>
                     {d.daily > 0 && (
@@ -290,11 +290,11 @@ export default function CumulativeVolumeChart({ volumeByDay, exerciseStats, unit
             <Area
               type="monotone"
               dataKey="total"
-              stroke="#3b82f6"
+              stroke="var(--color-chart-primary)"
               strokeWidth={2}
               fill="url(#cumulativeVolumeGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: 'var(--color-chart-primary)', stroke: 'var(--color-card)', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

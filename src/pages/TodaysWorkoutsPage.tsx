@@ -155,7 +155,7 @@ export default function TodaysWorkoutsPage() {
           <h1 className="text-2xl font-bold">
             {dayLabel}&apos;s Workouts
           </h1>
-          <p className="text-sm text-surface-500">{format(viewDate, 'EEEE, MMMM d, yyyy')}</p>
+          <p className="ui-date text-sm text-surface-500">{format(viewDate, 'EEEE, MMMM d, yyyy')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Plus, Dumbbell } from 'lucide-react'
 import {
   isThisWeek,
@@ -28,6 +28,9 @@ import useMealSummary from '@/hooks/useMealSummary'
 import useRecipes from '@/hooks/useRecipes'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
+import { useTheme } from '@/contexts/ThemeContext'
+import { formatWeekLabel } from '@/lib/week-label'
+import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { sessions, loading: workoutsLoading, update: updateSession, create: createSession, remove: deleteSession } = useWorkouts()
@@ -37,6 +40,12 @@ export default function DashboardPage() {
   const { recipes } = useRecipes()
   const recipeNames = useMemo(() => Object.fromEntries(recipes.map((r) => [r.id, r.name])), [recipes])
   const mealSummary = useMealSummary(recipeNames)
+
+  const { skinDef } = useTheme()
+  // Shown week (kept in the URL by WeeklyCalendar) and month, for the split calendar panel headings
+  const [searchParams] = useSearchParams()
+  const weekDelta = Number(searchParams.get('week')) || 0
+  const [calMonth, setCalMonth] = useState(() => new Date())
 
   const loading = workoutsLoading || programsLoading
 
@@ -110,6 +119,17 @@ export default function DashboardPage() {
 
   const unit = chartStats.preferredUnit
 
+  const calendarProps = {
+    sessions,
+    activations,
+    programs,
+    exercises: chartStats.exercises,
+    plannedEntries,
+    onUpdateSession: updateSession,
+    onCreateSession: createSession,
+    onDeleteSession: deleteSession,
+  }
+
   const dashSections: Section[] = [
     {
       id: 'active-programs',
@@ -142,20 +162,44 @@ export default function DashboardPage() {
         </>
       ),
     },
-    {
-      id: 'calendars',
-      title: 'Calendars',
-      render: () => (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="min-w-0">
-            <WeeklyCalendar sessions={sessions} activations={activations} programs={programs} exercises={chartStats.exercises} plannedEntries={plannedEntries} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
-          </div>
-          <div>
-            <MonthlyCalendar sessions={sessions} activations={activations} programs={programs} exercises={chartStats.exercises} plannedEntries={plannedEntries} onUpdateSession={updateSession} onCreateSession={createSession} onDeleteSession={deleteSession} />
-          </div>
-        </div>
-      ),
-    },
+    // Week + month share one panel, or (skins with splitCalendars) get a panel each, side by side.
+    // Each variant lists the other's ids in `replaces` so saved order/visibility carry over when switching.
+    ...(skinDef.splitCalendars
+      ? [
+          {
+            id: 'week-calendar',
+            title: 'Week',
+            heading: formatWeekLabel(weekDelta),
+            half: true,
+            replaces: ['calendars'],
+            render: () => <WeeklyCalendar {...calendarProps} hideTitle />,
+          },
+          {
+            id: 'month-calendar',
+            title: 'Month',
+            heading: format(calMonth, 'MMMM yyyy'),
+            half: true,
+            replaces: ['calendars'],
+            render: () => <MonthlyCalendar {...calendarProps} month={calMonth} onMonthChange={setCalMonth} hideTitle />,
+          },
+        ]
+      : [
+          {
+            id: 'calendars',
+            title: 'Calendars',
+            replaces: ['week-calendar', 'month-calendar'],
+            render: () => (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="min-w-0">
+                  <WeeklyCalendar {...calendarProps} />
+                </div>
+                <div>
+                  <MonthlyCalendar {...calendarProps} />
+                </div>
+              </div>
+            ),
+          },
+        ]),
     {
       id: 'meal-plan',
       title: 'Meal Plan',
@@ -203,13 +247,20 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <SectionSettings storageKey="dashboard-section-order" sections={dashSections} />
+      <div className={cn('flex items-center justify-between', skinDef.heroHeader && 'flex-wrap items-start gap-4')}>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className={cn('text-2xl font-bold', skinDef.heroHeader && 'ui-hero-title')}>Dashboard</h1>
+            <SectionSettings storageKey="dashboard-section-order" sections={dashSections} />
+          </div>
+          {skinDef.heroHeader && (
+            <p className="ui-hero-date">
+              {format(new Date(), 'EEE dd MMM yyyy')} · {dashStats.todaySlots.length === 0 ? 'Rest day' : 'Training day'}
+            </p>
+          )}
         </div>
         <Link to="/workouts/today">
-          <Button size="sm">
+          <Button size="sm" className={cn(skinDef.heroHeader && 'ui-btn-hero')}>
             <Plus className="h-4 w-4" />
             Get After It
           </Button>

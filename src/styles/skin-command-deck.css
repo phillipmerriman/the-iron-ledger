@@ -1,0 +1,550 @@
+/*
+ * Command Deck skin — teal/amber sci-fi HUD.
+ * Source: design/sci-fi/variant-b-command-deck.dc.html
+ *
+ * Everything is scoped to :root[data-skin="command-deck"] so other skins are untouched.
+ * The skin is dark-only; ThemeContext also sets .dark so dark: variants and .force-light keep working.
+ * Rules here are unlayered on purpose: they beat Tailwind utilities, so only set properties the skin owns.
+ */
+
+/* Tokens also re-apply inside .force-light, which classic dark mode uses to put dark text on
+   pastel exercise colors. This skin turns those pastels into dark tints, so it keeps its own text colors. */
+:root[data-skin="command-deck"],
+:root[data-skin="command-deck"] .force-light {
+  color-scheme: dark;
+
+  /* Skin-only values */
+  --cd-teal: #3fe0c5;
+  --cd-amber: #ffb020;
+  --cd-amber-hi: #ffc23d;
+  --cd-edge: #1b4a58;
+  --cd-panel-top: #0d1a24;
+  --cd-panel-bottom: #08111a;
+  --cd-cut: 14px;
+
+  /* Semantic tokens */
+  --color-bg: #050810;
+  --color-card: #0d1a24;
+  --color-card-alt: #0a141c;
+  --color-text: #d3ece6;
+  --color-text-secondary: #a7cbc2;
+  --color-text-muted: #7da49b;
+  --color-border: #1f5560;
+  --color-border-light: #173c46;
+  --color-hover: #12262f;
+  --color-input-bg: #08121a;
+  --color-input-border: #1f5560;
+  --color-nav-active-bg: #3fe0c5;
+  --color-nav-active-text: #04110f;
+  --color-on-primary: #04110f;
+
+  --color-chart-primary: #3fe0c5;
+  --color-chart-primary-strong: #6ff2db;
+  --color-chart-muted: #2b6470;
+
+  /* Surface scale, inverted for dark (50 = darkest tint, 900 = brightest text) */
+  --color-surface-50: #0b1720;
+  --color-surface-100: #10212b;
+  --color-surface-200: #173c46;
+  --color-surface-300: #1f5560;
+  --color-surface-400: #6f958c;
+  --color-surface-500: #8db5ac;
+  --color-surface-600: #a7cbc2;
+  --color-surface-700: #d3ece6;
+  --color-surface-800: #e2f6f1;
+  --color-surface-900: #eafffa;
+  --color-surface-950: #f4fffc;
+
+  /* Primary = teal. Low steps are dark tints for backgrounds, high steps stay bright for text on them. */
+  --color-primary-50: #0c2a2c;
+  --color-primary-100: #113a3a;
+  --color-primary-200: #185a52;
+  --color-primary-300: #25a08e;
+  --color-primary-400: #5ff0d6;
+  --color-primary-500: #3fe0c5;
+  --color-primary-600: #3fe0c5;
+  --color-primary-700: #6ff2db;
+  --color-primary-800: #9ff7e8;
+  --color-primary-900: #cffcf4;
+  --color-primary-950: #e8fffa;
+
+  --color-danger-500: #ff5c6c;
+  --color-danger-600: #ff7584;
+  --color-warning-500: #ffb020;
+  --color-warning-600: #ffc04d;
+  --color-info-500: #7a8cff;
+  --color-info-600: #93a2ff;
+
+  /* Hard edges everywhere (rounded-full is unaffected, so dots and pills stay round) */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+
+  --font-display: 'Chakra Petch', system-ui, sans-serif;
+
+  scrollbar-color: #1f5560 transparent;
+}
+
+/* ---------- Base ---------- */
+
+:root[data-skin="command-deck"] body {
+  font-family: 'Chakra Petch', system-ui, sans-serif;
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(rgba(63, 224, 197, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63, 224, 197, 0.035) 1px, transparent 1px),
+    radial-gradient(1000px 500px at 50% -15%, rgba(20, 110, 120, 0.35), transparent);
+  background-size: 48px 48px, 48px 48px, auto;
+  background-attachment: fixed;
+}
+
+:root[data-skin="command-deck"] ::selection {
+  background: rgba(63, 224, 197, 0.35);
+}
+
+:root[data-skin="command-deck"] h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+:root[data-skin="command-deck"] h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ---------- Panels (Card, Modal) ----------
+ * Clipped-corner panel with a gradient edge, drawn entirely with backgrounds: a 135deg gradient's
+ * start and end lines run through the top-left and bottom-right corners, so making its ends
+ * transparent cuts exactly those two corners. No clip-path, pseudo-elements or stacking contexts,
+ * so modals, dropdowns and focus rings inside a card are never clipped or covered.
+ * Only applies to default-background cards; cards given a custom bg keep it.
+ */
+
+:root[data-skin="command-deck"] .ui-card {
+  border-radius: 0;
+}
+
+:root[data-skin="command-deck"] .ui-card.bg-card {
+  /* --cd-cut is the corner leg length; gradient distance along the diagonal is leg / sqrt(2) */
+  --cd-d: calc(var(--cd-cut) * 0.7071);
+  /* Fill sits inside the 1px border, so pull its cut in by (sqrt(2) - 1)px to keep a 1px edge on the angle */
+  --cd-d-in: calc(var(--cd-d) - 0.414px);
+  --cd-panel-fill: #0b1720;
+  border: 1px solid transparent;
+  box-shadow: none;
+  background:
+    linear-gradient(135deg,
+      transparent var(--cd-d-in), var(--cd-panel-fill) var(--cd-d-in),
+      var(--cd-panel-fill) calc(100% - var(--cd-d-in)), transparent calc(100% - var(--cd-d-in))) padding-box,
+    linear-gradient(135deg,
+      transparent var(--cd-d), var(--cd-panel-edge, var(--cd-teal)) var(--cd-d),
+      var(--cd-edge) 40%, var(--cd-edge) 60%,
+      var(--cd-panel-edge, var(--cd-teal)) calc(100% - var(--cd-d)), transparent calc(100% - var(--cd-d))) border-box;
+}
+
+:root[data-skin="command-deck"] .ui-modal {
+  --cd-cut: 18px;
+}
+
+:root[data-skin="command-deck"] .ui-modal-backdrop {
+  background: rgba(2, 6, 10, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+/* ---------- Buttons ---------- */
+
+:root[data-skin="command-deck"] .ui-btn {
+  border-radius: 0;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+:root[data-skin="command-deck"] .ui-btn:focus-visible {
+  outline: 2px solid var(--cd-teal);
+  outline-offset: 2px;
+}
+
+/* Amber call-to-action with two cut corners (drawn with gradients so the focus outline isn't clipped) */
+:root[data-skin="command-deck"] .ui-btn-primary {
+  --btn-cut: 9px;
+  color: #1a0f00;
+  font-weight: 700;
+  background:
+    linear-gradient(135deg, transparent var(--btn-cut), var(--cd-amber) var(--btn-cut)) top / 100% 51% no-repeat,
+    linear-gradient(315deg, transparent var(--btn-cut), var(--cd-amber) var(--btn-cut)) bottom / 100% 51% no-repeat;
+}
+
+:root[data-skin="command-deck"] .ui-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+:root[data-skin="command-deck"] .ui-btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--cd-teal);
+}
+
+:root[data-skin="command-deck"] .ui-btn-secondary:hover {
+  background: rgba(63, 224, 197, 0.08);
+}
+
+:root[data-skin="command-deck"] .ui-btn-danger {
+  background: rgba(255, 92, 108, 0.12);
+  border: 1px solid rgba(255, 92, 108, 0.5);
+  color: #ff7584;
+}
+
+:root[data-skin="command-deck"] .ui-btn-danger:hover {
+  background: rgba(255, 92, 108, 0.22);
+}
+
+/* ---------- Badges ---------- */
+
+:root[data-skin="command-deck"] .ui-badge {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ---------- Navigation chrome ---------- */
+
+:root[data-skin="command-deck"] .ui-header,
+:root[data-skin="command-deck"] .ui-topnav {
+  background: rgba(5, 8, 16, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+:root[data-skin="command-deck"] .ui-sidebar,
+:root[data-skin="command-deck"] .ui-drawer {
+  background: linear-gradient(180deg, #0b1822, #070d14);
+}
+
+:root[data-skin="command-deck"] .ui-bottomnav {
+  background: rgba(7, 13, 20, 0.92);
+  backdrop-filter: blur(6px);
+}
+
+/* Amber marker on the active sidebar/drawer link */
+:root[data-skin="command-deck"] .ui-sidebar a[aria-current='page'],
+:root[data-skin="command-deck"] .ui-drawer a[aria-current='page'] {
+  box-shadow: inset 2px 0 0 var(--cd-amber);
+}
+
+:root[data-skin="command-deck"] .ui-brand-mark {
+  width: 34px;
+  height: 34px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  background: linear-gradient(135deg, var(--cd-teal), #1b6a7a);
+}
+
+:root[data-skin="command-deck"] .ui-brand-mark svg {
+  width: 20px;
+  height: 20px;
+  color: #04110f;
+}
+
+:root[data-skin="command-deck"] .ui-brand-name {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #eafffa;
+}
+
+/* Top tabs: angled top-right corner, amber underline on the active tab */
+:root[data-skin="command-deck"] .ui-tab {
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+  border-bottom: 2px solid transparent;
+}
+
+:root[data-skin="command-deck"] .ui-tab:focus-visible {
+  outline: 2px solid var(--cd-teal);
+  outline-offset: -4px;
+}
+
+:root[data-skin="command-deck"] .ui-tab-active {
+  border-bottom-color: var(--cd-amber);
+}
+
+:root[data-skin="command-deck"] .ui-menu {
+  border-color: var(--cd-teal);
+  background: linear-gradient(180deg, var(--cd-panel-top), var(--cd-panel-bottom));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(63, 224, 197, 0.1);
+}
+
+/* ---------- Palette remap ----------
+ * Pastel shades (exercise colors, status chips) become dark tints; dark text shades become bright.
+ * 400/500 are already vivid on dark and stay as-is. 700 (the text shade) is a fixed vivid HUD hue taken from
+ * the mockup chip palette, so exercise names and chips read in full color.
+ */
+
+:root[data-skin="command-deck"] {
+  --color-slate-50: color-mix(in oklab, var(--color-slate-400) 10%, #0a141c);
+  --color-slate-100: color-mix(in oklab, var(--color-slate-400) 16%, #0a141c);
+  --color-slate-200: color-mix(in oklab, var(--color-slate-400) 26%, #0a141c);
+  --color-slate-300: color-mix(in oklab, var(--color-slate-400) 50%, #0a141c);
+  --color-slate-600: color-mix(in oklab, var(--color-slate-400) 82%, white);
+  --color-slate-700: #a9bccb;
+
+  --color-red-50: color-mix(in oklab, var(--color-red-400) 10%, #0a141c);
+  --color-red-100: color-mix(in oklab, var(--color-red-400) 16%, #0a141c);
+  --color-red-200: color-mix(in oklab, var(--color-red-400) 26%, #0a141c);
+  --color-red-300: color-mix(in oklab, var(--color-red-400) 50%, #0a141c);
+  --color-red-600: color-mix(in oklab, var(--color-red-400) 82%, white);
+  --color-red-700: #ff6b6b;
+
+  --color-orange-50: color-mix(in oklab, var(--color-orange-400) 10%, #0a141c);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-400) 16%, #0a141c);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-400) 26%, #0a141c);
+  --color-orange-300: color-mix(in oklab, var(--color-orange-400) 50%, #0a141c);
+  --color-orange-600: color-mix(in oklab, var(--color-orange-400) 82%, white);
+  --color-orange-700: #ff9f43;
+
+  --color-amber-50: color-mix(in oklab, var(--color-amber-400) 10%, #0a141c);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-400) 16%, #0a141c);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-400) 26%, #0a141c);
+  --color-amber-300: color-mix(in oklab, var(--color-amber-400) 50%, #0a141c);
+  --color-amber-600: color-mix(in oklab, var(--color-amber-400) 82%, white);
+  --color-amber-700: #ffc078;
+
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-400) 10%, #0a141c);
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-400) 16%, #0a141c);
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-400) 26%, #0a141c);
+  --color-yellow-300: color-mix(in oklab, var(--color-yellow-400) 50%, #0a141c);
+  --color-yellow-600: color-mix(in oklab, var(--color-yellow-400) 82%, white);
+  --color-yellow-700: #ffd85c;
+
+  --color-lime-50: color-mix(in oklab, var(--color-lime-400) 10%, #0a141c);
+  --color-lime-100: color-mix(in oklab, var(--color-lime-400) 16%, #0a141c);
+  --color-lime-200: color-mix(in oklab, var(--color-lime-400) 26%, #0a141c);
+  --color-lime-300: color-mix(in oklab, var(--color-lime-400) 50%, #0a141c);
+  --color-lime-600: color-mix(in oklab, var(--color-lime-400) 82%, white);
+  --color-lime-700: #c6f25c;
+
+  --color-green-50: color-mix(in oklab, var(--color-green-400) 10%, #0a141c);
+  --color-green-100: color-mix(in oklab, var(--color-green-400) 16%, #0a141c);
+  --color-green-200: color-mix(in oklab, var(--color-green-400) 26%, #0a141c);
+  --color-green-300: color-mix(in oklab, var(--color-green-400) 50%, #0a141c);
+  --color-green-600: color-mix(in oklab, var(--color-green-400) 82%, white);
+  --color-green-700: #5fe89a;
+
+  --color-teal-50: color-mix(in oklab, var(--color-teal-400) 10%, #0a141c);
+  --color-teal-100: color-mix(in oklab, var(--color-teal-400) 16%, #0a141c);
+  --color-teal-200: color-mix(in oklab, var(--color-teal-400) 26%, #0a141c);
+  --color-teal-300: color-mix(in oklab, var(--color-teal-400) 50%, #0a141c);
+  --color-teal-600: color-mix(in oklab, var(--color-teal-400) 82%, white);
+  --color-teal-700: #3fe0c5;
+
+  --color-cyan-50: color-mix(in oklab, var(--color-cyan-400) 10%, #0a141c);
+  --color-cyan-100: color-mix(in oklab, var(--color-cyan-400) 16%, #0a141c);
+  --color-cyan-200: color-mix(in oklab, var(--color-cyan-400) 26%, #0a141c);
+  --color-cyan-300: color-mix(in oklab, var(--color-cyan-400) 50%, #0a141c);
+  --color-cyan-600: color-mix(in oklab, var(--color-cyan-400) 82%, white);
+  --color-cyan-700: #5cf0ff;
+
+  --color-blue-50: color-mix(in oklab, var(--color-blue-400) 10%, #0a141c);
+  --color-blue-100: color-mix(in oklab, var(--color-blue-400) 16%, #0a141c);
+  --color-blue-200: color-mix(in oklab, var(--color-blue-400) 26%, #0a141c);
+  --color-blue-300: color-mix(in oklab, var(--color-blue-400) 50%, #0a141c);
+  --color-blue-600: color-mix(in oklab, var(--color-blue-400) 82%, white);
+  --color-blue-700: #7aa8ff;
+
+  --color-indigo-50: color-mix(in oklab, var(--color-indigo-400) 10%, #0a141c);
+  --color-indigo-100: color-mix(in oklab, var(--color-indigo-400) 16%, #0a141c);
+  --color-indigo-200: color-mix(in oklab, var(--color-indigo-400) 26%, #0a141c);
+  --color-indigo-300: color-mix(in oklab, var(--color-indigo-400) 50%, #0a141c);
+  --color-indigo-600: color-mix(in oklab, var(--color-indigo-400) 82%, white);
+  --color-indigo-700: #9db9ff;
+
+  --color-violet-50: color-mix(in oklab, var(--color-violet-400) 10%, #0a141c);
+  --color-violet-100: color-mix(in oklab, var(--color-violet-400) 16%, #0a141c);
+  --color-violet-200: color-mix(in oklab, var(--color-violet-400) 26%, #0a141c);
+  --color-violet-300: color-mix(in oklab, var(--color-violet-400) 50%, #0a141c);
+  --color-violet-600: color-mix(in oklab, var(--color-violet-400) 82%, white);
+  --color-violet-700: #b8a1ff;
+
+  --color-purple-50: color-mix(in oklab, var(--color-purple-400) 10%, #0a141c);
+  --color-purple-100: color-mix(in oklab, var(--color-purple-400) 16%, #0a141c);
+  --color-purple-200: color-mix(in oklab, var(--color-purple-400) 26%, #0a141c);
+  --color-purple-300: color-mix(in oklab, var(--color-purple-400) 50%, #0a141c);
+  --color-purple-600: color-mix(in oklab, var(--color-purple-400) 82%, white);
+  --color-purple-700: #d692ff;
+
+  --color-pink-50: color-mix(in oklab, var(--color-pink-400) 10%, #0a141c);
+  --color-pink-100: color-mix(in oklab, var(--color-pink-400) 16%, #0a141c);
+  --color-pink-200: color-mix(in oklab, var(--color-pink-400) 26%, #0a141c);
+  --color-pink-300: color-mix(in oklab, var(--color-pink-400) 50%, #0a141c);
+  --color-pink-600: color-mix(in oklab, var(--color-pink-400) 82%, white);
+  --color-pink-700: #ff7ab8;
+
+  --color-rose-50: color-mix(in oklab, var(--color-rose-400) 10%, #0a141c);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-400) 16%, #0a141c);
+  --color-rose-200: color-mix(in oklab, var(--color-rose-400) 26%, #0a141c);
+  --color-rose-300: color-mix(in oklab, var(--color-rose-400) 50%, #0a141c);
+  --color-rose-600: color-mix(in oklab, var(--color-rose-400) 82%, white);
+  --color-rose-700: #ff6f91;
+}
+
+/* ---------- Dashboard ---------- */
+
+/* Summary stat cards: small uppercase label, big number, amber edge when today is a rest day */
+:root[data-skin="command-deck"] .ui-stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+:root[data-skin="command-deck"] .ui-stat-value {
+  font-size: 2.25rem;
+  line-height: 1.1;
+}
+
+:root[data-skin="command-deck"] .ui-stat-alert {
+  --cd-panel-edge: var(--cd-amber);
+}
+
+:root[data-skin="command-deck"] .ui-stat-rest {
+  color: var(--cd-amber);
+}
+
+/* Reorderable section headings in teal */
+:root[data-skin="command-deck"] .ui-section-title {
+  color: var(--cd-teal);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+/* Exercise chips, built exactly like the mockup's: one vivid hue (the chip's text color) at full
+ * strength for text, ~33% for the outline and ~13% for a see-through fill, so the outline reads
+ * stronger than the fill. Square corners with one angled top-right corner. */
+:root[data-skin="command-deck"] .ui-chip {
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 0 100%);
+  border-radius: 0;
+  border-color: color-mix(in srgb, currentColor 33%, transparent);
+  background-color: color-mix(in srgb, currentColor 13%, transparent);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Today in the week list: amber */
+:root[data-skin="command-deck"] .ui-week-today {
+  border-color: var(--cd-amber);
+  background: rgba(255, 176, 32, 0.07);
+  box-shadow: 0 0 14px rgba(255, 176, 32, 0.22);
+}
+
+/* Exercise color picker: pastel fills are dark tints here, so show the bright hue instead */
+:root[data-skin="command-deck"] .ui-swatch {
+  background-color: currentColor;
+}
+
+/* ---------- Icons ----------
+ * Lucide icons restyled as thin, hard-edged HUD glyphs: lighter stroke, square caps, mitered corners.
+ * Only icons at Lucide's default stroke-width (2) are touched; icons drawn heavier on purpose
+ * (e.g. strokeWidth={3} checkmarks) keep their weight. CSS overrides the SVG presentation attributes.
+ */
+:root[data-skin="command-deck"] svg.lucide[stroke-width="2"] {
+  stroke-width: 1.5;
+}
+
+:root[data-skin="command-deck"] svg.lucide {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+/* Glow on icons that mark "you are here" or headline a panel */
+:root[data-skin="command-deck"] .ui-sidebar a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-drawer a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-bottomnav a[aria-current='page'] svg.lucide,
+:root[data-skin="command-deck"] .ui-menu a[aria-current='page'] svg.lucide {
+  filter: drop-shadow(0 0 4px rgba(63, 224, 197, 0.65));
+}
+
+/* Stat card icons in teal with a soft glow (amber on the rest-day card) */
+:root[data-skin="command-deck"] .ui-stat-label svg.lucide {
+  color: var(--cd-teal);
+  filter: drop-shadow(0 0 3px rgba(63, 224, 197, 0.55));
+}
+
+:root[data-skin="command-deck"] .ui-stat-alert .ui-stat-label svg.lucide {
+  color: var(--cd-amber);
+  filter: drop-shadow(0 0 3px rgba(255, 176, 32, 0.55));
+}
+
+/* Icons inside the amber call-to-action stay crisp and dark */
+:root[data-skin="command-deck"] .ui-btn-primary svg.lucide {
+  stroke-width: 2.25;
+}
+
+/* Small icon-only controls (settings cog, hide/reorder arrows, chevrons, edit/delete, close):
+ * the dim gray they use elsewhere nearly vanishes against this skin's thin strokes, so tint them
+ * a muted teal and light them up on hover. Matches buttons whose only element is an icon;
+ * nav chrome and disabled buttons are left alone. */
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled) > svg.lucide:only-child {
+  color: #5fa89d;
+  transition: color 0.15s, filter 0.15s;
+}
+
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child {
+  color: var(--cd-teal);
+  filter: drop-shadow(0 0 4px rgba(63, 224, 197, 0.6));
+}
+
+/* Delete buttons warn on hover instead (higher specificity than the teal hover above) */
+:root[data-skin="command-deck"] button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child:is(.lucide-trash-2, .lucide-trash2, .lucide-trash) {
+  color: var(--color-danger-500);
+  filter: drop-shadow(0 0 4px rgba(255, 92, 108, 0.55));
+}
+
+/* ---------- Dashboard hero header (mockup sizes) ---------- */
+
+:root[data-skin="command-deck"] .ui-hero-title {
+  font-size: 2.375rem;
+  line-height: 1.1;
+  letter-spacing: 0.18em;
+  color: #eafffa;
+}
+
+:root[data-skin="command-deck"] .ui-hero-date {
+  margin-top: 4px;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cd-amber);
+}
+
+/* Big call-to-action: vertical amber gradient, so the two corners are cut with clip-path
+   (the gradient-drawn cuts used for other primary buttons can't carry a gradient fill).
+   The focus outline sits inside the shape so the clipping can't hide it. */
+:root[data-skin="command-deck"] .ui-btn-primary.ui-btn-hero {
+  min-height: 52px;
+  padding: 0 34px;
+  gap: 10px;
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: #1a0f00;
+  background: linear-gradient(180deg, var(--cd-amber-hi), #e8920c);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+}
+
+:root[data-skin="command-deck"] .ui-btn-hero:focus-visible {
+  outline: 2px solid #1a0f00;
+  outline-offset: -5px;
+}
+
+:root[data-skin="command-deck"] .ui-btn-hero svg.lucide {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.6;
+}
+
+/* Dates shown as text (subtitles, ranges, date modal titles) share the dashboard date's amber.
+   Calendar structure (weekday column labels, month headings, chart axes) keeps its own colors. */
+:root[data-skin="command-deck"] .ui-date {
+  color: var(--cd-amber);
+}

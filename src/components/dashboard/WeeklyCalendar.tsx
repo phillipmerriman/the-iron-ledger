@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { format, isToday, isSameDay, isFuture } from 'date-fns'
+import { formatWeekLabel } from '@/lib/week-label'
 import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
@@ -8,11 +9,14 @@ import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, I
 import { cn } from '@/lib/utils'
 import { getExerciseColorClasses, calcEntryVolume } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 
 interface WeeklyCalendarProps {
+  /** Omit the title in the list header (the surrounding panel shows it) */
+  hideTitle?: boolean
   sessions: WorkoutSession[]
   activations?: ProgramActivation[]
   programs?: Program[]
@@ -23,8 +27,9 @@ interface WeeklyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function WeeklyCalendar({ sessions, activations = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ hideTitle, sessions, activations = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
   const { profile } = useAuth()
+  const { skinDef } = useTheme()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
@@ -177,16 +182,74 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
   const dashWeekParam = weekDelta !== 0 ? `&dashweek=${weekDelta}` : ''
   const planLink = `/plan?from=dashboard${dashWeekParam}`
 
+  const list = skinDef.weekLayout === 'list'
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const todayRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
+    // Grid layout scrolls sideways on mobile; center today. The list has nothing to scroll.
+    if (list) return
     if (isCurrentWeek && todayRef.current && scrollRef.current) {
       todayRef.current.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' })
     }
-  }, [isCurrentWeek, weekDelta])
+  }, [isCurrentWeek, weekDelta, list])
+
+  const weekLabel = formatWeekLabel(weekDelta)
 
   return (
     <div>
+      {list ? (
+        // HUD header. With the title in the panel heading: prev/next (+ Today) left under it, Plan right.
+        // Otherwise: title left; Today, prev/next and Plan right.
+        (() => {
+          const todayBtn = !isCurrentWeek && (
+            <button
+              onClick={() => setWeekDelta(0)}
+              className="h-6 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600 hover:bg-hover"
+            >
+              Today
+            </button>
+          )
+          const arrows = (
+            <>
+              <button
+                onClick={() => setWeekDelta((d) => d - 1)}
+                className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
+                aria-label="Previous week"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setWeekDelta((d) => d + 1)}
+                className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
+                aria-label="Next week"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
+          )
+          const plan = (
+            <Link
+              to={planLink}
+              className="inline-flex h-6 items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-[0.16em] text-warning-500 hover:text-warning-600"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Plan
+            </Link>
+          )
+          return hideTitle ? (
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">{arrows}{todayBtn}</div>
+              {plan}
+            </div>
+          ) : (
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-primary-600">{weekLabel}</h3>
+              <div className="flex items-center gap-1.5">{todayBtn}{arrows}<span className="ml-2">{plan}</span></div>
+            </div>
+          )
+        })()
+      ) : (
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-1">
           <button
@@ -197,7 +260,7 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
             <ChevronLeft className="h-4 w-4" />
           </button>
           <h3 className="text-sm font-semibold text-surface-700">
-            {isCurrentWeek ? 'This Week' : weekDelta === -1 ? 'Last Week' : weekDelta === 1 ? 'Next Week' : `${format(days[0], 'MMM d')} – ${format(days[6], 'MMM d')}`}
+            {weekLabel}
           </h3>
           <button
             onClick={() => setWeekDelta((d) => d + 1)}
@@ -223,8 +286,16 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
           Plan
         </Link>
       </div>
+      )}
 
-      <div ref={scrollRef} className="flex gap-1 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible md:pb-0">
+      <div
+        ref={scrollRef}
+        className={cn(
+          list
+            ? 'flex flex-col gap-2'
+            : 'flex gap-1 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible md:pb-0',
+        )}
+      >
         {days.map((day, i) => {
           const dateKey = dateKeys[i]
           const today = isToday(day)
@@ -237,11 +308,34 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
               ref={today ? todayRef : undefined}
               onClick={() => setSelectedDay(day)}
               className={cn(
-                'flex min-h-[80px] w-[80px] flex-shrink-0 cursor-pointer flex-col rounded-lg border p-1.5 transition-colors hover:border-primary-300 md:w-auto md:min-w-0 md:flex-shrink',
+                'cursor-pointer rounded-lg border transition-colors hover:border-primary-300',
+                list
+                  ? 'flex min-h-[60px] items-center gap-5 px-4 py-2.5'
+                  : 'flex min-h-[80px] w-[80px] flex-shrink-0 flex-col p-1.5 md:w-auto md:min-w-0 md:flex-shrink',
                 today ? 'border-primary-300 bg-surface-100' : 'border-surface-300 bg-surface-50',
                 status === 'completed' && !today && 'border-primary-400 bg-surface-100',
+                list && today && 'ui-week-today',
               )}
             >
+              {list ? (
+                // Day label: small weekday over a big plain number; amber for today, teal once completed
+                <div className="flex w-11 shrink-0 flex-col items-center">
+                  <span className={cn('text-[11px] font-semibold uppercase tracking-[0.16em]', today ? 'text-warning-500' : 'text-surface-600')}>
+                    {format(day, 'EEE')}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-2xl font-bold leading-tight',
+                      today ? 'text-warning-500'
+                        : status === 'completed' ? 'text-primary-500'
+                        : status === 'in_progress' || status === 'partial' ? 'text-warning-600'
+                        : 'text-surface-800',
+                    )}
+                  >
+                    {format(day, 'd')}
+                  </span>
+                </div>
+              ) : (
               <div className="mb-1 flex items-center justify-between">
                 <span
                   className={cn(
@@ -263,21 +357,24 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
                   {format(day, 'd')}
                 </span>
               </div>
+              )}
 
-              <div className="flex min-w-0 flex-col gap-0.5 overflow-hidden">
+              <div className={cn(list ? 'flex min-w-0 flex-1 flex-wrap items-center gap-1' : 'flex min-w-0 flex-col gap-0.5 overflow-hidden')}>
                 {(() => {
                   const sessionGroups = SESSIONS
                     .map((s) => ({ session: s, entries: planned.filter((e) => e.session === s) }))
                     .filter((g) => g.entries.length > 0)
                   return sessionGroups.map((group, gi) => (
-                    <div key={group.session}>
-                      {gi > 0 && (
+                    <div key={group.session} className={cn(list && 'contents')}>
+                      {gi > 0 && (list ? (
+                        <span className="mx-1 h-4 w-px bg-primary-500/50" aria-hidden="true" />
+                      ) : (
                         <div className="my-0.5 flex items-center gap-1">
                           <div className="h-px flex-1 bg-surface-200" />
                           <span className="text-[7px] font-medium uppercase text-surface-300">{group.session === 'all' ? '—' : group.session === 'noon' ? '☀' : '☾'}</span>
                           <div className="h-px flex-1 bg-surface-200" />
                         </div>
-                      )}
+                      ))}
                       {group.entries.map((entry) => {
                         const ex = getExercise(entry.exercise_id)
                         const color = getExerciseColorClasses(ex?.color ?? null)
@@ -289,8 +386,9 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
                           <div
                             key={entry.id}
                             className={cn(
-                              'truncate rounded px-1 py-0.5 text-[10px] leading-tight',
-                              ex?.color ? `${color.bg} ${color.text}` : 'bg-surface-100 text-surface-600',
+                              'truncate rounded leading-tight',
+                              list ? 'ui-chip max-w-full border px-2.5 py-1 text-xs' : 'px-1 py-0.5 text-[10px]',
+                              ex?.color ? `${color.bg} ${color.text} ${color.border}` : 'border-surface-200 bg-surface-100 text-surface-600',
                             )}
                             title={ex?.name ?? 'Unknown'}
                           >
@@ -304,6 +402,10 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
                     </div>
                   ))
                 })()}
+
+                {planned.length === 0 && list && (
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-400">Rest</span>
+                )}
               </div>
 
               {(status === 'completed' || status === 'partial') && (() => {
@@ -312,13 +414,13 @@ export default function WeeklyCalendar({ sessions, activations = [], exercises: 
                     ? sum + calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                     : sum, 0)
                 return dayTotal > 0 ? (
-                  <div className="mt-auto pt-1 text-center text-[9px] font-semibold text-primary-600">
+                  <div className={cn('text-[9px] font-semibold text-primary-600', list ? 'shrink-0 text-[11px]' : 'mt-auto pt-1 text-center')}>
                     {dayTotal.toLocaleString()} {preferredUnit}
                   </div>
                 ) : null
               })()}
 
-              {planned.length === 0 && (
+              {planned.length === 0 && !list && (
                 <div className="flex flex-1 items-center justify-center">
                   <span className="text-[10px] text-surface-300">Rest</span>
                 </div>

@@ -7,7 +7,7 @@ const PREF_WEIGHT_OPTIONS = WEIGHT_UNIT_OPTIONS.filter((o) => o.value !== 'bodyw
 
 export default function SettingsPage() {
   const { profile, updateProfile } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { theme, toggle, skinDef } = useTheme()
 
   function handleWeightUnitChange(value: string) {
     updateProfile({ preferred_weight_unit: value as 'lbs' | 'kg' | 'pood' })
@@ -18,8 +18,8 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold">Settings</h1>
 
       <div className="max-w-md space-y-4">
-        {/* Theme */}
-        <div>
+        {/* Theme (dark-only skins have no light mode to switch to) */}
+        {skinDef.mode === 'switchable' && <div>
           <label className="text-sm font-medium text-surface-700">Theme</label>
           <p className="mb-1.5 text-xs text-surface-500">
             Switch between light and dark mode.
@@ -41,7 +41,7 @@ export default function SettingsPage() {
             )}
             <span className="ml-auto text-xs text-surface-400">Click to toggle</span>
           </button>
-        </div>
+        </div>}
 
         {/* Weight Unit */}
         <div>

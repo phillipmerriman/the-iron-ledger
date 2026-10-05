@@ -51,7 +51,7 @@ export default function WorkoutCompleteModal({
           <Trophy className="h-7 w-7 text-primary-600" />
         </div>
         <h2 className="mt-3 text-xl font-bold text-surface-900">{sessionPrefix}Workout Complete!</h2>
-        <p className="mt-1 text-sm text-surface-500">{dayLabel}</p>
+        <p className="ui-date mt-1 text-sm text-surface-500">{dayLabel}</p>
       </div>
 
       {entries.length > 0 && (
@@ -65,6 +65,7 @@ export default function WorkoutCompleteModal({
                   <div className="h-px flex-1 bg-surface-200" />
                 </div>
               )}
+              <div className="space-y-1.5">
               {group.entries.map((entry) => {
                 const ex = getExercise(entry.exercise_id)
                 const color = getExerciseColorClasses(ex?.color ?? null)
@@ -103,6 +104,7 @@ export default function WorkoutCompleteModal({
                   </div>
                 )
               })}
+              </div>
             </div>
           ))}
         </div>

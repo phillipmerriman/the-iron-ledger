@@ -173,56 +173,56 @@ export default function SummaryCards({
         shown.length <= 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-4',
       )}>
       {visible.has('weight') && weight != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Weight className="h-4 w-4" />
             Total Weight Moved
           </div>
-          <p className="mt-1 text-3xl font-bold">{weight.value.toLocaleString()}</p>
+          <p className="ui-stat-value mt-1 text-3xl font-bold">{weight.value.toLocaleString()}</p>
           <p className="text-xs text-surface-400">{weight.unit}</p>
         </Card>
       )}
       {visible.has('workouts') && workouts != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Dumbbell className="h-4 w-4" />
             Total Workouts
           </div>
-          <p className="mt-1 text-3xl font-bold">{workouts}</p>
+          <p className="ui-stat-value mt-1 text-3xl font-bold">{workouts}</p>
           {workoutsLabel && <p className="text-xs text-surface-400">{workoutsLabel}</p>}
         </Card>
       )}
       {visible.has('thisWeek') && thisWeek != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <CalendarDays className="h-4 w-4" />
             This Week
           </div>
-          <p className="mt-1 text-3xl font-bold">{thisWeek}</p>
+          <p className="ui-stat-value mt-1 text-3xl font-bold">{thisWeek}</p>
         </Card>
       )}
       {visible.has('streak') && streak != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Flame className="h-4 w-4" />
             Current Streak
           </div>
-          <p className="mt-1 text-3xl font-bold">{streak}</p>
+          <p className="ui-stat-value mt-1 text-3xl font-bold">{streak}</p>
           <p className="text-xs text-surface-400">{streak === 1 ? 'day' : 'days'}</p>
         </Card>
       )}
       {visible.has('programs') && programsCompleted != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Trophy className="h-4 w-4" />
             Programs Completed
           </div>
-          <p className="mt-1 text-3xl font-bold">{programsCompleted}</p>
+          <p className="ui-stat-value mt-1 text-3xl font-bold">{programsCompleted}</p>
         </Card>
       )}
       {visible.has('today') && todaySlots != null && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className={cn('ui-stat', todaySlots.length === 0 && 'ui-stat-alert')}>
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Clock className="h-4 w-4" />
             Today
           </div>
@@ -238,16 +238,16 @@ export default function SummaryCards({
               ))}
             </div>
           ) : (
-            <p className="mt-1 text-3xl font-bold">
-              <span className="text-surface-400">Rest</span>
+            <p className="ui-stat-value mt-1 text-3xl font-bold">
+              <span className="ui-stat-rest text-surface-400">Rest</span>
             </p>
           )}
         </Card>
       )}
 
       {visible.has('todayMacros') && todayMacros !== undefined && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <UtensilsCrossed className="h-4 w-4" />
             Today's Macros
           </div>
@@ -270,8 +270,8 @@ export default function SummaryCards({
       )}
 
       {visible.has('weekMacros') && weekMacros !== undefined && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <ChartBar className="h-4 w-4" />
             Week's Macros
           </div>
@@ -294,8 +294,8 @@ export default function SummaryCards({
       )}
 
       {visible.has('nextMeal') && nextMeal !== undefined && (
-        <Card>
-          <div className="flex items-center gap-2 text-sm text-surface-500">
+        <Card className="ui-stat">
+          <div className="ui-stat-label flex items-center gap-2 text-sm text-surface-500">
             <Salad className="h-4 w-4" />
             Next Meal
           </div>

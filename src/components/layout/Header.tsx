@@ -1,15 +1,20 @@
 import { useState } from 'react'
 import { LogOut, Dumbbell, Menu } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { cn } from '@/lib/utils'
+import Brand from './Brand'
 import MobileDrawer from './MobileDrawer'
 
 export default function Header() {
   const { profile, signOut } = useAuth()
+  const { skinDef } = useTheme()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const tabs = skinDef.nav === 'tabs'
 
   return (
     <>
-      <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
+      <header className="ui-header flex h-14 items-center justify-between border-b border-border bg-card px-4">
         {/* Mobile: hamburger + logo */}
         <div className="flex items-center gap-2 md:hidden">
           <button
@@ -23,8 +28,13 @@ export default function Header() {
           <span className="font-bold text-surface-900">Iron Ledger</span>
         </div>
 
-        {/* Spacer on desktop */}
-        <div className="hidden md:block" />
+        {/* Desktop: spacer, or the logo when the sidebar gives way to top tabs */}
+        <div className={cn('hidden md:block', tabs && 'xl:hidden')} />
+        {tabs && (
+          <div className="hidden xl:block">
+            <Brand />
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <span className="text-sm text-surface-600">
