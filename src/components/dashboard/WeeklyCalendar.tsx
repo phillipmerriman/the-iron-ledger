@@ -205,7 +205,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
           const todayBtn = !isCurrentWeek && (
             <button
               onClick={() => setWeekDelta(0)}
-              className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600 hover:bg-hover"
+              className="h-6 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-600 hover:bg-hover"
             >
               Today
             </button>
@@ -214,14 +214,14 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
             <>
               <button
                 onClick={() => setWeekDelta((d) => d - 1)}
-                className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+                className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
                 aria-label="Previous week"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setWeekDelta((d) => d + 1)}
-                className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+                className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
                 aria-label="Next week"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -231,7 +231,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
           const plan = (
             <Link
               to={planLink}
-              className="inline-flex h-10 items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-[0.16em] text-warning-500 hover:text-warning-600"
+              className="inline-flex h-6 items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-[0.16em] text-warning-500 hover:text-warning-600"
             >
               <Pencil className="h-3.5 w-3.5" />
               Plan

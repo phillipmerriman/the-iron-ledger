@@ -238,14 +238,14 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
-              className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+              className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
               aria-label="Previous month"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
-              className="flex h-10 w-10 items-center justify-center border border-border hover:bg-hover"
+              className="flex h-6 w-10 items-center justify-center border border-border hover:bg-hover"
               aria-label="Next month"
             >
               <ChevronRight className="h-4 w-4" />
