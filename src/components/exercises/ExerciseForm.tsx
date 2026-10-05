@@ -194,8 +194,9 @@ export default function ExerciseForm({ initial, onSubmit, onCancel, submitting, 
               type="button"
               onClick={() => setColor(color === c.value ? null : c.value as ExerciseColor)}
               className={cn(
-                'h-7 w-7 rounded-full border-2 transition-transform hover:scale-110',
+                'ui-swatch h-7 w-7 rounded-full border-2 transition-transform hover:scale-110',
                 c.bg,
+                c.text, // no text inside; lets skins paint the swatch with currentColor
                 color === c.value ? 'border-surface-900 ring-2 ring-surface-400 scale-110' : 'border-transparent',
               )}
               aria-label={c.label}

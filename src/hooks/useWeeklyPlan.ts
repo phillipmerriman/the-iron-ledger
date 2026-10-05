@@ -107,6 +107,8 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   } = options
 
   const [fetchedEntries, setFetchedEntries] = useState<PlannedEntry[]>([])
+  const [localDeleted, setLocalDeleted] = useState<Set<string>>(new Set())
+  const [localUpdated, setLocalUpdated] = useState<Record<string, PlannedEntryUpdate>>({})
 
   const weekStart = startOfWeek(addWeeks(startDate, weekOffset), { weekStartsOn: 0 })
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 })
@@ -159,9 +161,13 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   useEffect(() => { fetch() }, [fetch])
 
   // When prefetched entries are provided, filter them to this week's dates client-side
-  const entries = prefetchedEntries
+  // Apply local overrides (deletes/updates) on top so mutations are immediately visible
+  const baseEntries = prefetchedEntries
     ? prefetchedEntries.filter((e) => dateKeys.includes(e.date))
     : fetchedEntries
+  const entries = baseEntries
+    .filter((e) => !localDeleted.has(e.id))
+    .map((e) => localUpdated[e.id] ? { ...e, ...localUpdated[e.id] } : e)
 
   function getEntriesForDate(dateKey: string) {
     const sessionOrder = { all: 0, morning: 1, noon: 2, night: 3 }
@@ -296,6 +302,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     setFetchedEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...values } : e)),
     )
+    setLocalUpdated((prev) => ({ ...prev, [id]: { ...prev[id], ...values } }))
   }
 
   async function removeEntry(id: string) {
@@ -307,6 +314,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       if (error) throw error
     }
     setFetchedEntries((prev) => prev.filter((e) => e.id !== id))
+    setLocalDeleted((prev) => new Set([...prev, id]))
   }
 
   async function moveEntry(entryId: string, toDateKey: string, toIndex: number, toSession?: Session) {

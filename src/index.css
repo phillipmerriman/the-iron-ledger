@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/skin-command-deck.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -50,6 +51,11 @@
   --color-nav-active-bg: #ecfdf5;
   --color-nav-active-text: #047857;
   --color-on-primary: #ffffff;
+
+  /* Chart series */
+  --color-chart-primary: #3b82f6;
+  --color-chart-primary-strong: #2563eb;
+  --color-chart-muted: #cbd5e1;
 
   --font-display: 'OCR A Std', 'OCR A Extended', monospace;
 }

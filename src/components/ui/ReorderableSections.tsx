@@ -261,7 +261,7 @@ export default function ReorderableSections({ storageKey, sections }: Reorderabl
           {/* Header with title + reorder controls */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2">
             <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-surface-300 active:cursor-grabbing" />
-            <h2 className="flex-1 text-sm font-semibold text-surface-500">{section.title}</h2>
+            <h2 className="ui-section-title flex-1 text-sm font-semibold text-surface-500">{section.title}</h2>
             <div className="flex items-center">
               <button
                 onClick={() => hide(section.id)}

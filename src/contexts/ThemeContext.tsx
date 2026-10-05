@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import { ACTIVE_SKIN, SKINS, type SkinDef, type SkinId } from '@/lib/skins'
 
 type Theme = 'light' | 'dark'
 
@@ -6,6 +7,8 @@ interface ThemeContextValue {
   theme: Theme
   setTheme: (t: Theme) => void
   toggle: () => void
+  skin: SkinId
+  skinDef: SkinDef
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -19,13 +22,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return 'light'
   })
 
-  useEffect(() => {
+  const skin = ACTIVE_SKIN
+  const skinDef = SKINS[skin]
+  const isDark = skinDef.mode === 'dark' || theme === 'dark'
+
+  // Layout effect so the skin is applied before first paint (no flash of the classic look)
+  useLayoutEffect(() => {
     const root = document.documentElement
-    if (theme === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
+    root.classList.toggle('dark', isDark)
+    root.dataset.skin = skin
+  }, [isDark, skin])
+
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, theme)
   }, [theme])
 
@@ -38,7 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggle, skin, skinDef }}>
       {children}
     </ThemeContext.Provider>
   )

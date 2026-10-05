@@ -65,6 +65,7 @@ export default function WorkoutCompleteModal({
                   <div className="h-px flex-1 bg-surface-200" />
                 </div>
               )}
+              <div className="space-y-1.5">
               {group.entries.map((entry) => {
                 const ex = getExercise(entry.exercise_id)
                 const color = getExerciseColorClasses(ex?.color ?? null)
@@ -103,6 +104,7 @@ export default function WorkoutCompleteModal({
                   </div>
                 )
               })}
+              </div>
             </div>
           ))}
         </div>
