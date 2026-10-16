@@ -599,20 +599,37 @@ export async function pasteWeekEntries(
   }
 }
 
+// Supabase caps each response at 1000 rows, so long histories must be fetched page by page —
+// otherwise the newest dates are silently dropped.
+const PAGE_SIZE = 1000
+
+function selectEntries() {
+  return supabase.from('planned_entries').select('*')
+}
+
+async function fetchAllEntries(
+  applyFilters: (query: ReturnType<typeof selectEntries>) => ReturnType<typeof selectEntries>,
+): Promise<PlannedEntry[]> {
+  const rows: Record<string, unknown>[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await applyFilters(selectEntries())
+      .order('date')
+      .order('sort_order')
+      .order('id')
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) throw error
+    rows.push(...(data ?? []))
+    if (!data || data.length < PAGE_SIZE) break
+  }
+  return asEntries(rows)
+}
+
 /** Load all entries for a given program across all weeks */
 export async function loadProgramEntries(userId: string, programId: string): Promise<PlannedEntry[]> {
   if (isDev) {
     return loadAll().filter((e) => e.user_id === userId && e.program_id === programId)
   }
-  const { data, error } = await supabase
-    .from('planned_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('program_id', programId)
-    .order('date')
-    .order('sort_order')
-  if (error) throw error
-  return asEntries(data ?? [])
+  return fetchAllEntries((query) => query.eq('user_id', userId).eq('program_id', programId))
 }
 
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
@@ -628,21 +645,14 @@ export async function loadUserEntries(userId: string, activationIds?: string[]):
     )
   }
 
-  let query = supabase
-    .from('planned_entries')
-    .select('*')
-    .eq('user_id', userId)
-
-  if (hasActivations) {
-    const idFilters = activationIds.map((id) => `program_id.eq.${id}`).join(',')
-    query = query.or(`${idFilters},program_id.is.null`)
-  } else {
-    query = query.is('program_id', null)
-  }
-
-  const { data, error } = await query.order('date').order('sort_order')
-  if (error) throw error
-  return asEntries(data ?? [])
+  return fetchAllEntries((query) => {
+    query = query.eq('user_id', userId)
+    if (hasActivations) {
+      const idFilters = activationIds.map((id) => `program_id.eq.${id}`).join(',')
+      return query.or(`${idFilters},program_id.is.null`)
+    }
+    return query.is('program_id', null)
+  })
 }
 
 /** Remove unscoped entries on dates that already have entries for the given program */
