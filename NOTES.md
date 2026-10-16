@@ -19,6 +19,7 @@ Running list of feature ideas, bugs, and improvements.
 - [ ] Goal setting/tracking i.e. certain amount of workouts per week for a month or increase weight of an exercise by a certain time, etc.
 - [ ] Consider a 'Morning Routine/Night Routine' section for your morning routine, not workouts, but could have workouts in the morning routine maybe? This idea could be a bit out of scope for this app but we'll see...
 - [ ] Add voice for timers and performing workouts
+- [ ] Notifications - i.e. if you didnt complete your workout the day before, you will be notified as a reminder to go click Complete if you forgot
 
 ## Notes / Improvements
 
