@@ -3,6 +3,7 @@ import { CirclePlay, Pause, RotateCcw, SkipForward, X, ChevronRight, Check } fro
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Exercise } from '@/types/database'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
+import useWakeLock from '@/hooks/useWakeLock'
 import type { WeightUnit } from '@/types/common'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
 import { cn } from '@/lib/utils'
@@ -42,6 +43,9 @@ export default function WorkoutRunnerModal({
   const [timerFinished, setTimerFinished] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioRef = useRef<AudioContext | null>(null)
+
+  // Keep the screen on while the timer is counting down or waiting to resume
+  useWakeLock(timerRunning || timerWaiting)
 
   const entry = entries[currentIdx]
   const exercise = entry ? exercises.find((e) => e.id === entry.exercise_id) : undefined

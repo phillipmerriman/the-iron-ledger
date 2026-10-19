@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { CirclePlay, Pause, RotateCcw, SkipForward, X } from 'lucide-react'
 import type { TimerWithIntervals } from '@/hooks/useTimers'
+import useWakeLock from '@/hooks/useWakeLock'
 
 interface TimerRunnerModalProps {
   timer: TimerWithIntervals
@@ -23,6 +24,9 @@ export default function TimerRunnerModal({ timer, onClose }: TimerRunnerModalPro
   const [waitingResume, setWaitingResume] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const audioRef = useRef<AudioContext | null>(null)
+
+  // Keep the screen on while the timer is counting down or waiting to resume
+  useWakeLock(running || waitingResume)
 
   const current = intervals[currentIdx]
   const totalIntervals = intervals.length
