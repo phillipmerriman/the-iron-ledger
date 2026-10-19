@@ -15,6 +15,9 @@ import {
   parseWildmanProgress,
   sessionsForStage,
 } from '@/lib/program-templates/wildman'
+import { completedSlotKeys, isEntryDone } from '@/lib/program-templates/progress'
+
+export { completedSlotKeys }
 
 type ProgramsApi = ReturnType<typeof usePrograms>
 
@@ -40,30 +43,6 @@ const todayKey = () => format(new Date(), 'yyyy-MM-dd')
 
 /** Activation id → date of last daily resync, shared by every hook instance so pages don't race */
 const resyncedOn = new Map<string, string>()
-
-/**
- * The calendar day a workout session belongs to. Calendar "mark complete" stores the day as
- * `yyyy-MM-ddT09:00:00.000Z`, so read that date literally; live sessions use local time.
- */
-function sessionDateKey(ws: WorkoutSession): string {
-  if (ws.started_at.endsWith('T09:00:00.000Z')) return ws.started_at.slice(0, 10)
-  return format(new Date(ws.started_at), 'yyyy-MM-dd')
-}
-
-/** `${date}|${slot}` for every completed workout session (slot from the `session:<slot>` notes tag) */
-export function completedSlotKeys(sessions: WorkoutSession[]): Set<string> {
-  const keys = new Set<string>()
-  for (const ws of sessions) {
-    if (!ws.completed_at) continue
-    const slot = ws.notes?.match(/^session:(.+)$/)?.[1] ?? 'all'
-    keys.add(`${sessionDateKey(ws)}|${slot}`)
-  }
-  return keys
-}
-
-function isEntryDone(entry: PlannedEntry, keys: Set<string>) {
-  return keys.has(`${entry.date}|${entry.session}`) || keys.has(`${entry.date}|all`)
-}
 
 /**
  * Progression state and actions for active template programs (e.g. Wildman Reverse Ladders).
@@ -200,6 +179,7 @@ export default function useProgramProgression(
       ...status.progress,
       stage_index: 0,
       stage_started_on: regenFromDate(status),
+      cycle_started_on: regenFromDate(status),
       extra_sessions: 0,
       cycle: status.progress.cycle + 1,
       weight: newWeight?.weight ?? status.progress.weight,
@@ -257,6 +237,9 @@ export default function useProgramProgression(
     /** Workouts and program entries are loaded, so completion counts are accurate */
     ready: !workoutsLoading && entriesLoaded,
     statusForActivation,
+    /** This activation's planned entries (for progress bars) */
+    entriesFor: (activationId: string) => entriesByActivation[activationId] ?? [],
+    doneKeys,
     advance,
     adjust,
     finishCycle,
