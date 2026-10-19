@@ -556,6 +556,9 @@ export default function WeeklyPlanPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header + mode toggle, with active programs beside them on desktop */}
+      <div className="md:flex md:items-start md:gap-6">
+      <div className="shrink-0 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -611,10 +614,19 @@ export default function WeeklyPlanPage() {
           </button>
         </div>
       )}
-
-      {/* Template program progress (e.g. Wildman Reverse Ladders) */}
+      </div>
       {!programId && planMode === 'workouts' && (
-        <ProgramProgressPanel progression={progression} exercises={exercises} />
+        <div className="hidden min-w-0 flex-1 md:block">
+          <ProgramProgressPanel progression={progression} exercises={exercises} />
+        </div>
+      )}
+      </div>
+
+      {/* Template program progress (e.g. Wildman Reverse Ladders) — on desktop it sits beside the title */}
+      {!programId && planMode === 'workouts' && (
+        <div className="md:hidden">
+          <ProgramProgressPanel progression={progression} exercises={exercises} />
+        </div>
       )}
 
       {moveError && (

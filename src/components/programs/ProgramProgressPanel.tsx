@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 import type useProgramProgression from '@/hooks/useProgramProgression'
 import type { Exercise } from '@/types/database'
-import { stageLabel } from '@/lib/program-templates/wildman'
+import { formatTrainingDays, stageLabel } from '@/lib/program-templates/wildman'
+import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import { cn } from '@/lib/utils'
 import ProgramProgressControls from './ProgramProgressControls'
 
@@ -81,12 +82,15 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                     Stage {progress.stage_index + 1}/{stages.length}
                     {progress.cycle > 1 && ` · C${progress.cycle}`}
                   </span>
+                  <span className="shrink-0 text-xs text-surface-500">
+                    {formatTrainingDays(config.days_of_week)} · {SESSION_LABELS[config.session]}
+                  </span>
                   <span className="hidden min-w-0 flex-1 truncate font-display text-sm font-semibold text-surface-800 md:block">
                     {stageLabel(stage, config.rep_type)}
                   </span>
                   {auto ? (
                     <span className="flex shrink-0 items-center gap-2">
-                      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-100">
+                      <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-100 md:w-36">
                         <span className="block h-full rounded-full bg-primary-500" style={{ width: `${pct}%` }} />
                       </span>
                       <span className="w-9 text-right text-xs text-surface-500">

@@ -15,7 +15,7 @@ Running list of feature ideas, bugs, and improvements.
 - [ ] Weekly Recap
 - [ ] public programs/workouts default sorted by popularity
 - [ ] week/month/year in review that auto pops up at the end of the week/month/year or when final workout is completed with some sort of motivational message. Will have total weight moved, missed days, total reps, total points (once points system is implemented), etc.
-- [ ] Notifications
+- [ ] Notifications - i.e. if you didn't complete your workout the day before, you will be notified as a reminder to go click Complete if you forgot
 - [ ] Goal setting/tracking i.e. certain amount of workouts per week for a month or increase weight of an exercise by a certain time, etc.
 - [ ] Consider a 'Morning Routine/Night Routine' section for your morning routine, not workouts, but could have workouts in the morning routine maybe? This idea could be a bit out of scope for this app but we'll see...
 - [ ] Add voice for timers and performing workouts
@@ -30,7 +30,7 @@ Running list of feature ideas, bugs, and improvements.
 - [ ] add JSON structure example in the Data page exercise is or when editing
 - [ ] update app url 
 - [ ] for the 'Get After It'/run workout feature, it should be able to be set up to where User can just hit Start, and follow along with the entire workout. So User hits start -> first workout/exercise starts first set, completes first set -> time in between sets counts down -> next set triggers (throughout: by user if set markers is checked, or else automatically) -> etc -> first workout complete -> time between workouts starts and announces next exercise/workout -> when thats done, it starts the next exercise/workout -> etc
-- [ ] Dont display future days on cumulative charts
+- [ ] Don't display future days on cumulative charts
 - [ ] replace reps/min rep type with emom/rpm
 - [ ] add rep type: work/rest intervals (e.g. "5 reps / 60s rest")
 - [ ] allow individual set customization i.e. set 1 - 50 lbs, set 2 - 60 lbs, set 3 - 70 lbs, etc.

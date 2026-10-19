@@ -29,6 +29,13 @@ export function buildStages(config: Pick<WildmanConfig, 'min_sets' | 'max_sets' 
   return stages
 }
 
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** Training days in week order, e.g. "Mon · Wed · Fri" */
+export function formatTrainingDays(daysOfWeek: number[]): string {
+  return [...daysOfWeek].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT[d]).join(' · ')
+}
+
 /** e.g. "3 × 4/4, 3/3, 2/2, 1/1" */
 export function stageLabel(stage: WildmanStage, repType: RepType): string {
   return `${stage.sets} × ${formatReps(repType, stage.topReps)}`
