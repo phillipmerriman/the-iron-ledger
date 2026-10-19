@@ -3,7 +3,9 @@ import { addDays, differenceInDays, parseISO, format, startOfWeek } from 'date-f
 import { supabase, isDev } from '@/lib/supabase'
 import { localDb } from '@/lib/local-storage'
 import { useAuth } from '@/contexts/AuthContext'
-import type { Program, ProgramDay, ProgramDayExercise, ProgramActivation, InsertDto, UpdateDto } from '@/types/database'
+import type { Program, ProgramDay, ProgramDayExercise, ProgramActivation, ProgramCompletion, InsertDto, UpdateDto, Json } from '@/types/database'
+import { replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import { entryValuesFor, generateSchedule, initialProgress, parseWildmanConfig } from '@/lib/program-templates/wildman'
 
 const sortByName = (a: Program, b: Program) => a.name.localeCompare(b.name)
 
@@ -61,6 +63,8 @@ export default function usePrograms() {
         weeks: values.weeks ?? 1,
         start_date: values.start_date,
         is_active: values.is_active ?? false,
+        template_type: values.template_type ?? 'basic',
+        template_config: values.template_config ?? null,
         created_at: now,
         updated_at: now,
       }
@@ -119,23 +123,28 @@ export default function usePrograms() {
 
   const activatingRef = useRef(false)
 
-  async function activate(programId: string, newStartDate: string) {
+  /** Pass `program` when it was just created and isn't in state yet */
+  async function activate(programId: string, newStartDate: string, program?: Program) {
     if (!user) return
     if (activatingRef.current) return // prevent double-click / re-render duplication
     activatingRef.current = true
 
     try {
-      return await _activate(programId, newStartDate)
+      return await _activate(programId, newStartDate, program)
     } finally {
       activatingRef.current = false
     }
   }
 
-  async function _activate(programId: string, newStartDate: string) {
+  async function _activate(programId: string, newStartDate: string, programOverride?: Program) {
     if (!user) return
 
-    const program = programs.find((p) => p.id === programId)
+    const program = programOverride ?? programs.find((p) => p.id === programId)
     if (!program) return
+
+    if (program.template_type === 'wildman_reverse_ladder') {
+      return activateWildman(program, newStartDate)
+    }
 
     // Snap the chosen start date to its week's Sunday
     const chosenSunday = format(startOfWeek(parseISO(newStartDate), { weekStartsOn: 0 }), 'yyyy-MM-dd')
@@ -221,6 +230,73 @@ export default function usePrograms() {
     }
 
     setActivations((prev) => [...prev, activation])
+    return activation
+  }
+
+  /** Template programs generate their schedule from the config instead of copying entries */
+  async function activateWildman(program: Program, startDate: string) {
+    if (!user) return
+    const config = parseWildmanConfig(program.template_config)
+    if (!config) throw new Error('Program has no Wildman config')
+
+    const progress = initialProgress(config, startDate)
+    const activation: ProgramActivation = {
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      program_id: program.id,
+      start_date: startDate,
+      progress: progress as unknown as Json,
+      created_at: new Date().toISOString(),
+    }
+
+    if (isDev) {
+      saveActivations([...loadActivations(), activation])
+    } else {
+      const { error } = await supabase.from('program_activations').insert(activation)
+      if (error) throw error
+    }
+
+    const schedule = generateSchedule(config, progress, startDate, 0)
+    await replaceProgramEntriesFrom(user.id, activation.id, startDate, schedule.map((w) => entryValuesFor(config, progress, w)))
+
+    setActivations((prev) => [...prev, activation])
+    return activation
+  }
+
+  async function updateActivation(id: string, values: UpdateDto<'program_activations'>) {
+    if (isDev) {
+      saveActivations(loadActivations().map((a) => (a.id === id ? { ...a, ...values } : a)))
+    } else {
+      const { error } = await supabase.from('program_activations').update(values).eq('id', id)
+      if (error) throw error
+    }
+    setActivations((prev) => prev.map((a) => (a.id === id ? { ...a, ...values } : a)))
+  }
+
+  async function recordCompletion(values: Omit<InsertDto<'program_completions'>, 'user_id'>) {
+    if (!user) return
+    if (isDev) {
+      const row: ProgramCompletion = {
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        program_id: values.program_id,
+        activation_id: values.activation_id,
+        exercise_id: values.exercise_id ?? null,
+        weight: values.weight ?? null,
+        weight_unit: values.weight_unit ?? 'lbs',
+        outcome: values.outcome,
+        completed_at: values.completed_at ?? new Date().toISOString(),
+      }
+      localDb.insert('program_completions', row)
+      return row
+    }
+    const { data, error } = await supabase
+      .from('program_completions')
+      .insert({ ...values, user_id: user.id })
+      .select()
+      .single()
+    if (error) throw error
+    return data
   }
 
   async function deactivate(activationId: string) {
@@ -264,7 +340,10 @@ export default function usePrograms() {
     setActivations((prev) => prev.filter((a) => a.id !== activationId))
   }
 
-  return { programs, activations, loading, refetch: fetch, create, update, remove, activate, deactivate }
+  return {
+    programs, activations, loading, refetch: fetch,
+    create, update, remove, activate, deactivate, updateActivation, recordCompletion,
+  }
 }
 
 // ---- Program Days ----

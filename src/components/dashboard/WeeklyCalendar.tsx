@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
+import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 
 interface WeeklyCalendarProps {
@@ -461,7 +462,9 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
         entries={completeModal?.entries ?? []}
         exercises={exercises}
         preferredUnit={preferredUnit}
-      />
+      >
+        {completeModal && <TemplateProgressPrompts entries={completeModal.entries} />}
+      </WorkoutCompleteModal>
     </div>
   )
 }

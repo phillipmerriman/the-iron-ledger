@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Trophy } from 'lucide-react'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
@@ -15,6 +16,8 @@ interface WorkoutCompleteModalProps {
   entries: PlannedEntry[]
   exercises: Exercise[]
   preferredUnit: WeightUnit
+  /** Extra content under the summary, e.g. template-program progression prompts */
+  children?: ReactNode
 }
 
 export default function WorkoutCompleteModal({
@@ -24,6 +27,7 @@ export default function WorkoutCompleteModal({
   entries,
   exercises,
   preferredUnit,
+  children,
 }: WorkoutCompleteModalProps) {
   function getExercise(id: string) {
     return exercises.find((e) => e.id === id)
@@ -117,6 +121,8 @@ export default function WorkoutCompleteModal({
           </span>
         </div>
       )}
+
+      {children && <div className="mt-4 space-y-3">{children}</div>}
 
       <Button onClick={onClose} className="mt-4 w-full">
         Done

@@ -710,3 +710,56 @@ export async function clearFutureEntries(userId: string, programId: string) {
     .gte('date', cutoff)
   if (error) throw error
 }
+
+/** Values for a generated entry — ids, ownership and ordering are filled in on insert */
+export type GeneratedEntry = Omit<PlannedEntry, 'id' | 'user_id' | 'program_id' | 'sort_order'>
+
+/**
+ * Replace a program's entries dated on/after `fromDate` with freshly generated ones.
+ * Used by template programs whenever their schedule changes.
+ */
+export async function replaceProgramEntriesFrom(
+  userId: string,
+  programId: string,
+  fromDate: string,
+  generated: GeneratedEntry[],
+) {
+  if (isDev) {
+    const all = loadAll()
+    const kept = all.filter((e) => !(e.user_id === userId && e.program_id === programId && e.date >= fromDate))
+    for (const g of generated) {
+      const sortOrder = kept.filter((e) => e.user_id === userId && e.date === g.date && e.session === g.session).length
+      kept.push({ ...g, id: crypto.randomUUID(), user_id: userId, program_id: programId, sort_order: sortOrder })
+    }
+    saveAll(kept)
+    return
+  }
+
+  const { error: delErr } = await supabase
+    .from('planned_entries')
+    .delete()
+    .eq('user_id', userId)
+    .eq('program_id', programId)
+    .gte('date', fromDate)
+  if (delErr) throw delErr
+
+  if (generated.length === 0) return
+  const { data: existing } = await supabase
+    .from('planned_entries')
+    .select('date, session')
+    .eq('user_id', userId)
+    .in('date', [...new Set(generated.map((g) => g.date))])
+  const counts = new Map<string, number>()
+  for (const row of existing ?? []) {
+    const key = `${row.date}|${row.session}`
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const rows: Array<InsertDto<'planned_entries'>> = generated.map((g) => ({
+    ...g,
+    user_id: userId,
+    program_id: programId,
+    sort_order: counts.get(`${g.date}|${g.session}`) ?? 0,
+  }))
+  const { error } = await supabase.from('planned_entries').insert(rows)
+  if (error) throw error
+}
