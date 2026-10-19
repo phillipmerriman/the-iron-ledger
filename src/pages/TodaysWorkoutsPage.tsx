@@ -12,6 +12,7 @@ import { getExerciseColorClasses, formatReps, formatWeightWithConversion, calcEn
 import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
 import WorkoutRunnerModal from '@/components/workouts/WorkoutRunnerModal'
 import WorkoutCompleteModal from '@/components/dashboard/WorkoutCompleteModal'
+import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
@@ -360,7 +361,9 @@ export default function TodaysWorkoutsPage() {
         entries={completeModal?.entries ?? []}
         exercises={exercises}
         preferredUnit={preferredUnit}
-      />
+      >
+        {completeModal && <TemplateProgressPrompts entries={completeModal.entries} />}
+      </WorkoutCompleteModal>
     </div>
   )
 }

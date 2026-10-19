@@ -11,12 +11,24 @@ import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
 import StartDatePicker from '@/components/programs/StartDatePicker'
+import ProgramTemplatePicker from '@/components/programs/ProgramTemplatePicker'
+import WildmanProgramWizard from '@/components/programs/WildmanProgramWizard'
+import Input from '@/components/ui/Input'
+import useWorkouts from '@/hooks/useWorkouts'
+import useProgramProgression from '@/hooks/useProgramProgression'
+import { stageLabel } from '@/lib/program-templates/wildman'
+import { getProgramTemplate } from '@/lib/program-templates'
+import type { ProgramTemplateType } from '@/types/program-templates'
 
 export default function ProgramsPage() {
-  const { programs, activations, loading, create, update, remove, activate, deactivate } = usePrograms()
+  const programsApi = usePrograms()
+  const { programs, activations, loading, create, update, remove, activate, deactivate } = programsApi
+  const { sessions: workoutSessions, loading: workoutsLoading } = useWorkouts()
+  const { statusForActivation } = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
+  const [templateChoice, setTemplateChoice] = useState<ProgramTemplateType | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [activateId, setActivateId] = useState<string | null>(null)
   const [activateDate, setActivateDate] = useState(() =>
@@ -27,6 +39,7 @@ export default function ProgramsPage() {
 
   function closeModal() {
     setModalOpen(false)
+    setTemplateChoice(null)
   }
 
   async function handleSubmit(values: { name: string; description: string; weeks: number; start_date: string }) {
@@ -72,6 +85,7 @@ export default function ProgramsPage() {
             if (!program) return null
             const start = parseISO(act.start_date)
             const end = addWeeks(start, program.weeks)
+            const status = statusForActivation(act.id)
             return (
               <Card key={act.id} className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -82,8 +96,15 @@ export default function ProgramsPage() {
                       <Calendar className="mr-1 inline h-3 w-3" />
                       {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}
                     </Badge>
-                    <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
+                    {!status && <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>}
                   </div>
+                  {status && (
+                    <p className="mt-1.5 text-xs text-surface-500">
+                      Stage {status.progress.stage_index + 1} of {status.stages.length}: {stageLabel(status.stage, status.config.rep_type)}
+                      {status.config.increment_mode === 'auto' && ` · ${Math.min(status.completedInStage, status.requiredInStage)}/${status.requiredInStage} sessions`}
+                      {status.progress.cycle > 1 && ` · Cycle ${status.progress.cycle}`}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => deactivate(act.id)}
@@ -115,7 +136,11 @@ export default function ProgramsPage() {
                 key={program.id}
                 program={program}
                 onDelete={handleDelete}
-                onSetActive={(id) => { setActivateId(id); setActivateDate(format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd')) }}
+                onSetActive={(id) => {
+                  setActivateId(id)
+                  const isTemplate = programs.find((p) => p.id === id)?.template_type === 'wildman_reverse_ladder'
+                  setActivateDate(format(isTemplate ? new Date() : startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'))
+                }}
                 onEdit={(id) => {
                   const p = programs.find((pr) => pr.id === id)
                   if (p) setEditProgram({ id: p.id, name: p.name, description: p.description ?? '' })
@@ -129,13 +154,25 @@ export default function ProgramsPage() {
       <Modal
         open={modalOpen}
         onClose={closeModal}
-        title="New Program"
+        title={templateChoice ? getProgramTemplate(templateChoice).name : 'New Program'}
+        size={templateChoice === 'wildman_reverse_ladder' ? 'lg' : 'md'}
       >
-        <ProgramForm
-          onSubmit={handleSubmit}
-          onCancel={closeModal}
-          submitting={submitting}
-        />
+        {templateChoice === null && <ProgramTemplatePicker onSelect={setTemplateChoice} />}
+        {templateChoice === 'basic' && (
+          <ProgramForm
+            onSubmit={handleSubmit}
+            onCancel={() => setTemplateChoice(null)}
+            submitting={submitting}
+          />
+        )}
+        {templateChoice === 'wildman_reverse_ladder' && (
+          <WildmanProgramWizard
+            onCreate={create}
+            onActivate={activate}
+            onBack={() => setTemplateChoice(null)}
+            onDone={() => { closeModal(); navigate('/plan') }}
+          />
+        )}
       </Modal>
 
       {/* Activation date picker modal */}
@@ -146,6 +183,35 @@ export default function ProgramsPage() {
       >
         {(() => {
           const activateProgram = programs.find((p) => p.id === activateId)
+          if (activateProgram?.template_type === 'wildman_reverse_ladder') {
+            return (
+              <div className="space-y-4">
+                <p className="text-sm text-surface-600">
+                  Choose the day to start. Workouts are scheduled on the program&apos;s training days from that date.
+                </p>
+                <Input
+                  id="activate-template-date"
+                  label="Start date"
+                  type="date"
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                  value={activateDate}
+                  onChange={(e) => setActivateDate(e.target.value)}
+                />
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button variant="secondary" onClick={() => setActivateId(null)}>Cancel</Button>
+                  <Button
+                    disabled={!activateDate}
+                    onClick={async () => {
+                      await activate(activateProgram.id, activateDate)
+                      setActivateId(null)
+                    }}
+                  >
+                    Activate
+                  </Button>
+                </div>
+              </div>
+            )
+          }
           return (
             <div className="space-y-4">
               <p className="text-sm text-surface-600">

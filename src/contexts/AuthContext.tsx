@@ -29,14 +29,28 @@ const MOCK_PROFILE: Profile = {
   avatar_url: null,
   unit_system: 'imperial',
   preferred_weight_unit: 'lbs',
+  body_weight: null,
+  body_weight_unit: 'lbs',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+}
+
+// In dev mode, profile edits are kept in localStorage so they survive a reload
+const DEV_PROFILE_KEY = 'fittrack:profile'
+
+function loadDevProfile(): Profile {
+  try {
+    const raw = localStorage.getItem(DEV_PROFILE_KEY)
+    return raw ? { ...MOCK_PROFILE, ...JSON.parse(raw) } : MOCK_PROFILE
+  } catch {
+    return MOCK_PROFILE
+  }
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(isDev ? MOCK_SESSION : null)
   const [user, setUser] = useState<User | null>(isDev ? MOCK_USER : null)
-  const [profile, setProfile] = useState<Profile | null>(isDev ? MOCK_PROFILE : null)
+  const [profile, setProfile] = useState<Profile | null>(isDev ? loadDevProfile : null)
   const [loading, setLoading] = useState(!isDev)
 
   useEffect(() => {
@@ -101,7 +115,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function updateProfile(fields: Partial<Profile>) {
     if (!user) return
     if (isDev) {
-      setProfile((prev) => prev ? { ...prev, ...fields } : prev)
+      setProfile((prev) => {
+        if (!prev) return prev
+        const next = { ...prev, ...fields }
+        try { localStorage.setItem(DEV_PROFILE_KEY, JSON.stringify(next)) } catch { /* storage unavailable */ }
+        return next
+      })
       return
     }
     const { data } = await supabase

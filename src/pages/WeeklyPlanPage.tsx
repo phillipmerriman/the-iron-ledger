@@ -7,6 +7,10 @@ import useWeeklyPlan from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import usePrograms from '@/hooks/usePrograms'
+import useWorkouts from '@/hooks/useWorkouts'
+import useProgramProgression from '@/hooks/useProgramProgression'
+import ProgramProgressPanel from '@/components/programs/ProgramProgressPanel'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
 import useMealPlan from '@/hooks/useMealPlan'
@@ -38,7 +42,9 @@ export default function WeeklyPlanPage() {
   const dashboardLink = dashWeek ? `/?week=${dashWeek}` : '/'
   const { profile } = useAuth()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
-  const { programs, activations, loading: programsLoading } = usePrograms()
+  const programsApi = usePrograms()
+  const { programs, activations, loading: programsLoading } = programsApi
+  const { sessions: workoutSessions, loading: workoutsLoading } = useWorkouts()
   const activationIds = programId ? undefined : activations.map((a) => a.id)
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
@@ -85,12 +91,57 @@ export default function WeeklyPlanPage() {
     moveEntry,
     clearDate,
     clearSession,
+    refetch: refetchPlan,
   } = useWeeklyPlan({
     startDate: programStart,
     weekOffset,
     programId: programId ?? null,
     programIds: activationIds,
   })
+
+  const progression = useProgramProgression(programsApi, workoutSessions, workoutsLoading, () => { refetchPlan() })
+
+  // A template-program workout dragged to a different weekday: ask whether to move just this one or all future ones
+  const [pendingMove, setPendingMove] = useState<{
+    entry: PlannedEntry
+    toDate: string
+    toIndex: number
+    toSession: Session
+  } | null>(null)
+
+  async function handleMoveEntry(entryId: string, toDate: string, toIndex: number, toSession: Session) {
+    const entry = dateKeys.flatMap((dk) => getEntriesForDate(dk)).find((en) => en.id === entryId)
+    const status = progression.statusForActivation(entry?.program_id)
+    if (!entry || !status || entry.date === toDate) {
+      return moveEntry(entryId, toDate, toIndex, toSession)
+    }
+    if (parseISO(entry.date).getDay() !== parseISO(toDate).getDay()) {
+      setPendingMove({ entry, toDate, toIndex, toSession })
+      return
+    }
+    await moveEntry(entryId, toDate, toIndex, toSession)
+    await progression.recordMove(status, entry.date, toDate)
+  }
+
+  async function resolvePendingMove(scope: 'one' | 'all') {
+    if (!pendingMove) return
+    const { entry, toDate, toIndex, toSession } = pendingMove
+    setPendingMove(null)
+    const status = progression.statusForActivation(entry.program_id)
+    try {
+      if (scope === 'all' && status) {
+        await progression.moveWeekday(status, parseISO(entry.date).getDay(), parseISO(toDate).getDay())
+      } else {
+        await moveEntry(entry.id, toDate, toIndex, toSession)
+        if (status) await progression.recordMove(status, entry.date, toDate)
+      }
+    } catch (err) {
+      console.error('Failed to move program workout', err)
+      setMoveError('Could not move that workout. Check your connection and try again.')
+    }
+  }
+
+  const [moveError, setMoveError] = useState<string | null>(null)
 
   const mealPlan = useMealPlan({
     startDate: programStart,
@@ -301,7 +352,7 @@ export default function WeeklyPlanPage() {
           }, session)
         }
       } else {
-        moveEntry(dragSource.entryId, dateKey, sessionEntries.length, session)
+        handleMoveEntry(dragSource.entryId, dateKey, sessionEntries.length, session)
       }
     }
     setDragSource(null)
@@ -361,7 +412,7 @@ export default function WeeklyPlanPage() {
         }, session)
       }
     } else {
-      moveEntry(dragSource.entryId, dateKey, targetIdx, session)
+      handleMoveEntry(dragSource.entryId, dateKey, targetIdx, session)
     }
     setDragSource(null)
   }
@@ -505,6 +556,9 @@ export default function WeeklyPlanPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header + mode toggle, with active programs beside them on desktop */}
+      <div className="md:flex md:items-start md:gap-6">
+      <div className="shrink-0 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -558,6 +612,27 @@ export default function WeeklyPlanPage() {
           >
             <UtensilsCrossed className="h-4 w-4" /> Meals
           </button>
+        </div>
+      )}
+      </div>
+      {!programId && planMode === 'workouts' && (
+        <div className="hidden min-w-0 flex-1 md:block">
+          <ProgramProgressPanel progression={progression} exercises={exercises} />
+        </div>
+      )}
+      </div>
+
+      {/* Template program progress (e.g. Wildman Reverse Ladders) — on desktop it sits beside the title */}
+      {!programId && planMode === 'workouts' && (
+        <div className="md:hidden">
+          <ProgramProgressPanel progression={progression} exercises={exercises} />
+        </div>
+      )}
+
+      {moveError && (
+        <div className="flex items-start justify-between gap-2 rounded-lg bg-danger-500/10 px-3 py-2 text-sm text-danger-600">
+          <span>{moveError}</span>
+          <button type="button" onClick={() => setMoveError(null)} className="text-xs font-medium underline">Dismiss</button>
         </div>
       )}
 
@@ -1247,6 +1322,22 @@ export default function WeeklyPlanPage() {
           )
         })()}
       </Modal>
+      {/* Move template workout: just this one or every future one on that weekday */}
+      <ConfirmDialog
+        open={pendingMove !== null}
+        onClose={() => setPendingMove(null)}
+        title="Move workout"
+        message={pendingMove
+          ? `Move all future ${format(parseISO(pendingMove.entry.date), 'EEEE')} workouts to ${format(parseISO(pendingMove.toDate), 'EEEE')}, or just this one?`
+          : ''}
+        actions={[
+          { label: 'Just this one', variant: 'secondary', onClick: () => resolvePendingMove('one') },
+          {
+            label: pendingMove ? `All future ${format(parseISO(pendingMove.entry.date), 'EEEE')}s` : 'All future',
+            onClick: () => resolvePendingMove('all'),
+          },
+        ]}
+      />
     </div>
   )
 }

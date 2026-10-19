@@ -4,6 +4,8 @@ import { CalendarRange, ChevronRight } from 'lucide-react'
 import { format, parseISO, addWeeks } from 'date-fns'
 import type { Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import Badge from '@/components/ui/Badge'
+import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
+import { formatTrainingDays, parseWildmanConfig } from '@/lib/program-templates/wildman'
 
 interface ActiveProgramCardProps {
   program: Program
@@ -14,6 +16,8 @@ interface ActiveProgramCardProps {
 export default function ActiveProgramCard({ program, activation, sessions }: ActiveProgramCardProps) {
   const start = parseISO(activation.start_date)
   const end = addWeeks(start, program.weeks)
+  // Template programs have a fixed weekly schedule; they're managed from the Plan page, not the designer
+  const templateConfig = program.template_type === 'wildman_reverse_ladder' ? parseWildmanConfig(program.template_config) : null
 
   // Count how many sessions have been completed since activation
   const completedSessions = useMemo(
@@ -28,7 +32,7 @@ export default function ActiveProgramCard({ program, activation, sessions }: Act
 
   return (
     <Link
-      to={`/programs/${program.id}`}
+      to={templateConfig ? '/plan' : `/programs/${program.id}`}
       className="block rounded-xl border border-surface-200 bg-card p-4 shadow-sm transition-colors hover:border-primary-300"
     >
       <div className="flex items-start justify-between gap-3">
@@ -45,6 +49,9 @@ export default function ActiveProgramCard({ program, activation, sessions }: Act
               <Badge variant="primary">Active</Badge>
               <Badge className="ui-date">{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</Badge>
               <Badge>{program.weeks} {program.weeks === 1 ? 'week' : 'weeks'}</Badge>
+              {templateConfig && (
+                <Badge>{formatTrainingDays(templateConfig.days_of_week)} · {SESSION_LABELS[templateConfig.session]}</Badge>
+              )}
             </div>
           </div>
         </div>

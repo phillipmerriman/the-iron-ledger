@@ -461,7 +461,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   workout_template_exercises: ['id', 'template_id', 'exercise_id', 'sort_order', 'target_sets', 'target_reps', 'target_weight', 'target_duration_sec', 'rest_seconds', 'notes'],
   workout_sessions: ['id', 'user_id', 'template_id', 'name', 'started_at', 'completed_at', 'duration_sec', 'total_weight_moved', 'notes', 'created_at'],
   workout_sets: ['id', 'session_id', 'exercise_id', 'set_number', 'reps', 'weight', 'duration_sec', 'distance_meters', 'rpe', 'is_warmup', 'notes', 'performed_at'],
-  programs: ['id', 'user_id', 'name', 'description', 'weeks', 'start_date', 'is_active', 'created_at', 'updated_at'],
+  programs: ['id', 'user_id', 'name', 'description', 'weeks', 'start_date', 'is_active', 'template_type', 'template_config', 'created_at', 'updated_at'],
   program_days: ['id', 'program_id', 'week_number', 'day_number', 'name', 'sort_order'],
   program_day_exercises: ['id', 'program_day_id', 'exercise_id', 'sort_order', 'target_sets', 'target_reps', 'target_weight', 'target_duration_sec', 'rest_seconds', 'notes'],
   planned_entries: ['id', 'user_id', 'program_id', 'exercise_id', 'date', 'session', 'sort_order', 'sets', 'reps', 'rep_type', 'reps_right', 'weight', 'weight_unit', 'intensity', 'notes', 'timer_id', 'created_at'],

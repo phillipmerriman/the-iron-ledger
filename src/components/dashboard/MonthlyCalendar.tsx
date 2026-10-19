@@ -25,6 +25,7 @@ import { calcEntryVolume } from '@/types/common'
 import { cn } from '@/lib/utils'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
+import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
 
 interface MonthlyCalendarProps {
   /** Shown month, when the parent controls it (e.g. to display it in a panel heading) */
@@ -410,7 +411,9 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
         entries={completeModal?.entries ?? []}
         exercises={exercises}
         preferredUnit={preferredUnit}
-      />
+      >
+        {completeModal && <TemplateProgressPrompts entries={completeModal.entries} />}
+      </WorkoutCompleteModal>
     </div>
   )
 }

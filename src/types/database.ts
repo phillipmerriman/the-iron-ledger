@@ -1,5 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+export type ProgramTemplateType = 'basic' | 'wildman_reverse_ladder'
+
 export interface Database {
   public: {
     Tables: {
@@ -11,6 +13,8 @@ export interface Database {
           avatar_url: string | null
           unit_system: 'imperial' | 'metric'
           preferred_weight_unit: 'lbs' | 'kg' | 'pood'
+          body_weight: number | null
+          body_weight_unit: 'lbs' | 'kg'
           created_at: string
           updated_at: string
         }
@@ -21,6 +25,8 @@ export interface Database {
           avatar_url?: string | null
           unit_system?: 'imperial' | 'metric'
           preferred_weight_unit?: 'lbs' | 'kg' | 'pood'
+          body_weight?: number | null
+          body_weight_unit?: 'lbs' | 'kg'
           created_at?: string
           updated_at?: string
         }
@@ -31,6 +37,8 @@ export interface Database {
           avatar_url?: string | null
           unit_system?: 'imperial' | 'metric'
           preferred_weight_unit?: 'lbs' | 'kg' | 'pood'
+          body_weight?: number | null
+          body_weight_unit?: 'lbs' | 'kg'
           updated_at?: string
         }
         Relationships: []
@@ -244,6 +252,8 @@ export interface Database {
           weeks: number
           start_date: string
           is_active: boolean
+          template_type: ProgramTemplateType
+          template_config: Json | null
           created_at: string
           updated_at: string
         }
@@ -255,6 +265,8 @@ export interface Database {
           weeks?: number
           start_date: string
           is_active?: boolean
+          template_type?: ProgramTemplateType
+          template_config?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -264,6 +276,8 @@ export interface Database {
           weeks?: number
           start_date?: string
           is_active?: boolean
+          template_type?: ProgramTemplateType
+          template_config?: Json | null
           updated_at?: string
         }
         Relationships: []
@@ -735,6 +749,7 @@ export interface Database {
           user_id: string
           program_id: string
           start_date: string
+          progress: Json | null
           created_at: string
         }
         Insert: {
@@ -742,11 +757,43 @@ export interface Database {
           user_id: string
           program_id: string
           start_date: string
+          progress?: Json | null
           created_at?: string
         }
         Update: {
           program_id?: string
           start_date?: string
+          progress?: Json | null
+        }
+        Relationships: []
+      }
+      program_completions: {
+        Row: {
+          id: string
+          user_id: string
+          program_id: string
+          activation_id: string
+          exercise_id: string | null
+          weight: number | null
+          weight_unit: 'lbs' | 'kg' | 'pood' | 'bodyweight'
+          outcome: 'restart' | 'complete'
+          completed_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          program_id: string
+          activation_id: string
+          exercise_id?: string | null
+          weight?: number | null
+          weight_unit?: 'lbs' | 'kg' | 'pood' | 'bodyweight'
+          outcome: 'restart' | 'complete'
+          completed_at?: string
+        }
+        Update: {
+          weight?: number | null
+          weight_unit?: 'lbs' | 'kg' | 'pood' | 'bodyweight'
+          outcome?: 'restart' | 'complete'
         }
         Relationships: []
       }
@@ -792,12 +839,14 @@ export type PlannedMealRow = Tables<'planned_meals'>
 export type MealIngredientRow = Tables<'meal_ingredients'>
 export type DietRow = Tables<'diets'>
 export type NutritionCacheRow = Tables<'nutrition_cache'>
+export type ProgramCompletion = Tables<'program_completions'>
 
 /** A single activation of a program template with a specific start date */
 export interface ProgramActivation {
   id: string
   user_id: string
   program_id: string   // references the template program
-  start_date: string   // chosen Sunday (YYYY-MM-DD)
+  start_date: string   // chosen Sunday for basic programs; exact start date for templates (YYYY-MM-DD)
+  progress?: Json | null       // template progression state (e.g. WildmanProgress)
   created_at: string
 }
