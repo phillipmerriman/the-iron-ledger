@@ -43,6 +43,8 @@ export interface WildmanProgress {
   weight: number | null
   weight_unit: WeightUnit
   cycle: number
+  /** First day of the current cycle (missing = the activation's start date) */
+  cycle_started_on?: string
   overrides: ScheduleOverride[]
   /** Last date the schedule was regenerated — used to reschedule missed days */
   synced_on: string

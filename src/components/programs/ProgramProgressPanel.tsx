@@ -6,6 +6,10 @@ import { formatTrainingDays, stageLabel } from '@/lib/program-templates/wildman'
 import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import { cn } from '@/lib/utils'
 import ProgramProgressControls from './ProgramProgressControls'
+import ProgramProgressBars from './ProgramProgressBars'
+import { programProgress, programStats } from '@/lib/program-templates/progress'
+import ProgramStatsTiles from './ProgramStatsTiles'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ProgramProgressPanelProps {
   progression: ReturnType<typeof useProgramProgression>
@@ -25,6 +29,9 @@ function readCollapsed(): boolean {
 export default function ProgramProgressPanel({ progression, exercises }: ProgramProgressPanelProps) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [openId, setOpenId] = useState<string | null>(null)
+  const { profile } = useAuth()
+  const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
+  const bodyWeight = profile?.body_weight ? { value: profile.body_weight, unit: profile.body_weight_unit } : null
 
   if (progression.statuses.length === 0) return null
 
@@ -61,7 +68,6 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
             const { config, progress, stage, stages, completedInStage, requiredInStage } = status
             const auto = config.increment_mode === 'auto'
             const exerciseName = exercises.find((e) => e.id === config.exercise_id)?.name ?? status.program.name
-            const pct = auto ? Math.min(100, Math.round((completedInStage / requiredInStage) * 100)) : 0
             const open = openId === status.activation.id
             const weight = progress.weight_unit === 'bodyweight' ? 'BW' : `${progress.weight ?? '—'} ${progress.weight_unit}`
             return (
@@ -71,7 +77,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                   onClick={() => setOpenId(open ? null : status.activation.id)}
                   aria-expanded={open}
                   title={status.program.name}
-                  className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left hover:bg-surface-50 md:flex-nowrap"
+                  className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 pb-1 pt-2 text-left hover:bg-surface-50 md:flex-nowrap"
                 >
                   <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 text-surface-400 transition-transform', open && 'rotate-90')} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium text-surface-900 md:w-56 md:flex-none">
@@ -80,6 +86,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                   </span>
                   <span className="shrink-0 text-xs text-surface-500">
                     Stage {progress.stage_index + 1}/{stages.length}
+                    {auto && ` · ${Math.min(completedInStage, requiredInStage)}/${requiredInStage}`}
                     {progress.cycle > 1 && ` · C${progress.cycle}`}
                   </span>
                   <span className="shrink-0 text-xs text-surface-500">
@@ -88,24 +95,17 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                   <span className="hidden min-w-0 flex-1 truncate font-display text-sm font-semibold text-surface-800 md:block">
                     {stageLabel(stage, config.rep_type)}
                   </span>
-                  {auto ? (
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-100 md:w-36">
-                        <span className="block h-full rounded-full bg-primary-500" style={{ width: `${pct}%` }} />
-                      </span>
-                      <span className="w-9 text-right text-xs text-surface-500">
-                        {Math.min(completedInStage, requiredInStage)}/{requiredInStage}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="shrink-0 text-xs text-surface-500">Manual</span>
-                  )}
                   {status.isDue && (
                     <span className="shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700">
                       Ready
                     </span>
                   )}
                 </button>
+                <ProgramProgressBars
+                  compact
+                  className="px-3 pb-2 pl-9"
+                  progress={programProgress(status.program, status.activation, progression.entriesFor(status.activation.id), progression.doneKeys)}
+                />
 
                 {open && (
                   <div className="space-y-2 px-3 pb-3 pl-9">
@@ -114,6 +114,11 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                       <span className="md:hidden"> · {stageLabel(stage, config.rep_type)}</span>
                       {!auto && ` · ${completedInStage} ${completedInStage === 1 ? 'session' : 'sessions'} at this stage`}
                     </p>
+                    <ProgramStatsTiles
+                      narrow
+                      preferredUnit={preferredUnit}
+                      stats={programStats(status.program, status.activation, progression.entriesFor(status.activation.id), progression.doneKeys, preferredUnit, bodyWeight)}
+                    />
                     <ProgramProgressControls status={status} progression={progression} variant="panel" />
                   </div>
                 )}

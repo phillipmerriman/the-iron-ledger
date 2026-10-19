@@ -140,7 +140,15 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {activations.map((act) => {
                 const prog = programs.find((p) => p.id === act.program_id)
-                return prog ? <ActiveProgramCard key={act.id} program={prog} activation={act} sessions={sessions} /> : null
+                return prog ? (
+                  <ActiveProgramCard
+                    key={act.id}
+                    program={prog}
+                    activation={act}
+                    sessions={sessions}
+                    entries={plannedEntries.filter((e) => e.program_id === act.id)}
+                  />
+                ) : null
               })}
             </div>
           ) : (
