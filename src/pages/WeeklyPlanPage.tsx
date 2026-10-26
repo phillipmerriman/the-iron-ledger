@@ -30,6 +30,9 @@ import { cn } from '@/lib/utils'
 
 type PlanMode = 'workouts' | 'meals'
 
+/** Copied entries headed for one day + time-of-day slot */
+type PasteGroup = { date: string; session: Session; entries: PlannedEntry[] }
+
 function formatLabel(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -86,6 +89,7 @@ export default function WeeklyPlanPage() {
     getEntriesForDateSession,
     addEntry,
     addEntries,
+    reorderEntries,
     updateEntry,
     removeEntry,
     moveEntry,
@@ -137,11 +141,11 @@ export default function WeeklyPlanPage() {
       }
     } catch (err) {
       console.error('Failed to move program workout', err)
-      setMoveError('Could not move that workout. Check your connection and try again.')
+      setPlanError('Could not move that workout. Check your connection and try again.')
     }
   }
 
-  const [moveError, setMoveError] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<string | null>(null)
 
   const mealPlan = useMealPlan({
     startDate: programStart,
@@ -431,32 +435,102 @@ export default function WeeklyPlanPage() {
     setClipboard({ type: 'day', dateKey, entries })
   }
 
-  async function handlePasteDay(dateKey: string) {
+  // A paste waiting on the user because some copied exercises are already planned in the same slot
+  const [pendingPaste, setPendingPaste] = useState<{
+    groups: PasteGroup[]
+    deduped: PasteGroup[]
+    duplicateCount: number
+    programDuplicateCount: number
+    totalCount: number
+  } | null>(null)
+
+  /** Paste right away, or ask first when it would repeat exercises already in the target slots */
+  function requestPaste(groups: PasteGroup[]) {
+    let duplicateCount = 0
+    let programDuplicateCount = 0
+    const deduped = groups.map((group) => {
+      // Each existing entry can only absorb one copied entry of the same exercise
+      const existing = getEntriesForDateSession(group.date, group.session)
+      const unmatched = [...existing]
+      const entries = group.entries.filter((entry) => {
+        const idx = unmatched.findIndex((e) => e.exercise_id === entry.exercise_id)
+        if (idx === -1) return true
+        if (unmatched[idx].program_id) programDuplicateCount++
+        duplicateCount++
+        unmatched.splice(idx, 1)
+        return false
+      })
+      return { ...group, entries }
+    })
+    if (duplicateCount === 0) {
+      requestWarmupOrder(groups)
+      return
+    }
+    const totalCount = groups.reduce((sum, g) => sum + g.entries.length, 0)
+    setPendingPaste({ groups, deduped, duplicateCount, programDuplicateCount, totalCount })
+  }
+
+  // A paste waiting on the user because it adds warm-ups to slots that already have other exercises
+  const [pendingWarmupOrder, setPendingWarmupOrder] = useState<PasteGroup[] | null>(null)
+
+  function isWarmup(exerciseId: string) {
+    return exercises.find((ex) => ex.id === exerciseId)?.exercise_type === 'warm_up'
+  }
+
+  /** Ask whether existing exercises should move below pasted warm-ups (which would otherwise land at the end) */
+  function requestWarmupOrder(groups: PasteGroup[]) {
+    const needsAsk = groups.some((group) =>
+      group.entries.some((e) => isWarmup(e.exercise_id)) &&
+      getEntriesForDateSession(group.date, group.session).some((e) => !isWarmup(e.exercise_id)),
+    )
+    if (needsAsk) setPendingWarmupOrder(groups)
+    else runPaste(groups, false)
+  }
+
+  async function runPaste(groups: PasteGroup[], warmupsFirst: boolean) {
+    try {
+      for (const group of groups) {
+        const existing = getEntriesForDateSession(group.date, group.session)
+        const added = await addEntries(group.date, group.entries.map((e) => ({
+          exerciseId: e.exercise_id,
+          presets: {
+            sets: e.sets,
+            reps: e.reps,
+            rep_type: e.rep_type,
+            reps_right: e.reps_right,
+            weight: e.weight,
+            weight_unit: e.weight_unit,
+            intensity: e.intensity,
+            notes: e.notes,
+            timer_id: e.timer_id,
+            set_markers: e.set_markers,
+          },
+        })), group.session)
+        if (warmupsFirst && added.some((e) => isWarmup(e.exercise_id))) {
+          // Warm-ups (existing, then pasted) first, then everything else (existing, then pasted)
+          const ordered = [...existing, ...added]
+          await reorderEntries([
+            ...ordered.filter((e) => isWarmup(e.exercise_id)),
+            ...ordered.filter((e) => !isWarmup(e.exercise_id)),
+          ].map((e) => e.id))
+        }
+      }
+    } catch (err) {
+      console.error('Failed to paste planned entries', err)
+      setPlanError('Could not paste those exercises. Some may not have been added. Check your connection and try again.')
+    }
+  }
+
+  function handlePasteDay(dateKey: string) {
     if (!clipboard) return
-    const clipEntries = clipboard.entries
     // Group entries by target session to preserve order within each session
     const bySession = new Map<Session, PlannedEntry[]>()
-    for (const entry of clipEntries) {
+    for (const entry of clipboard.entries) {
       const targetSession = clipboard.type === 'session' ? clipboard.session : entry.session
       if (!bySession.has(targetSession)) bySession.set(targetSession, [])
       bySession.get(targetSession)!.push(entry)
     }
-    for (const [session, sessionEntries] of bySession) {
-      await addEntries(dateKey, sessionEntries.map((e) => ({
-        exerciseId: e.exercise_id,
-        presets: {
-          sets: e.sets,
-          reps: e.reps,
-          rep_type: e.rep_type,
-          reps_right: e.reps_right,
-          weight: e.weight,
-          weight_unit: e.weight_unit,
-          intensity: e.intensity,
-          notes: e.notes,
-          set_markers: e.set_markers,
-        },
-      })), session)
-    }
+    requestPaste([...bySession].map(([session, entries]) => ({ date: dateKey, session, entries })))
   }
 
   function handleCopySession(dateKey: string, session: Session) {
@@ -465,22 +539,9 @@ export default function WeeklyPlanPage() {
     setClipboard({ type: 'session', dateKey, session, entries })
   }
 
-  async function handlePasteSession(dateKey: string, session: Session) {
+  function handlePasteSession(dateKey: string, session: Session) {
     if (!clipboard) return
-    await addEntries(dateKey, clipboard.entries.map((e) => ({
-      exerciseId: e.exercise_id,
-      presets: {
-        sets: e.sets,
-        reps: e.reps,
-        rep_type: e.rep_type,
-        reps_right: e.reps_right,
-        weight: e.weight,
-        weight_unit: e.weight_unit,
-        intensity: e.intensity,
-        notes: e.notes,
-        set_markers: e.set_markers,
-      },
-    })), session)
+    requestPaste([{ date: dateKey, session, entries: clipboard.entries }])
   }
 
   function handleCopyWeek() {
@@ -495,34 +556,17 @@ export default function WeeklyPlanPage() {
     setClipboard({ type: 'week', entries: weekEntries })
   }
 
-  async function handlePasteWeek() {
+  function handlePasteWeek() {
     if (!clipboard || clipboard.type !== 'week') return
-    const byDaySession = new Map<string, (PlannedEntry & { dayIndex: number })[]>()
+    const byDaySession = new Map<string, PasteGroup>()
     for (const entry of clipboard.entries) {
-      const key = `${entry.dayIndex}|${entry.session}`
-      if (!byDaySession.has(key)) byDaySession.set(key, [])
-      byDaySession.get(key)!.push(entry)
-    }
-    for (const [key, groupEntries] of byDaySession) {
-      const [dayIdxStr, session] = key.split('|')
-      const dayIdx = Number(dayIdxStr)
-      const targetDate = dateKeys[dayIdx]
+      const targetDate = dateKeys[entry.dayIndex]
       if (!targetDate) continue
-      await addEntries(targetDate, groupEntries.map((e) => ({
-        exerciseId: e.exercise_id,
-        presets: {
-          sets: e.sets,
-          reps: e.reps,
-          rep_type: e.rep_type,
-          reps_right: e.reps_right,
-          weight: e.weight,
-          weight_unit: e.weight_unit,
-          intensity: e.intensity,
-          notes: e.notes,
-          set_markers: e.set_markers,
-        },
-      })), session as Session)
+      const key = `${targetDate}|${entry.session}`
+      if (!byDaySession.has(key)) byDaySession.set(key, { date: targetDate, session: entry.session, entries: [] })
+      byDaySession.get(key)!.entries.push(entry)
     }
+    requestPaste([...byDaySession.values()])
   }
 
   function handleMobileTapExercise(exerciseId: string) {
@@ -629,10 +673,10 @@ export default function WeeklyPlanPage() {
         </div>
       )}
 
-      {moveError && (
+      {planError && (
         <div className="flex items-start justify-between gap-2 rounded-lg bg-danger-500/10 px-3 py-2 text-sm text-danger-600">
-          <span>{moveError}</span>
-          <button type="button" onClick={() => setMoveError(null)} className="text-xs font-medium underline">Dismiss</button>
+          <span>{planError}</span>
+          <button type="button" onClick={() => setPlanError(null)} className="text-xs font-medium underline">Dismiss</button>
         </div>
       )}
 
@@ -1322,6 +1366,36 @@ export default function WeeklyPlanPage() {
           )
         })()}
       </Modal>
+      {/* Paste would repeat exercises already planned in the same day + time slot */}
+      <ConfirmDialog
+        open={pendingPaste !== null}
+        onClose={() => setPendingPaste(null)}
+        title="Some exercises are already planned"
+        message={pendingPaste ? [
+          `${pendingPaste.duplicateCount} of the ${pendingPaste.totalCount} exercises you're pasting ${pendingPaste.duplicateCount === 1 ? 'is' : 'are'} already planned for the same day and time`
+            + (pendingPaste.programDuplicateCount > 0
+              ? ` (${pendingPaste.programDuplicateCount === pendingPaste.duplicateCount ? 'all' : pendingPaste.programDuplicateCount} from your active programs).`
+              : '.'),
+          pendingPaste.duplicateCount === 1
+            ? 'Skip it to paste only the rest, or add it anyway as an extra copy.'
+            : 'Skip them to paste only the rest, or add them anyway as extra copies.',
+        ].join('\n\n') : ''}
+        actions={[
+          { label: 'Add anyway', variant: 'secondary', onClick: () => { if (pendingPaste) requestWarmupOrder(pendingPaste.groups) } },
+          { label: 'Skip duplicates', onClick: () => { if (pendingPaste) requestWarmupOrder(pendingPaste.deduped) } },
+        ]}
+      />
+      {/* Paste adds warm-ups to slots that already have exercises */}
+      <ConfirmDialog
+        open={pendingWarmupOrder !== null}
+        onClose={() => setPendingWarmupOrder(null)}
+        title="Put warm-ups first?"
+        message={'You\'re pasting warm-ups into a time slot that already has exercises. Pasted exercises normally go at the end, after what\'s already there.\n\nMove the existing exercises after the warm-ups?'}
+        actions={[
+          { label: 'Keep current order', variant: 'secondary', onClick: () => { if (pendingWarmupOrder) runPaste(pendingWarmupOrder, false) } },
+          { label: 'Warm-ups first', onClick: () => { if (pendingWarmupOrder) runPaste(pendingWarmupOrder, true) } },
+        ]}
+      />
       {/* Move template workout: just this one or every future one on that weekday */}
       <ConfirmDialog
         open={pendingMove !== null}

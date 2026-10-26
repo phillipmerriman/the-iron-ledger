@@ -235,7 +235,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
   }
 
   async function addEntries(dateKey: string, items: { exerciseId: string; presets?: PlannedEntryUpdate }[], session: Session = 'all') {
-    if (!user || items.length === 0) return
+    if (!user || items.length === 0) return []
     const existing = entries.filter((e) => e.date === dateKey && e.session === session)
     const newEntries: PlannedEntry[] = items.map((item, i) => ({
       id: crypto.randomUUID(),
@@ -286,6 +286,26 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
       if (error) throw error
     }
     setFetchedEntries((prev) => [...prev, ...newEntries])
+    return newEntries
+  }
+
+  /** Rewrite sort_order so the given entries (all in one day + session) appear in this order */
+  async function reorderEntries(orderedIds: string[]) {
+    if (isDev) {
+      const all = loadAll()
+      orderedIds.forEach((id, i) => {
+        const entry = all.find((e) => e.id === id)
+        if (entry) entry.sort_order = i
+      })
+      saveAll(all)
+    } else {
+      for (let i = 0; i < orderedIds.length; i++) {
+        const { error } = await supabase.from('planned_entries').update({ sort_order: i }).eq('id', orderedIds[i])
+        if (error) throw error
+      }
+    }
+    const order = new Map(orderedIds.map((id, i) => [id, i]))
+    setFetchedEntries((prev) => prev.map((e) => order.has(e.id) ? { ...e, sort_order: order.get(e.id)! } : e))
   }
 
   async function updateEntry(id: string, values: PlannedEntryUpdate) {
@@ -419,6 +439,7 @@ export default function useWeeklyPlan(options: UseWeeklyPlanOptions = {}) {
     getEntriesForDateSession,
     addEntry,
     addEntries,
+    reorderEntries,
     updateEntry,
     removeEntry,
     moveEntry,
