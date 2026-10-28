@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { WEIGHT_UNIT_OPTIONS } from '@/types/common'
+import { cn } from '@/lib/utils'
 import { Sun, Moon } from 'lucide-react'
 
 const PREF_WEIGHT_OPTIONS = WEIGHT_UNIT_OPTIONS.filter((o) => o.value !== 'bodyweight')
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+] as const
+
 export default function SettingsPage() {
   const { profile, updateProfile } = useAuth()
-  const { theme, toggle, skinDef } = useTheme()
+  const { theme, setTheme, skinDef } = useTheme()
 
   function handleWeightUnitChange(value: string) {
     updateProfile({ preferred_weight_unit: value as 'lbs' | 'kg' | 'pood' })
@@ -48,23 +54,28 @@ export default function SettingsPage() {
           <p className="mb-1.5 text-xs text-surface-500">
             Switch between light and dark mode.
           </p>
-          <button
-            onClick={toggle}
-            className="flex items-center gap-3 rounded-lg border border-surface-200 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-hover"
-          >
-            {theme === 'dark' ? (
-              <>
-                <Moon className="h-4 w-4 text-purple-400" />
-                Dark
-              </>
-            ) : (
-              <>
-                <Sun className="h-4 w-4 text-warning-500" />
-                Light
-              </>
-            )}
-            <span className="ml-auto text-xs text-surface-400">Click to toggle</span>
-          </button>
+          <div role="radiogroup" aria-label="Theme" className="grid grid-cols-2 gap-2">
+            {THEME_OPTIONS.map(({ value, label, Icon }) => {
+              const selected = theme === value
+              return (
+                <button
+                  key={value}
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setTheme(value)}
+                  className={cn(
+                    'flex items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors',
+                    selected
+                      ? 'border-primary-500 bg-nav-active-bg text-nav-active-text'
+                      : 'border-surface-200 text-text-secondary hover:bg-hover hover:text-text',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
         </div>}
 
         {/* Weight Unit */}

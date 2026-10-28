@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/skin-command-deck.css";
+@import "./styles/skin-command-deck-light.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
