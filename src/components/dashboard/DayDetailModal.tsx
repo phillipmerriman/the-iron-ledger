@@ -10,6 +10,8 @@ import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { useState } from 'react'
+import ProgramMark from '@/components/programs/ProgramMark'
+import type { ProgramNameFor } from '@/lib/program-names'
 
 interface DayDetailModalProps {
   selectedDay: Date | null
@@ -25,6 +27,8 @@ interface DayDetailModalProps {
   onMarkDayComplete?: (day: Date) => void
   onRemoveEntry?: (id: string) => Promise<void>
   onUpdateEntry?: (id: string, values: PlannedEntryUpdate) => Promise<void>
+  /** Marks workouts that belong to a program */
+  programNameFor?: ProgramNameFor
 }
 
 export default function DayDetailModal({
@@ -41,6 +45,7 @@ export default function DayDetailModal({
   onMarkDayComplete,
   onRemoveEntry,
   onUpdateEntry,
+  programNameFor,
 }: DayDetailModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<{ sets: string; reps: string; weight: string }>({ sets: '', reps: '', weight: '' })
@@ -167,11 +172,12 @@ export default function DayDetailModal({
                           ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                           : 0
                         const isEditing = editingId === entry.id
+                        const programName = programNameFor?.(entry.program_id) ?? null
                         return (
                           <div
                             key={entry.id}
                             className={cn(
-                              'rounded-lg border p-2 text-sm',
+                              'ui-ex-card rounded-lg border p-2 text-sm',
                               ex?.color ? `${color.bg} ${color.border} force-light` : 'border-surface-200 bg-surface-50',
                             )}
                           >
@@ -179,6 +185,7 @@ export default function DayDetailModal({
                               <p className={cn('font-medium', ex?.color ? color.text : 'text-surface-800')}>
                                 {getExerciseName(entry.exercise_id)}
                               </p>
+                              {programName && <ProgramMark name={programName} className={cn('text-sm', ex?.color ? color.text : 'text-surface-500')} />}
                               {entry.intensity && (
                                 <span className={cn(
                                   'rounded-full px-1.5 py-0 text-[9px] font-semibold uppercase',

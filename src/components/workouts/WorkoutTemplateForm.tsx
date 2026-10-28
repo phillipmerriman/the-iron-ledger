@@ -307,7 +307,7 @@ export default function WorkoutTemplateForm({
                       onDragEnd={handleEntryDragEnd}
                       onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
                       className={cn(
-                        'group flex items-start gap-1 rounded-lg border p-2 text-xs shadow-sm cursor-pointer transition-opacity',
+                        'ui-ex-card [--ex-cut:7px] group flex items-start gap-1 rounded-lg border p-2 text-xs shadow-sm cursor-pointer transition-opacity',
                         ex?.color ? `${entryColor.bg} ${entryColor.border} force-light` : 'border-surface-200 bg-card',
                         isDragging && 'opacity-30',
                       )}
@@ -395,7 +395,7 @@ export default function WorkoutTemplateForm({
                       draggable
                       onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
                       className={cn(
-                        'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
+                        'ui-ex-card [--ex-cut:7px] rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
                         exercise.color ? `${poolColor.bg} ${poolColor.border}` : 'border-surface-200 bg-surface-50',
                       )}
                     >

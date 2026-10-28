@@ -25,6 +25,16 @@ export interface WildmanConfig {
   /** 0 = Sunday … 6 = Saturday */
   days_of_week: number[]
   increment_mode: IncrementMode
+  /** Sessions every stage lasts; null = based on the stage's rep count × sessions_rep_factor */
+  sessions_per_stage: number | null
+  /** Fraction of the rep count used when sessions_per_stage is null (1, 0.5 or 0.25) */
+  sessions_rep_factor: number
+  /** Stage key → sessions for that stage, overriding the rule above */
+  stage_sessions: Record<string, number>
+  /** Minutes per set for 'reps_per_minute' (Single / Min); null = 1 */
+  minutes: number | null
+  /** Notes copied onto every scheduled workout */
+  notes: string | null
 }
 
 /** A one-off move of a single scheduled workout */

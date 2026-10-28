@@ -93,7 +93,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                     {formatTrainingDays(config.days_of_week)} · {SESSION_LABELS[config.session]}
                   </span>
                   <span className="hidden min-w-0 flex-1 truncate font-display text-sm font-semibold text-surface-800 md:block">
-                    {stageLabel(stage, config.rep_type)}
+                    {stageLabel(stage, config)}
                   </span>
                   {status.isDue && (
                     <span className="shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-semibold text-primary-700">
@@ -111,7 +111,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                   <div className="space-y-2 px-3 pb-3 pl-9">
                     <p className="text-xs text-surface-500">
                       {status.program.name}
-                      <span className="md:hidden"> · {stageLabel(stage, config.rep_type)}</span>
+                      <span className="md:hidden"> · {stageLabel(stage, config)}</span>
                       {!auto && ` · ${completedInStage} ${completedInStage === 1 ? 'session' : 'sessions'} at this stage`}
                     </p>
                     <ProgramStatsTiles

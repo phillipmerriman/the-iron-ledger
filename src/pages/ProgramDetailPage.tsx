@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Plus, X, Trash2, Copy, ClipboardPaste, CirclePlay, OctagonX, Check } from 'lucide-react'
 import { parseISO, format, startOfWeek, addWeeks } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
+import useWorkouts from '@/hooks/useWorkouts'
+import { completedSlotKeys, isEntryDone } from '@/lib/program-templates/progress'
 import useExercises from '@/hooks/useExercises'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
@@ -33,6 +35,20 @@ export default function ProgramDetailPage() {
   const { exercises, loading: exercisesLoading, create: createExercise } = useExercises()
   const { templates, getExercisesForTemplate, saveDay, remove: removeTemplate, parseExtras } = useWorkoutTemplates()
   const { timers } = useTimers()
+  const { sessions: workoutSessions } = useWorkouts()
+  const doneKeys = completedSlotKeys(workoutSessions)
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; name: string } | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+
+  async function handleCancelProgram(activationId: string) {
+    setCancelError(null)
+    try {
+      await deactivate(activationId, (e) => isEntryDone(e, doneKeys))
+    } catch (err) {
+      console.error('Failed to cancel program', err)
+      setCancelError('Could not cancel the program. Check your connection and try again.')
+    }
+  }
 
   const { user } = useAuth()
   const [newExerciseOpen, setNewExerciseOpen] = useState(false)
@@ -201,9 +217,9 @@ export default function ProgramDetailPage() {
                   return (
                     <button
                       key={act.id}
-                      onClick={() => deactivate(act.id)}
+                      onClick={() => setCancelTarget({ id: act.id, name: program.name })}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                      title="Click to deactivate"
+                      title="Cancel program"
                     >
                       <OctagonX className="h-4 w-4" />
                       Active: <span className="ui-date">{format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')}</span>
@@ -222,6 +238,12 @@ export default function ProgramDetailPage() {
             )
           })()}
         </div>
+        {cancelError && (
+          <div className="mt-2 flex items-start justify-between gap-2 rounded-lg bg-danger-500/10 px-3 py-2 text-sm text-danger-600">
+            <span>{cancelError}</span>
+            <button type="button" onClick={() => setCancelError(null)} className="text-xs font-medium underline">Dismiss</button>
+          </div>
+        )}
         <p className="mt-2 text-xs text-surface-400">
           <span className="hidden md:inline">Drag exercises or saved workouts from the pool into each day.</span>
           <span className="md:hidden">Tap + to add exercises to your day.</span>
@@ -354,7 +376,7 @@ export default function ProgramDetailPage() {
                       flashAdded(exercise.id)
                     }}
                     className={cn(
-                      'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                      'ui-ex-card w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
                       justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >
@@ -516,7 +538,7 @@ export default function ProgramDetailPage() {
                         draggable
                         onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
                         className={cn(
-                          'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
+                          'ui-ex-card [--ex-cut:7px] rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
                           exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                         )}
                       >
@@ -594,6 +616,16 @@ export default function ProgramDetailPage() {
       </Modal>
 
       {/* Paste week confirm */}
+      {/* Cancelling keeps past and completed workouts; everything still to come is removed */}
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        title="Cancel program?"
+        message={`Upcoming workouts for ${cancelTarget?.name ?? 'this program'} will be removed from your plan, including today's if it isn't completed. Workouts you've completed stay.`}
+        cancelLabel="Keep program"
+        actions={[{ label: 'Cancel program', variant: 'danger', onClick: () => { if (cancelTarget) handleCancelProgram(cancelTarget.id) } }]}
+      />
+
       <ConfirmDialog
         open={pasteConfirm !== null}
         onClose={() => setPasteConfirm(null)}

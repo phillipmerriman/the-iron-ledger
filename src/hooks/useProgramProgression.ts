@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import type usePrograms from '@/hooks/usePrograms'
-import { loadProgramEntries, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import { assignEntryToProgram, loadProgramEntries, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Json, Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
 import type { WildmanConfig, WildmanProgress, WildmanStage } from '@/types/program-templates'
 import {
   buildStages,
+  defaultSessionsForStage,
   entryValuesFor,
   generateSchedule,
   parseWildmanConfig,
@@ -93,7 +94,7 @@ export default function useProgramProgression(
       const completedInStage = entries.filter(
         (e) => e.date >= progress.stage_started_on && isEntryDone(e, doneKeys),
       ).length
-      const requiredInStage = sessionsForStage(stage, progress.extra_sessions)
+      const requiredInStage = sessionsForStage(stage, progress.extra_sessions, config)
       list.push({
         activation,
         program,
@@ -112,9 +113,8 @@ export default function useProgramProgression(
   }, [templateActivations, programs, entriesByActivation, doneKeys])
 
   /** First date the schedule may be rewritten from: today, unless today's workout is already done */
-  function regenFromDate(status: TemplateProgramStatus) {
+  function regenFromDate(status: TemplateProgramStatus, entries = entriesByActivation[status.activation.id] ?? []) {
     const today = todayKey()
-    const entries = entriesByActivation[status.activation.id] ?? []
     const todayDone = entries.some((e) => e.date === today && isEntryDone(e, doneKeys))
     const from = todayDone ? format(addDays(parseISO(today), 1), 'yyyy-MM-dd') : today
     return from < status.activation.start_date ? status.activation.start_date : from
@@ -125,9 +125,10 @@ export default function useProgramProgression(
     progress: WildmanProgress,
     config: WildmanConfig = status.config,
     completedInStage = status.completedInStage,
+    entries?: PlannedEntry[],
   ) {
     if (!user) return
-    const from = regenFromDate(status)
+    const from = regenFromDate(status, entries)
     const next: WildmanProgress = { ...progress, synced_on: todayKey() }
     const schedule = generateSchedule(config, next, from, completedInStage)
     await replaceProgramEntriesFrom(user.id, status.activation.id, from, schedule.map((w) => entryValuesFor(config, next, w)))
@@ -151,7 +152,7 @@ export default function useProgramProgression(
 
   /** Add (+) or remove (−) sessions from the current stage */
   async function adjust(status: TemplateProgramStatus, delta: number) {
-    const minExtra = 1 - status.stage.topReps
+    const minExtra = 1 - defaultSessionsForStage(status.stage, status.config)
     const extra = Math.max(minExtra, status.progress.extra_sessions + delta)
     await regenerate(status, { ...status.progress, extra_sessions: extra })
   }
@@ -171,7 +172,7 @@ export default function useProgramProgression(
       outcome,
     })
     if (outcome === 'complete') {
-      await deactivate(status.activation.id)
+      await deactivate(status.activation.id, (e) => isEntryDone(e, doneKeys))
       onScheduleChanged?.()
       return
     }
@@ -186,6 +187,24 @@ export default function useProgramProgression(
       weight_unit: newWeight?.unit ?? status.progress.weight_unit,
     }
     await regenerate(status, progress, status.config, 0)
+  }
+
+  /**
+   * Count a completed workout that wasn't on the program's schedule (e.g. an extra session added by
+   * hand) toward the program, then reschedule so the stage has one fewer session left.
+   */
+  async function creditEntry(status: TemplateProgramStatus, entry: PlannedEntry) {
+    if (!user) return
+    await assignEntryToProgram(user.id, entry.id, status.activation.id)
+    const entries = [...(entriesByActivation[status.activation.id] ?? []), { ...entry, program_id: status.activation.id }]
+    const inStage = entry.date >= status.progress.stage_started_on && isEntryDone(entry, doneKeys)
+    await regenerate(status, status.progress, status.config, status.completedInStage + (inStage ? 1 : 0), entries)
+  }
+
+  /** Stop the program: upcoming workouts that aren't completed are removed, the rest stay */
+  async function cancel(status: TemplateProgramStatus) {
+    await deactivate(status.activation.id, (e) => isEntryDone(e, doneKeys))
+    onScheduleChanged?.()
   }
 
   /** Remember a one-off move so regenerating the schedule keeps it */
@@ -245,6 +264,8 @@ export default function useProgramProgression(
     finishCycle,
     recordMove,
     moveWeekday,
+    creditEntry,
+    cancel,
     refresh: loadEntries,
   }
 }

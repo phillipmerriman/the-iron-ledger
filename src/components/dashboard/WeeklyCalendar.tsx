@@ -13,6 +13,8 @@ import { useTheme } from '@/contexts/ThemeContext'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
+import ProgramMark from '@/components/programs/ProgramMark'
+import { programNameLookup } from '@/lib/program-names'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 
 interface WeeklyCalendarProps {
@@ -28,13 +30,14 @@ interface WeeklyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function WeeklyCalendar({ hideTitle, sessions, activations = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
   const { profile } = useAuth()
   const { skinDef } = useTheme()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [completeModal, setCompleteModal] = useState<{ dayLabel: string; entries: PlannedEntry[] } | null>(null)
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
+  const programNameFor = useMemo(() => programNameLookup(programs, activations), [programs, activations])
 
   const [searchParams, setSearchParams] = useSearchParams()
   const weekDelta = Number(searchParams.get('week')) || 0
@@ -380,6 +383,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
                         const ex = getExercise(entry.exercise_id)
                         const color = getExerciseColorClasses(ex?.color ?? null)
                         const slotDone = isSlotCompleted(day, entry.session)
+                        const programName = programNameFor(entry.program_id)
                         const vol = slotDone
                           ? calcEntryVolume(entry.sets, entry.reps, entry.rep_type, entry.reps_right, entry.weight, entry.weight_unit, preferredUnit)
                           : 0
@@ -391,8 +395,9 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
                               list ? 'ui-chip max-w-full border px-2.5 py-1 text-xs' : 'px-1 py-0.5 text-[10px]',
                               ex?.color ? `${color.bg} ${color.text} ${color.border}` : 'border-surface-200 bg-surface-100 text-surface-600',
                             )}
-                            title={ex?.name ?? 'Unknown'}
+                            title={[ex?.name ?? 'Unknown', programName && `Part of ${programName}`].filter(Boolean).join('\n')}
                           >
+                            {programName && <ProgramMark name={programName} className="mr-1 align-[-0.125em] opacity-80" />}
                             {ex?.name ?? 'Unknown'}
                             {vol > 0 && (
                               <span className="ml-0.5 opacity-60">{vol.toLocaleString()}</span>
@@ -453,6 +458,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
         onRemoveEntry={removeEntry}
         onUpdateEntry={updateEntry}
+        programNameFor={programNameFor}
       />
 
       <WorkoutCompleteModal

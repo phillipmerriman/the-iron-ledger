@@ -80,7 +80,7 @@ export default function WorkoutCompleteModal({
                   <div
                     key={entry.id}
                     className={cn(
-                      'flex items-center justify-between rounded-lg border p-2.5',
+                      'ui-ex-card flex items-center justify-between rounded-lg border p-2.5',
                       ex?.color ? `${color.bg} ${color.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >

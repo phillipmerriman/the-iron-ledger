@@ -32,7 +32,7 @@ export default function TemplateProgressPrompts({ entries, onScheduleChanged }: 
           <div key={status.activation.id} className="rounded-lg border border-surface-200 p-3">
             <p className="text-xs font-medium uppercase tracking-wide text-surface-400">{status.program.name}</p>
             <p className="mb-2 text-sm text-surface-700">
-              Stage {status.progress.stage_index + 1} of {status.stages.length}: {stageLabel(status.stage, status.config.rep_type)}
+              Stage {status.progress.stage_index + 1} of {status.stages.length}: {stageLabel(status.stage, status.config)}
               {status.config.increment_mode === 'auto' &&
                 ` · ${Math.min(status.completedInStage, status.requiredInStage)}/${status.requiredInStage} sessions`}
             </p>

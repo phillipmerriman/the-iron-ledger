@@ -36,17 +36,30 @@ export function formatTrainingDays(daysOfWeek: number[]): string {
   return [...daysOfWeek].sort((a, b) => a - b).map((d) => WEEKDAY_SHORT[d]).join(' · ')
 }
 
-/** e.g. "3 × 4/4, 3/3, 2/2, 1/1" */
-export function stageLabel(stage: WildmanStage, repType: RepType): string {
-  return `${stage.sets} × ${formatReps(repType, stage.topReps)}`
+/** The entry's reps_right: minutes for Single / Min, otherwise unused */
+export function repsRightFor(config: Pick<WildmanConfig, 'rep_type' | 'minutes'>): number | null {
+  return config.rep_type === 'reps_per_minute' ? config.minutes ?? 1 : null
 }
 
-export function defaultSessionsForStage(stage: WildmanStage): number {
-  return stage.topReps
+/** e.g. "3 × 4/4, 3/3, 2/2, 1/1"; a single set shows the reps alone */
+export function stageLabel(stage: WildmanStage, config: Pick<WildmanConfig, 'rep_type' | 'minutes'>): string {
+  const reps = formatReps(config.rep_type, stage.topReps, repsRightFor(config))
+  return stage.sets === 1 ? reps : `${stage.sets} × ${reps}`
 }
 
-export function sessionsForStage(stage: WildmanStage, extraSessions: number): number {
-  return Math.max(1, stage.topReps + extraSessions)
+type SessionsConfig = Pick<WildmanConfig, 'sessions_per_stage' | 'sessions_rep_factor' | 'stage_sessions'>
+
+/** Sessions from the program-wide rule, ignoring per-stage overrides (fractions round up) */
+export function ruleSessionsForStage(stage: WildmanStage, config: Omit<SessionsConfig, 'stage_sessions'>): number {
+  return config.sessions_per_stage ?? Math.max(1, Math.ceil(stage.topReps * config.sessions_rep_factor))
+}
+
+export function defaultSessionsForStage(stage: WildmanStage, config: SessionsConfig): number {
+  return config.stage_sessions[stageKey(stage)] ?? ruleSessionsForStage(stage, config)
+}
+
+export function sessionsForStage(stage: WildmanStage, extraSessions: number, config: SessionsConfig): number {
+  return Math.max(1, defaultSessionsForStage(stage, config) + extraSessions)
 }
 
 export function initialProgress(config: WildmanConfig, startDate: string): WildmanProgress {
@@ -113,10 +126,10 @@ export function generateSchedule(
   if (config.increment_mode === 'manual') {
     plan.push({ stageIndex: progress.stage_index, count: config.days_of_week.length * MANUAL_WINDOW_WEEKS })
   } else {
-    const remaining = Math.max(0, sessionsForStage(current, progress.extra_sessions) - completedInStage)
+    const remaining = Math.max(0, sessionsForStage(current, progress.extra_sessions, config) - completedInStage)
     plan.push({ stageIndex: progress.stage_index, count: remaining })
     for (let i = progress.stage_index + 1; i < stages.length; i++) {
-      plan.push({ stageIndex: i, count: defaultSessionsForStage(stages[i]) })
+      plan.push({ stageIndex: i, count: defaultSessionsForStage(stages[i], config) })
     }
   }
 
@@ -141,11 +154,11 @@ export function entryValuesFor(config: WildmanConfig, progress: WildmanProgress,
     sets: workout.stage.sets,
     reps: workout.stage.topReps,
     rep_type: config.rep_type,
-    reps_right: null,
+    reps_right: repsRightFor(config),
     weight: progress.weight_unit === 'bodyweight' ? null : progress.weight,
     weight_unit: progress.weight_unit,
     intensity: null,
-    notes: null,
+    notes: config.notes,
     timer_id: config.stage_timers[stageKey(workout.stage)] ?? null,
     set_markers: false,
   }
@@ -191,7 +204,7 @@ export interface WildmanProjection {
 export function projectStats(config: WildmanConfig, startDate: string, preferredUnit: WeightUnit): WildmanProjection {
   const progress = initialProgress(config, startDate)
   const schedule = generateSchedule({ ...config, increment_mode: 'auto' }, progress, startDate, 0)
-  const repsFor = (s: WildmanStage) => calcTotalReps(s.sets, s.topReps, config.rep_type, null)
+  const repsFor = (s: WildmanStage) => calcTotalReps(s.sets, s.topReps, config.rep_type, repsRightFor(config))
   const weightInPref =
     config.weight != null && config.weight_unit !== 'bodyweight'
       ? convertWeight(config.weight, config.weight_unit, preferredUnit)
@@ -205,7 +218,8 @@ export function projectStats(config: WildmanConfig, startDate: string, preferred
     const reps = repsFor(w.stage)
     totalReps += reps
     heaviest = Math.max(heaviest, reps * weightInPref)
-    if (perMinute) emomMinutes += w.stage.sets * w.stage.topReps
+    if (config.rep_type === 'reps_per_minute') emomMinutes += w.stage.sets * (config.minutes ?? 1)
+    else if (perMinute) emomMinutes += w.stage.sets * w.stage.topReps
   }
   const totalVolume = Math.round(totalReps * weightInPref)
 
@@ -257,6 +271,11 @@ export function parseWildmanConfig(raw: unknown): WildmanConfig | null {
     session: c.session ?? 'morning',
     days_of_week: c.days_of_week ?? [1, 3, 5],
     increment_mode: c.increment_mode ?? 'auto',
+    sessions_per_stage: c.sessions_per_stage ?? null,
+    sessions_rep_factor: c.sessions_rep_factor ?? 1,
+    stage_sessions: c.stage_sessions ?? {},
+    minutes: c.minutes ?? null,
+    notes: c.notes ?? null,
   }
 }
 

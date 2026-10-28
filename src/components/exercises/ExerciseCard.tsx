@@ -27,7 +27,7 @@ export default function ExerciseCard({
   const colorClasses = getExerciseColorClasses(exercise.color)
 
   return (
-    <Card className={cn('space-y-2', colorClasses.bg, colorClasses.bg && 'force-light')}>
+    <Card className={cn('ui-ex-card space-y-2', colorClasses.bg, colorClasses.bg && 'force-light')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className={cn('font-display font-medium', colorClasses.text || 'text-surface-900')}>{exercise.name}</p>
