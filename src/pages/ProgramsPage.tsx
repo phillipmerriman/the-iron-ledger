@@ -4,32 +4,29 @@ import { Plus, OctagonX, Calendar } from 'lucide-react'
 import { format, startOfWeek, addWeeks, parseISO } from 'date-fns'
 import usePrograms from '@/hooks/usePrograms'
 import ProgramCard from '@/components/programs/ProgramCard'
-import ProgramForm from '@/components/programs/ProgramForm'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
 import Spinner from '@/components/ui/Spinner'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import StartDatePicker from '@/components/programs/StartDatePicker'
-import ProgramTemplatePicker from '@/components/programs/ProgramTemplatePicker'
-import WildmanProgramWizard from '@/components/programs/WildmanProgramWizard'
+import ProgramWizard from '@/components/programs/ProgramWizard'
 import Input from '@/components/ui/Input'
 import useWorkouts from '@/hooks/useWorkouts'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import { stageLabel } from '@/lib/program-templates/wildman'
-import { getProgramTemplate } from '@/lib/program-templates'
-import type { ProgramTemplateType } from '@/types/program-templates'
+import { isEntryDone } from '@/lib/program-templates/progress'
 
 export default function ProgramsPage() {
   const programsApi = usePrograms()
   const { programs, activations, loading, create, update, remove, activate, deactivate } = programsApi
   const { sessions: workoutSessions, loading: workoutsLoading } = useWorkouts()
-  const { statusForActivation } = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
+  const { statusForActivation, doneKeys } = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
-  const [templateChoice, setTemplateChoice] = useState<ProgramTemplateType | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [activateId, setActivateId] = useState<string | null>(null)
   const [activateDate, setActivateDate] = useState(() =>
     format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd'),
@@ -37,20 +34,21 @@ export default function ProgramsPage() {
   const [editProgram, setEditProgram] = useState<{ id: string; name: string; description: string } | null>(null)
   const [editSaving, setEditSaving] = useState(false)
 
-  function closeModal() {
-    setModalOpen(false)
-    setTemplateChoice(null)
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; name: string } | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+
+  async function handleCancelProgram(activationId: string) {
+    setCancelError(null)
+    try {
+      await deactivate(activationId, (e) => isEntryDone(e, doneKeys))
+    } catch (err) {
+      console.error('Failed to cancel program', err)
+      setCancelError('Could not cancel the program. Check your connection and try again.')
+    }
   }
 
-  async function handleSubmit(values: { name: string; description: string; weeks: number; start_date: string }) {
-    setSubmitting(true)
-    try {
-      const program = await create(values)
-      closeModal()
-      if (program) navigate(`/programs/${program.id}`)
-    } finally {
-      setSubmitting(false)
-    }
+  function closeModal() {
+    setModalOpen(false)
   }
 
   async function handleDelete(id: string) {
@@ -72,9 +70,16 @@ export default function ProgramsPage() {
         <h1 className="text-2xl font-bold">Programs</h1>
         <Button onClick={() => setModalOpen(true)} size="sm">
           <Plus className="h-4 w-4" />
-          New Program
+          Create Program
         </Button>
       </div>
+
+      {cancelError && (
+        <div className="flex items-start justify-between gap-2 rounded-lg bg-danger-500/10 px-3 py-2 text-sm text-danger-600">
+          <span>{cancelError}</span>
+          <button type="button" onClick={() => setCancelError(null)} className="text-xs font-medium underline">Dismiss</button>
+        </div>
+      )}
 
       {/* Active Programs Section */}
       {activations.length > 0 && (
@@ -100,17 +105,17 @@ export default function ProgramsPage() {
                   </div>
                   {status && (
                     <p className="mt-1.5 text-xs text-surface-500">
-                      Stage {status.progress.stage_index + 1} of {status.stages.length}: {stageLabel(status.stage, status.config.rep_type)}
+                      Stage {status.progress.stage_index + 1} of {status.stages.length}: {stageLabel(status.stage, status.config)}
                       {status.config.increment_mode === 'auto' && ` · ${Math.min(status.completedInStage, status.requiredInStage)}/${status.requiredInStage} sessions`}
                       {status.progress.cycle > 1 && ` · Cycle ${status.progress.cycle}`}
                     </p>
                   )}
                 </div>
                 <button
-                  onClick={() => deactivate(act.id)}
+                  onClick={() => setCancelTarget({ id: act.id, name: program.name })}
                   className="shrink-0 rounded-lg p-1.5 text-primary-500 hover:bg-warning-50 hover:text-warning-600"
-                  aria-label="Deactivate program"
-                  title="Deactivate"
+                  aria-label="Cancel program"
+                  title="Cancel program"
                 >
                   <OctagonX className="h-4 w-4" />
                 </button>
@@ -153,27 +158,40 @@ export default function ProgramsPage() {
 
       <Modal
         open={modalOpen}
-        onClose={closeModal}
-        title={templateChoice ? getProgramTemplate(templateChoice).name : 'New Program'}
-        size={templateChoice === 'wildman_reverse_ladder' ? 'lg' : 'md'}
+        onClose={() => setConfirmDiscard(true)}
+        title="Create Program"
+        size="lg"
       >
-        {templateChoice === null && <ProgramTemplatePicker onSelect={setTemplateChoice} />}
-        {templateChoice === 'basic' && (
-          <ProgramForm
-            onSubmit={handleSubmit}
-            onCancel={() => setTemplateChoice(null)}
-            submitting={submitting}
-          />
-        )}
-        {templateChoice === 'wildman_reverse_ladder' && (
-          <WildmanProgramWizard
+        {/* Remount on each open so the wizard starts fresh */}
+        {modalOpen && (
+          <ProgramWizard
             onCreate={create}
             onActivate={activate}
-            onBack={() => setTemplateChoice(null)}
+            onCancel={closeModal}
             onDone={() => { closeModal(); navigate('/plan') }}
           />
         )}
       </Modal>
+
+      {/* Cancelling keeps past and completed workouts; everything still to come is removed */}
+      <ConfirmDialog
+        open={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        title="Cancel program?"
+        message={`Upcoming workouts for ${cancelTarget?.name ?? 'this program'} will be removed from your plan, including today's if it isn't completed. Workouts you've completed stay.`}
+        cancelLabel="Keep program"
+        actions={[{ label: 'Cancel program', variant: 'danger', onClick: () => { if (cancelTarget) handleCancelProgram(cancelTarget.id) } }]}
+      />
+
+      {/* Closing the wizard with the X, Escape or a click outside loses everything entered */}
+      <ConfirmDialog
+        open={confirmDiscard}
+        onClose={() => setConfirmDiscard(false)}
+        title="Cancel program creation?"
+        message="Your program hasn't been created yet. If you leave now, everything you've entered will be lost."
+        cancelLabel="Keep editing"
+        actions={[{ label: 'Discard program', variant: 'danger', onClick: closeModal }]}
+      />
 
       {/* Activation date picker modal */}
       <Modal

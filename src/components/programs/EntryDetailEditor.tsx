@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { PlannedEntry, PlannedEntryUpdate, Session } from '@/hooks/useWeeklyPlan'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
@@ -14,6 +14,8 @@ interface EntryDetailEditorProps {
   timers?: TimerWithIntervals[]
   onUpdate: (id: string, values: PlannedEntryUpdate) => void
   onClose: () => void
+  /** Extra actions shown above Done; `close` saves the edits and closes the popup */
+  actions?: (close: () => void) => ReactNode
 }
 
 export default function EntryDetailEditor({
@@ -23,6 +25,7 @@ export default function EntryDetailEditor({
   timers,
   onUpdate,
   onClose,
+  actions,
 }: EntryDetailEditorProps) {
   const [exerciseId, setExerciseId] = useState(entry.exercise_id)
   const [session, setSession] = useState<Session>(entry.session)
@@ -367,6 +370,8 @@ export default function EntryDetailEditor({
             placeholder="Optional notes..."
           />
         </div>
+
+        {actions?.(handleSave)}
 
         {/* Save button */}
         <button

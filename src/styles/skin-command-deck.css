@@ -431,6 +431,30 @@
   letter-spacing: 0.01em;
 }
 
+/* Exercise cards: square with an angled top-left corner. The cards carry their exercise's own
+ * bg/border colors, so the corner is cut with clip-path and the angled edge is redrawn by a 1px
+ * line that inherits the card's border color (rotated so its thickness falls inside the clip).
+ * --ex-cut (default 10px) is the corner leg length; small cards set a smaller one. */
+:root[data-skin="command-deck"] .ui-ex-card {
+  --ex-cut-size: var(--ex-cut, 10px);
+  position: relative;
+  border-radius: 0;
+  clip-path: polygon(var(--ex-cut-size) 0, 100% 0, 100% 100%, 0 100%, 0 var(--ex-cut-size));
+}
+
+:root[data-skin="command-deck"] .ui-ex-card::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--ex-cut-size) - 1px);
+  left: -1px;
+  width: calc(var(--ex-cut-size) * 1.4142);
+  border-top: 1px solid;
+  border-top-color: inherit;
+  transform: rotate(-45deg);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
 /* Today in the week list: amber */
 :root[data-skin="command-deck"] .ui-week-today {
   border-color: var(--cd-amber);

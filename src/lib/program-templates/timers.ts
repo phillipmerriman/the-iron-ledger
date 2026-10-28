@@ -12,9 +12,21 @@ export interface TimerDraft {
  */
 export function autoTimerDraftForSets(sets: number, intervalSec = 60): TimerDraft {
   return {
-    name: `Wildman ${sets} ${sets === 1 ? 'Set' : 'Sets'}`,
+    name: `Program ${sets} ${sets === 1 ? 'Set' : 'Sets'}`,
     pause_between_intervals: true,
     intervals: Array.from({ length: sets }, (_, i) => ({ name: `Set ${i + 1}`, duration_sec: intervalSec })),
+  }
+}
+
+/**
+ * Auto timer for Single / Min, where each minute is a set: one 1-minute interval per minute,
+ * running straight through without pausing.
+ */
+export function autoTimerDraftForMinutes(minutes: number): TimerDraft {
+  return {
+    name: `Program ${minutes} min EMOM`,
+    pause_between_intervals: false,
+    intervals: Array.from({ length: minutes }, (_, i) => ({ name: `Minute ${i + 1}`, duration_sec: 60 })),
   }
 }
 

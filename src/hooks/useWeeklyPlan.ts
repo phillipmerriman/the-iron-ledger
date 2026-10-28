@@ -653,6 +653,20 @@ export async function loadProgramEntries(userId: string, programId: string): Pro
   return fetchAllEntries((query) => query.eq('user_id', userId).eq('program_id', programId))
 }
 
+/** Move an entry into a program, so it counts toward that program's progress */
+export async function assignEntryToProgram(userId: string, entryId: string, programId: string) {
+  if (isDev) {
+    saveAll(loadAll().map((e) => (e.id === entryId && e.user_id === userId ? { ...e, program_id: programId } : e)))
+    return
+  }
+  const { error } = await supabase
+    .from('planned_entries')
+    .update({ program_id: programId })
+    .eq('id', entryId)
+    .eq('user_id', userId)
+  if (error) throw error
+}
+
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
 export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
   const hasActivations = activationIds && activationIds.length > 0

@@ -7,18 +7,18 @@ import useTimers from '@/hooks/useTimers'
 import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { Program, ProgramActivation, InsertDto, Json } from '@/types/database'
 import type { RepType, WeightUnit } from '@/types/common'
-import { WEIGHT_UNIT_OPTIONS, convertWeight } from '@/types/common'
+import { REP_TYPE_OPTIONS, WEIGHT_UNIT_OPTIONS, convertWeight } from '@/types/common'
 import type { IncrementMode, WildmanConfig, WildmanStage } from '@/types/program-templates'
-import { getProgramTemplate } from '@/lib/program-templates'
 import {
-  WILDMAN_REP_TYPES,
   buildStages,
+  defaultSessionsForStage,
+  ruleSessionsForStage,
   projectStats,
   stageKey,
   stageLabel,
   weightEquivalent,
 } from '@/lib/program-templates/wildman'
-import { autoTimerDraftForSets, findMatchingTimers } from '@/lib/program-templates/timers'
+import { autoTimerDraftForMinutes, autoTimerDraftForSets, findMatchingTimers } from '@/lib/program-templates/timers'
 import TimerEditor from '@/components/timers/TimerEditor'
 import {
   emptyTimerValue,
@@ -33,14 +33,25 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { cn } from '@/lib/utils'
 
-interface WildmanProgramWizardProps {
+interface ProgramWizardProps {
   onCreate: (values: Omit<InsertDto<'programs'>, 'user_id'>) => Promise<Program | undefined>
   onActivate: (programId: string, startDate: string, program?: Program) => Promise<ProgramActivation | undefined>
   onDone: () => void
-  onBack: () => void
+  onCancel: () => void
 }
 
 const STEPS = ['Exercise', 'Weight', 'Reps & Sets', 'Time of Day', 'Days', 'Start Date', 'Progression', 'Timers', 'Review'] as const
+
+type SessionsMode = 'reps' | 'half' | 'quarter' | 'fixed'
+
+const SESSIONS_MODE_OPTIONS: { value: SessionsMode; label: string }[] = [
+  { value: 'reps', label: 'Match rep count' },
+  { value: 'half', label: 'Half the rep count (rep count × 0.5)' },
+  { value: 'quarter', label: 'Quarter of the rep count (rep count × 0.25)' },
+  { value: 'fixed', label: 'Same number for every stage' },
+]
+
+const REP_FACTORS: Record<Exclude<SessionsMode, 'fixed'>, number> = { reps: 1, half: 0.5, quarter: 0.25 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const BODY_WEIGHT_UNITS = WEIGHT_UNIT_OPTIONS.filter((o) => o.value === 'lbs' || o.value === 'kg')
@@ -57,19 +68,21 @@ type StageTimerChoice =
 
 const TIMER_OPTION_LABELS = { none: 'No timer', manual: 'Create timer (manual)', auto: 'Create timer (auto)' }
 
-const rangeOptions = (min: number, max: number) =>
-  Array.from({ length: max - min + 1 }, (_, i) => ({ value: String(min + i), label: String(min + i) }))
+/** Whole number ≥ 1 from a text field, or null when blank or invalid */
+function parseCount(text: string): number | null {
+  const n = Number(text)
+  return text.trim() !== '' && Number.isInteger(n) && n >= 1 ? n : null
+}
 
 function round1(n: number) {
   return Math.round(n * 10) / 10
 }
 
-export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onBack }: WildmanProgramWizardProps) {
+export default function ProgramWizard({ onCreate, onActivate, onDone, onCancel }: ProgramWizardProps) {
   const { profile, updateProfile } = useAuth()
   const preferredUnit: WeightUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { exercises } = useExercises()
   const { timers, create: createTimer } = useTimers()
-  const template = getProgramTemplate('wildman_reverse_ladder')
 
   const [step, setStep] = useState(0)
   const [exerciseId, setExerciseId] = useState('')
@@ -81,14 +94,20 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     profile?.body_weight_unit ?? (preferredUnit === 'kg' ? 'kg' : 'lbs'),
   )
   const [repType, setRepType] = useState<RepType>('double_reverse_ladder')
-  const [minReps, setMinReps] = useState(2)
-  const [maxReps, setMaxReps] = useState(5)
-  const [minSets, setMinSets] = useState(2)
-  const [maxSets, setMaxSets] = useState(5)
+  // Text so the fields can be cleared while typing; blank sets = no sets (runs as 1 set)
+  const [minRepsText, setMinRepsText] = useState('2')
+  const [maxRepsText, setMaxRepsText] = useState('5')
+  const [minSetsText, setMinSetsText] = useState('2')
+  const [maxSetsText, setMaxSetsText] = useState('5')
+  const [minutesText, setMinutesText] = useState('1')
   const [session, setSession] = useState<WildmanConfig['session']>('morning')
   const [days, setDays] = useState<number[]>([1, 3, 5])
   const [startDate, setStartDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const [incrementMode, setIncrementMode] = useState<IncrementMode>('auto')
+  const [sessionsMode, setSessionsMode] = useState<SessionsMode>('reps')
+  const [fixedSessionsText, setFixedSessionsText] = useState('3')
+  /** Stage key → typed session count for that stage; blank = follow the rule */
+  const [stageSessionsText, setStageSessionsText] = useState<Record<string, string>>({})
   const [stageTimers, setStageTimers] = useState<Record<string, StageTimerChoice>>({})
   /** Set count → unsaved auto timer draft */
   const [autoDrafts, setAutoDrafts] = useState<Record<number, TimerEditorValue>>({})
@@ -103,10 +122,19 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
   const [savingTimers, setSavingTimers] = useState(false)
   const [name, setName] = useState('')
   const [nameTouched, setNameTouched] = useState(false)
+  const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const exercise = exercises.find((e) => e.id === exerciseId)
+  // Single / Min counts each minute as a set, so it has no separate sets
+  const perMinuteReps = repType === 'reps_per_minute'
+  const minutes = parseCount(minutesText) ?? 1
+  const noSets = perMinuteReps || (minSetsText.trim() === '' && maxSetsText.trim() === '')
+  const minReps = parseCount(minRepsText) ?? 1
+  const maxReps = parseCount(maxRepsText) ?? minReps
+  const minSets = noSets ? 1 : parseCount(minSetsText) ?? 1
+  const maxSets = noSets ? 1 : parseCount(maxSetsText) ?? minSets
   const stages = useMemo(
     () => buildStages({ min_sets: minSets, max_sets: maxSets, min_reps: minReps, max_reps: maxReps }),
     [minSets, maxSets, minReps, maxReps],
@@ -114,19 +142,33 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
 
   // Default the program name from the exercise until the user edits it
   useEffect(() => {
-    if (!nameTouched) setName(exercise ? `${template.name} — ${exercise.name}` : template.name)
-  }, [exercise, nameTouched, template.name])
+    if (!nameTouched) setName(exercise ? `${exercise.name} Program` : '')
+  }, [exercise, nameTouched])
+
+  /** Single / Min stages all share one timer (one interval per minute); others share by set count */
+  function autoKey(stage: WildmanStage): number {
+    return perMinuteReps ? minutes : stage.sets
+  }
+
+  // Auto timers drafted for another rep type or length no longer fit — drop them
+  useEffect(() => {
+    setAutoDrafts({})
+    setAutoSaved({})
+    setAutoMatches({})
+    setAutoPick({})
+    setStageTimers((prev) => Object.fromEntries(Object.entries(prev).filter(([, c]) => c.mode !== 'auto')))
+  }, [repType, minutesText])
 
   /**
-   * Draft an auto timer for this set count. If saved timers already work the same way
+   * Draft an auto timer for this set (or Single / Min rep) count. If saved timers already work the same way
    * (same intervals and pause setting, any name), remember them so the user can pick one instead.
    */
-  function ensureAutoTimer(sets: number) {
-    if (autoSaved[sets] || autoDrafts[sets]) return
-    const draft = autoTimerDraftForSets(sets)
-    setAutoDrafts((prev) => ({ ...prev, [sets]: timerValueFrom(draft) }))
+  function ensureAutoTimer(n: number) {
+    if (autoSaved[n] || autoDrafts[n]) return
+    const draft = perMinuteReps ? autoTimerDraftForMinutes(n) : autoTimerDraftForSets(n)
+    setAutoDrafts((prev) => ({ ...prev, [n]: timerValueFrom(draft) }))
     const matches = findMatchingTimers(timers, draft)
-    if (matches.length > 0) setAutoMatches((prev) => ({ ...prev, [sets]: matches.map((t) => t.id) }))
+    if (matches.length > 0) setAutoMatches((prev) => ({ ...prev, [n]: matches.map((t) => t.id) }))
   }
 
   function pickExistingAutoTimer(sets: number) {
@@ -139,7 +181,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
 
   function createNewAutoTimer(sets: number) {
     setAutoMatches((prev) => Object.fromEntries(Object.entries(prev).filter(([n]) => Number(n) !== sets)))
-    // Give the new timer a name that isn't already taken, e.g. "Wildman 2 Sets (2)"
+    // Give the new timer a name that isn't already taken, e.g. "Program 2 Sets (2)"
     setAutoDrafts((prev) => {
       const draft = prev[sets]
       if (!draft) return prev
@@ -156,10 +198,10 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     let choice: StageTimerChoice
     if (value === 'none') choice = { mode: 'none' }
     else if (value === 'auto') {
-      ensureAutoTimer(stage.sets)
+      ensureAutoTimer(autoKey(stage))
       choice = { mode: 'auto' }
     } else if (value === 'manual') {
-      choice = { mode: 'manual', draft: { ...emptyTimerValue(), name: `${exercise?.name ?? 'Wildman'} ${stageLabel(stage, repType)}` } }
+      choice = { mode: 'manual', draft: { ...emptyTimerValue(), name: `${exercise?.name ?? 'Program'} ${stageLabel(stage, config)}` } }
       setEditingTimerKey(`stage:${key}`)
     } else choice = { mode: 'existing', timerId: value }
     setStageTimers((prev) => ({ ...prev, [key]: choice }))
@@ -170,7 +212,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
   }
 
   // New timers waiting to be reviewed and saved
-  const usedAutoSets = [...new Set(stages.filter((st) => stageTimers[stageKey(st)]?.mode === 'auto').map((st) => st.sets))]
+  const usedAutoSets = [...new Set(stages.filter((st) => stageTimers[stageKey(st)]?.mode === 'auto').map(autoKey))]
   const unsavedAutoSets = usedAutoSets.filter((n) => !autoSaved[n])
   const unsavedManualKeys = stages.map(stageKey).filter((k) => stageTimers[k]?.mode === 'manual')
   const unsavedTimerCount = unsavedAutoSets.length + unsavedManualKeys.length
@@ -188,7 +230,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
       return
     }
     const drafts = [
-      ...unsavedAutoSets.map((n) => ({ draft: autoDrafts[n], label: `${n}-set auto timer` })),
+      ...unsavedAutoSets.map((n) => ({ draft: autoDrafts[n], label: perMinuteReps ? `${n}-minute auto timer` : `${n}-set auto timer` })),
       ...unsavedManualKeys.map((k) => ({ draft: manualDraft(k), label: `“${manualDraft(k).name || 'Untitled'}” timer` })),
     ]
     for (const { draft, label } of drafts) {
@@ -224,7 +266,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
   function timerIdForStage(stage: WildmanStage): string | null {
     const choice = stageTimers[stageKey(stage)]
     if (choice?.mode === 'existing') return choice.timerId
-    if (choice?.mode === 'auto') return autoSaved[stage.sets] ?? null
+    if (choice?.mode === 'auto') return autoSaved[autoKey(stage)] ?? null
     return null
   }
 
@@ -253,6 +295,16 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     session,
     days_of_week: [...days].sort(),
     increment_mode: incrementMode,
+    sessions_per_stage: sessionsMode === 'fixed' ? parseCount(fixedSessionsText) ?? 1 : null,
+    sessions_rep_factor: sessionsMode === 'fixed' ? 1 : REP_FACTORS[sessionsMode],
+    stage_sessions: Object.fromEntries(
+      stages.flatMap((st) => {
+        const n = parseCount(stageSessionsText[stageKey(st)] ?? '')
+        return n != null ? [[stageKey(st), n]] : []
+      }),
+    ),
+    minutes: perMinuteReps ? minutes : null,
+    notes: notes.trim() || null,
   }
 
   const projection = useMemo(
@@ -261,16 +313,38 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     [JSON.stringify(config), startDate, preferredUnit],
   )
 
+  /** Problems with reps, sets or minutes — while any exist the stage list can't be shown */
+  function structureError(): string | null {
+    if (parseCount(minRepsText) == null || parseCount(maxRepsText) == null) return 'Enter starting and max reps as whole numbers of 1 or more.'
+    if (minReps > maxReps) return 'Starting reps can’t be more than max reps.'
+    if (repType === 'reps_per_minute' && parseCount(minutesText) == null) return 'Enter minutes as a whole number of 1 or more.'
+    if (!noSets && (parseCount(minSetsText) == null || parseCount(maxSetsText) == null)) {
+      return 'Enter both starting and max sets as whole numbers, or leave both blank for no sets.'
+    }
+    if (minSets > maxSets) return 'Starting sets can’t be more than max sets.'
+    return null
+  }
+
+  const stagesValid = structureError() == null
+  const customStageCount = Object.keys(config.stage_sessions).length
+
   function stepError(s: number): string | null {
     switch (s) {
       case 0: return exerciseId ? null : 'Choose an exercise to continue.'
       case 1:
         if (weightUnit === 'bodyweight') return null
         return weightNum != null && weightNum > 0 ? null : 'Enter a starting weight greater than zero.'
-      case 2:
-        if (minReps > maxReps) return 'Min reps can’t be more than max reps.'
-        if (minSets > maxSets) return 'Starting sets can’t be more than max sets.'
+      case 2: {
+        const structure = structureError()
+        if (structure) return structure
+        if (sessionsMode === 'fixed' && parseCount(fixedSessionsText) == null) {
+          return 'Enter sessions per stage as a whole number of 1 or more.'
+        }
+        if (stages.some((st) => (stageSessionsText[stageKey(st)] ?? '').trim() !== '' && parseCount(stageSessionsText[stageKey(st)]) == null)) {
+          return 'Stage session counts must be whole numbers of 1 or more. Clear a stage’s count to use the default.'
+        }
         return null
+      }
       case 4: return days.length > 0 ? null : 'Pick at least one training day.'
       case 5: return startDate ? null : 'Pick a start date.'
       case 7:
@@ -307,7 +381,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     try {
       const program = await onCreate({
         name: name.trim(),
-        description: `${exercise?.name ?? 'Exercise'} · ${stageLabel(stages[0], repType)} → ${stageLabel(stages[stages.length - 1], repType)}`,
+        description: `${exercise?.name ?? 'Exercise'} · ${stageLabel(stages[0], config)} → ${stageLabel(stages[stages.length - 1], config)}`,
         weeks: Math.max(1, projection.totalWeeks),
         start_date: startDate,
         template_type: 'wildman_reverse_ladder',
@@ -318,7 +392,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
       await rememberBodyWeight()
       onDone()
     } catch (err) {
-      console.error('Failed to create Wildman program', err)
+      console.error('Failed to create program', err)
       setError('Could not create the program. Check your connection and try again.')
     } finally {
       setSaving(false)
@@ -333,7 +407,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
 
   function back() {
     setError(null)
-    if (step === 0) onBack()
+    if (step === 0) onCancel()
     else setStep((s) => s - 1)
   }
 
@@ -344,7 +418,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
       case 0:
         return (
           <div className="space-y-3">
-            <p className="text-sm text-surface-600">Which exercise will you ladder?</p>
+            <p className="text-sm text-surface-600">Which exercise is this program for?</p>
             <Select
               id="wm-exercise"
               label="Exercise"
@@ -440,28 +514,87 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
               label="Rep type"
               value={repType}
               onChange={(e) => setRepType(e.target.value as RepType)}
-              options={WILDMAN_REP_TYPES}
+              options={REP_TYPE_OPTIONS}
             />
+            {perMinuteReps && (
+              <div className="space-y-1">
+                <Input id="wm-minutes" label="Total Time / Sets" type="number" min={1} step={1} inputMode="numeric"
+                  value={minutesText} onChange={(e) => setMinutesText(e.target.value)} />
+                <p className="text-xs text-surface-500">
+                  Each minute is a set, so reps are per minute: e.g. 5/min for {config.minutes ?? 1} {config.minutes === 1 ? 'minute' : 'minutes'} = {5 * (config.minutes ?? 1)} reps.
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
-              <Select id="wm-min-reps" label="Min reps (top rung)" value={String(minReps)}
-                onChange={(e) => setMinReps(Number(e.target.value))} options={rangeOptions(1, 10)} />
-              <Select id="wm-max-reps" label="Max reps (top rung)" value={String(maxReps)}
-                onChange={(e) => setMaxReps(Number(e.target.value))} options={rangeOptions(1, 10)} />
-              <Select id="wm-min-sets" label="Starting sets" value={String(minSets)}
-                onChange={(e) => setMinSets(Number(e.target.value))} options={rangeOptions(1, 10)} />
-              <Select id="wm-max-sets" label="Max sets" value={String(maxSets)}
-                onChange={(e) => setMaxSets(Number(e.target.value))} options={rangeOptions(1, 10)} />
+              <Input id="wm-min-reps" label="Starting reps" type="number" min={1} step={1} inputMode="numeric"
+                value={minRepsText} onChange={(e) => setMinRepsText(e.target.value)} />
+              <Input id="wm-max-reps" label="Max reps" type="number" min={1} step={1} inputMode="numeric"
+                value={maxRepsText} onChange={(e) => setMaxRepsText(e.target.value)} />
+              {!perMinuteReps && (
+                <>
+                  <Input id="wm-min-sets" label="Starting sets" type="number" min={1} step={1} inputMode="numeric"
+                    placeholder="N/A" value={minSetsText} onChange={(e) => setMinSetsText(e.target.value)}
+                    onClear={() => setMinSetsText('')} />
+                  <Input id="wm-max-sets" label="Max sets" type="number" min={1} step={1} inputMode="numeric"
+                    placeholder="N/A" value={maxSetsText} onChange={(e) => setMaxSetsText(e.target.value)}
+                    onClear={() => setMaxSetsText('')} />
+                </>
+              )}
             </div>
-            {minReps <= maxReps && minSets <= maxSets && (
+            {!perMinuteReps && (
+              <p className="text-xs text-surface-500">
+                Leave both sets blank to progress reps only. Use the same starting and max sets to keep sets fixed.
+              </p>
+            )}
+            <div className={cn('grid gap-3', sessionsMode === 'fixed' && 'grid-cols-[1fr_7rem]')}>
+              <Select id="wm-sessions-mode" label="Sessions per stage" value={sessionsMode}
+                onChange={(e) => setSessionsMode(e.target.value as SessionsMode)} options={SESSIONS_MODE_OPTIONS} />
+              {sessionsMode === 'fixed' && (
+                <Input id="wm-sessions-fixed" label="Sessions" type="number" min={1} step={1} inputMode="numeric"
+                  value={fixedSessionsText} onChange={(e) => setFixedSessionsText(e.target.value)} />
+              )}
+            </div>
+            {stagesValid && (
               <div>
-                <p className="mb-1.5 text-xs font-medium text-surface-500">{stages.length} stages</p>
-                <ol className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-surface-200 p-2 text-sm">
-                  {stages.map((s, i) => (
-                    <li key={stageKey(s)} className="flex items-center justify-between gap-2">
-                      <span className="text-surface-700"><span className="mr-2 text-surface-400">{i + 1}.</span>{stageLabel(s, repType)}</span>
-                      <span className="shrink-0 text-xs text-surface-400">{s.topReps} sessions</span>
-                    </li>
-                  ))}
+                <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-surface-500">
+                  <span className="font-medium">
+                    {stages.length} stages · {stages.reduce((sum, st) => sum + defaultSessionsForStage(st, config), 0)} sessions
+                  </span>
+                  {customStageCount > 0 ? (
+                    <button type="button" onClick={() => setStageSessionsText({})} className="font-medium text-primary-600 hover:underline">
+                      Reset {customStageCount} custom {customStageCount === 1 ? 'count' : 'counts'}
+                    </button>
+                  ) : (
+                    <span>Type in a stage to override it</span>
+                  )}
+                </div>
+                <ol className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-surface-200 p-2 text-sm">
+                  {stages.map((s, i) => {
+                    const key = stageKey(s)
+                    const text = stageSessionsText[key] ?? ''
+                    return (
+                      <li key={key} className="flex items-center justify-between gap-2">
+                        <span className="text-surface-700"><span className="mr-2 text-surface-400">{i + 1}.</span>{stageLabel(s, config)}</span>
+                        <label className="flex shrink-0 items-center gap-1.5 text-xs text-surface-400">
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            inputMode="numeric"
+                            aria-label={`Sessions for ${stageLabel(s, config)}`}
+                            placeholder={String(ruleSessionsForStage(s, config))}
+                            value={text}
+                            onChange={(e) => setStageSessionsText((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className={cn(
+                              'w-14 rounded-md border bg-input-bg px-1.5 py-0.5 text-right text-xs text-text placeholder:text-surface-400',
+                              text !== '' ? 'border-primary-500' : 'border-input-border',
+                            )}
+                          />
+                          sessions
+                        </label>
+                      </li>
+                    )
+                  })}
                 </ol>
               </div>
             )}
@@ -527,13 +660,13 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
               selected={incrementMode === 'auto'}
               onClick={() => setIncrementMode('auto')}
               title="Auto progression"
-              body="Each stage lasts as many sessions as its top rung (2 sessions at 2 reps, up to 5 at 5 reps). When a stage is done you’ll be asked “Ready to progress?”. You can always push a stage back or speed it up from the Plan page."
+              body="Each stage lasts the sessions per stage you set on the Reps & Sets step. When a stage is done you’ll be asked “Ready to progress?”. You can always push a stage back or speed it up from the Plan page."
             />
             <ChoiceCard
               selected={incrementMode === 'manual'}
               onClick={() => setIncrementMode('manual')}
               title="Manual progression"
-              body="Your current stage repeats until you choose to progress. You can do that after a workout or from the Plan page."
+              body="Your current stage repeats until you choose to progress. You can do that after a workout or from the Plan page. Sessions per stage only sets the expected pace for your end date and progress."
             />
           </div>
         )
@@ -568,8 +701,12 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
     return (
       <div className="space-y-3">
         <p className="text-sm text-surface-600">
-          Optionally attach a timer to each stage. <span className="font-medium">Auto</span> creates one timer per set count,
-          with a 1-minute interval for each set and a pause in between, so you start each set when you’re ready.
+          Optionally attach a timer to each stage.{' '}
+          {perMinuteReps ? (
+            <><span className="font-medium">Auto</span> creates one timer with a 1-minute interval for each of your {config.minutes ?? 1} minutes, running straight through.</>
+          ) : (
+            <><span className="font-medium">Auto</span> creates one timer per set count, with a 1-minute interval for each set and a pause in between, so you start each set when you’re ready.</>
+          )}
           <span className="font-medium"> Manual</span> lets you build your own.
         </p>
 
@@ -593,16 +730,16 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
             const key = stageKey(stage)
             const choice = stageTimers[key] ?? { mode: 'none' }
             const value = choice.mode === 'existing' ? choice.timerId : choice.mode
-            const autoId = autoSaved[stage.sets]
-            const autoName = autoId ? timers.find((t) => t.id === autoId)?.name : autoDrafts[stage.sets]?.name
+            const autoId = autoSaved[autoKey(stage)]
+            const autoName = autoId ? timers.find((t) => t.id === autoId)?.name : autoDrafts[autoKey(stage)]?.name
             const editKey = `stage:${key}`
             return (
               <div key={key} className="rounded-lg border border-surface-200 p-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-surface-700">{stageLabel(stage, repType)}</span>
+                  <span className="text-sm font-medium text-surface-700">{stageLabel(stage, config)}</span>
                   <div className="flex items-center gap-1.5">
                     <select
-                      aria-label={`Timer for ${stageLabel(stage, repType)}`}
+                      aria-label={`Timer for ${stageLabel(stage, config)}`}
                       value={value}
                       onChange={(e) => chooseTimer(stage, e.target.value)}
                       className={selectClass}
@@ -678,7 +815,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
                         </span>
                         {matchIds.length > 1 && (
                           <select
-                            aria-label={`Existing timer for ${n} sets`}
+                            aria-label={`Existing timer for ${n} ${perMinuteReps ? 'minutes' : 'sets'}`}
                             value={pickedId}
                             onChange={(e) => setAutoPick((prev) => ({ ...prev, [n]: e.target.value }))}
                             className="rounded-lg border border-input-border bg-input-bg px-2 py-1 text-xs text-text"
@@ -730,6 +867,20 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
           value={name}
           onChange={(e) => { setName(e.target.value); setNameTouched(true) }}
         />
+        <div className="space-y-1">
+          <label htmlFor="wm-notes" className="block text-sm font-medium text-surface-700">
+            Notes <span className="font-normal text-surface-400">(optional)</span>
+          </label>
+          <textarea
+            id="wm-notes"
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. Brace hard, crisp hip snap"
+            className="block w-full resize-none rounded-lg border border-input-border bg-input-bg px-3 py-2 text-sm text-text shadow-sm transition-colors focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+          <p className="text-xs text-surface-500">Added to every workout this program puts on your plan.</p>
+        </div>
 
         {p.endDate && (
           <div className="rounded-xl bg-primary-50 p-4 text-center">
@@ -756,7 +907,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
             />
           )}
           {showVolume && (
-            <Stat label="Heaviest session" value={`${p.heaviestSessionVolume.toLocaleString()} ${preferredUnit}`} sub={stageLabel(stages[stages.length - 1], repType)} />
+            <Stat label="Heaviest session" value={`${p.heaviestSessionVolume.toLocaleString()} ${preferredUnit}`} sub={stageLabel(stages[stages.length - 1], config)} />
           )}
           {p.emomMinutes > 0 && <Stat label="EMOM minutes" value={p.emomMinutes.toLocaleString()} sub="of every-minute work" />}
           {p.bodyWeightMultiple != null && (
@@ -769,13 +920,21 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
           <dt className="text-surface-500">Weight</dt>
           <dd className="text-surface-800">{weightUnit === 'bodyweight' ? 'Bodyweight' : `${weight} ${weightUnit}`}</dd>
           <dt className="text-surface-500">Stages</dt>
-          <dd className="text-surface-800">{stageLabel(stages[0], repType)} → {stageLabel(stages[stages.length - 1], repType)}</dd>
+          <dd className="text-surface-800">{stageLabel(stages[0], config)} → {stageLabel(stages[stages.length - 1], config)}</dd>
           <dt className="text-surface-500">Schedule</dt>
           <dd className="text-surface-800">{SESSION_LABELS[session]} · {[...days].sort().map((d) => WEEKDAYS[d]).join(', ')}</dd>
+          {config.notes && (<><dt className="text-surface-500">Notes</dt><dd className="whitespace-pre-wrap text-surface-800">{config.notes}</dd></>)}
           <dt className="text-surface-500">Timers</dt>
           <dd className="text-surface-800">{timerCount === 0 ? 'None' : `${timerCount} attached`}</dd>
           <dt className="text-surface-500">Progression</dt>
-          <dd className="text-surface-800">{incrementMode === 'auto' ? 'Auto (asks before each step up)' : 'Manual'}</dd>
+          <dd className="text-surface-800">
+            {incrementMode === 'auto' ? 'Auto (asks before each step up)' : 'Manual'}
+            {' · '}
+            {sessionsMode === 'fixed'
+              ? `${config.sessions_per_stage} ${config.sessions_per_stage === 1 ? 'session' : 'sessions'} per stage`
+              : sessionsMode === 'reps' ? 'sessions match rep count' : `sessions = rep count × ${config.sessions_rep_factor}`}
+            {customStageCount > 0 && ` (${customStageCount} custom)`}
+          </dd>
         </dl>
       </div>
     )
@@ -807,7 +966,7 @@ export default function WildmanProgramWizard({ onCreate, onActivate, onDone, onB
 
       <div className="flex items-center justify-between gap-2 border-t border-surface-100 pt-4">
         <Button variant="secondary" type="button" onClick={back} disabled={saving}>
-          {step === 0 ? 'Templates' : 'Back'}
+          {step === 0 ? 'Cancel' : 'Back'}
         </Button>
         {step < STEPS.length - 1 ? (
           <Button type="button" onClick={next}>Next</Button>

@@ -5,6 +5,7 @@ import { localDb } from '@/lib/local-storage'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Program, ProgramDay, ProgramDayExercise, ProgramActivation, ProgramCompletion, InsertDto, UpdateDto, Json } from '@/types/database'
 import { replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import { entryValuesFor, generateSchedule, initialProgress, parseWildmanConfig } from '@/lib/program-templates/wildman'
 
 const sortByName = (a: Program, b: Program) => a.name.localeCompare(b.name)
@@ -299,18 +300,22 @@ export default function usePrograms() {
     return data
   }
 
-  async function deactivate(activationId: string) {
+  /**
+   * Stop a program. Workouts from today on that aren't completed are removed from the plan;
+   * past and completed ones stay, unscoped, so the history remains visible.
+   */
+  async function deactivate(activationId: string, isCompleted: (entry: Pick<PlannedEntry, 'date' | 'session'>) => boolean) {
     if (!user) return
     const today = format(new Date(), 'yyyy-MM-dd')
+    const removes = (e: Pick<PlannedEntry, 'date' | 'session'>) => e.date >= today && !isCompleted(e)
 
     if (isDev) {
       const STORAGE_KEY = 'fittrack:weekly_plan'
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
-        const entries = JSON.parse(raw) as { program_id: string | null; date: string }[]
-        // Remove future entries, unscope past/today entries so they stay visible
+        const entries = JSON.parse(raw) as PlannedEntry[]
         const updated = entries
-          .filter((e) => !(e.program_id === activationId && e.date > today))
+          .filter((e) => !(e.program_id === activationId && removes(e)))
           .map((e) => e.program_id === activationId ? { ...e, program_id: null } : e)
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
       }
@@ -319,22 +324,29 @@ export default function usePrograms() {
       const acts = loadActivations().filter((a) => a.id !== activationId)
       saveActivations(acts)
     } else {
-      // Remove future entries
-      await supabase
+      const { data: upcoming, error: loadErr } = await supabase
         .from('planned_entries')
-        .delete()
+        .select('id, date, session')
         .eq('program_id', activationId)
-        .gt('date', today)
+        .gte('date', today)
+      if (loadErr) throw loadErr
+      const ids = (upcoming ?? []).filter((e) => removes(e as Pick<PlannedEntry, 'date' | 'session'>)).map((e) => e.id)
+      // Chunked so the id list stays within URL limits
+      for (let i = 0; i < ids.length; i += 100) {
+        const { error } = await supabase.from('planned_entries').delete().in('id', ids.slice(i, i + 100))
+        if (error) throw error
+      }
 
-      // Unscope past/today entries so they remain visible
-      await supabase
+      // Unscope what's left (past and completed) so it remains visible
+      const { error: unscopeErr } = await supabase
         .from('planned_entries')
         .update({ program_id: null })
         .eq('program_id', activationId)
-        .lte('date', today)
+      if (unscopeErr) throw unscopeErr
 
       // Remove activation record
-      await supabase.from('program_activations').delete().eq('id', activationId)
+      const { error: actErr } = await supabase.from('program_activations').delete().eq('id', activationId)
+      if (actErr) throw actErr
     }
 
     setActivations((prev) => prev.filter((a) => a.id !== activationId))

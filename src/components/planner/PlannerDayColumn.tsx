@@ -8,6 +8,8 @@ import type { TimerWithIntervals } from '@/hooks/useTimers'
 import type { WeightUnit } from '@/types/common'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion } from '@/types/common'
 import EntryDetailEditor from '@/components/programs/EntryDetailEditor'
+import ProgramMark from '@/components/programs/ProgramMark'
+import type { ProgramNameFor } from '@/lib/program-names'
 import { cn } from '@/lib/utils'
 
 const SESSION_ICONS: Record<Session, typeof Sun> = {
@@ -31,6 +33,10 @@ export interface PlannerDayColumnProps {
   // Entry actions
   onUpdateEntry: (id: string, values: PlannedEntryUpdate) => void
   onRemoveEntry: (id: string) => void
+  /** Extra actions in an entry's edit popup; `close` saves the edits and closes it */
+  entryActions?: (entry: PlannedEntry, close: () => void) => ReactNode
+  /** Marks entries that belong to a program */
+  programNameFor?: ProgramNameFor
 
   // Drag/drop — session level
   onSessionDragOver: (e: DragEvent, dateKey: string, session: Session) => void
@@ -67,6 +73,8 @@ export default function PlannerDayColumn({
   getEntriesForDateSession,
   onUpdateEntry,
   onRemoveEntry,
+  entryActions,
+  programNameFor,
   onSessionDragOver,
   onSessionDragLeave,
   onSessionDrop,
@@ -275,6 +283,7 @@ export default function PlannerDayColumn({
                       const entryColor = getExerciseColorClasses(ex?.color ?? null)
                       const repsDisplay = formatReps(entry.rep_type, entry.reps, entry.reps_right)
                       const isDraggedEntry = isDragging(entry.id)
+                      const programName = programNameFor?.(entry.program_id) ?? null
                       return (
                         <div
                           key={entry.id}
@@ -290,16 +299,17 @@ export default function PlannerDayColumn({
                             onDragStart={(e) => onEntryDragStart(e, entry.id, dateKey)}
                             onDragEnd={onEntryDragEnd}
                             onClick={() => setEditingEntryId(editingEntryId === entry.id ? null : entry.id)}
-                            title={[getExerciseName(entry.exercise_id), entry.notes].filter(Boolean).join('\n') || undefined}
+                            title={[getExerciseName(entry.exercise_id), programName && `Part of ${programName}`, entry.notes].filter(Boolean).join('\n') || undefined}
                             className={cn(
-                              'group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
+                              'ui-ex-card [--ex-cut:7px] group flex items-start gap-1 rounded-lg border p-1.5 text-[11px] shadow-sm cursor-pointer transition-opacity',
                               ex?.color ? `${entryColor.bg} ${entryColor.border} force-light` : 'border-surface-200 bg-card',
                               isDraggedEntry && 'opacity-30',
                             )}
                           >
                             <div className="min-w-0 flex-1">
-                              <p className={cn('font-display truncate font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
-                                {getExerciseName(entry.exercise_id)}
+                              <p className={cn('font-display flex items-center gap-1 font-medium', ex?.color ? entryColor.text : 'text-surface-800')}>
+                                {programName && <ProgramMark name={programName} />}
+                                <span className="truncate">{getExerciseName(entry.exercise_id)}</span>
                               </p>
                               <div className="mt-0.5 space-y-0 text-[10px] text-surface-500">
                                 {entry.intensity && (
@@ -336,6 +346,7 @@ export default function PlannerDayColumn({
                               timers={timers}
                               onUpdate={onUpdateEntry}
                               onClose={() => setEditingEntryId(null)}
+                              actions={entryActions && ((close) => entryActions(entry, close))}
                             />
                           )}
                         </div>

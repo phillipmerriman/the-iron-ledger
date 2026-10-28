@@ -84,7 +84,7 @@ export function programProgress(
     const stages = buildStages(config)
     const stage = stages[Math.min(progress.stage_index, stages.length - 1)]
     const inStage = slots.filter((e) => e.date >= progress.stage_started_on && isEntryDone(e, doneKeys)).length
-    const fraction = Math.min(1, inStage / sessionsForStage(stage, progress.extra_sessions))
+    const fraction = Math.min(1, inStage / sessionsForStage(stage, progress.extra_sessions, config))
     return {
       week,
       totalPercent: Math.round(((progress.stage_index + fraction) / stages.length) * 100),

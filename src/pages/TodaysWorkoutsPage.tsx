@@ -13,6 +13,8 @@ import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
 import WorkoutRunnerModal from '@/components/workouts/WorkoutRunnerModal'
 import WorkoutCompleteModal from '@/components/dashboard/WorkoutCompleteModal'
 import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
+import ProgramMark from '@/components/programs/ProgramMark'
+import { programNameLookup } from '@/lib/program-names'
 import Button from '@/components/ui/Button'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
@@ -22,7 +24,8 @@ export default function TodaysWorkoutsPage() {
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { exercises, loading: exercisesLoading } = useExercises()
   const { timers } = useTimers()
-  const { activations } = usePrograms()
+  const { programs, activations } = usePrograms()
+  const programNameFor = programNameLookup(programs, activations)
   const { sessions: workoutSessions, create: createSession } = useWorkouts()
 
   const [dayOffset, setDayOffset] = useState(0)
@@ -244,15 +247,18 @@ export default function TodaysWorkoutsPage() {
               return (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-3 rounded-xl border border-surface-200 bg-card p-4 shadow-sm"
+                  className="ui-ex-card flex items-center gap-3 rounded-xl border border-surface-200 bg-card p-4 shadow-sm"
                 >
                   {/* Color dot */}
                   <div className={cn('h-3 w-3 shrink-0 rounded-full', colorClasses.dot)} />
 
                   {/* Exercise info */}
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-surface-800">
+                    <p className="flex items-center gap-1.5 font-medium text-surface-800">
                       {getExerciseName(entry.exercise_id)}
+                      {programNameFor(entry.program_id) && (
+                        <ProgramMark name={programNameFor(entry.program_id)!} className="text-sm text-primary-600" />
+                      )}
                     </p>
                     <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-surface-500">
                       {entry.sets != null && (

@@ -10,6 +10,8 @@ import usePrograms from '@/hooks/usePrograms'
 import useWorkouts from '@/hooks/useWorkouts'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import ProgramProgressPanel from '@/components/programs/ProgramProgressPanel'
+import { isEntryDone } from '@/lib/program-templates/progress'
+import { programNameLookup } from '@/lib/program-names'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import useWorkoutTemplates from '@/hooks/useWorkoutTemplates'
 import useTimers from '@/hooks/useTimers'
@@ -146,6 +148,48 @@ export default function WeeklyPlanPage() {
   }
 
   const [planError, setPlanError] = useState<string | null>(null)
+
+  const programNameFor = programNameLookup(programsApi.programs, programsApi.activations)
+
+  /**
+   * In an entry's popup: offer to count an off-schedule workout toward an active program for the
+   * same exercise. Skipped when the program already has a workout in that slot (it counts already).
+   */
+  function programCreditActions(entry: PlannedEntry, close: () => void) {
+    if (entry.program_id != null) return null
+    const matches = progression.statuses.filter((st) =>
+      st.config.exercise_id === entry.exercise_id
+      && entry.date >= st.activation.start_date
+      && !progression.entriesFor(st.activation.id).some((e) => e.date === entry.date && e.session === entry.session))
+    if (matches.length === 0) return null
+    const done = isEntryDone(entry, progression.doneKeys)
+    return (
+      <div className="space-y-1 border-t border-surface-100 pt-2">
+        {matches.map((st) => done ? (
+          <button
+            key={st.activation.id}
+            type="button"
+            onClick={async () => {
+              close()
+              try {
+                await progression.creditEntry(st, entry)
+              } catch (err) {
+                console.error('Failed to count workout toward program', err)
+                setPlanError(`Could not count that workout toward ${st.program.name}. Check your connection and try again.`)
+              }
+            }}
+            className="w-full rounded border border-primary-500 px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-500/10"
+          >
+            Count toward {st.program.name}
+          </button>
+        ) : (
+          <p key={st.activation.id} className="text-[10px] text-surface-500">
+            Complete this workout to count it toward {st.program.name}.
+          </p>
+        ))}
+      </div>
+    )
+  }
 
   const mealPlan = useMealPlan({
     startDate: programStart,
@@ -463,31 +507,20 @@ export default function WeeklyPlanPage() {
       return { ...group, entries }
     })
     if (duplicateCount === 0) {
-      requestWarmupOrder(groups)
+      runPaste(groups)
       return
     }
     const totalCount = groups.reduce((sum, g) => sum + g.entries.length, 0)
     setPendingPaste({ groups, deduped, duplicateCount, programDuplicateCount, totalCount })
   }
 
-  // A paste waiting on the user because it adds warm-ups to slots that already have other exercises
-  const [pendingWarmupOrder, setPendingWarmupOrder] = useState<PasteGroup[] | null>(null)
-
-  function isWarmup(exerciseId: string) {
-    return exercises.find((ex) => ex.id === exerciseId)?.exercise_type === 'warm_up'
+  /** 0 = warm-up, 1 = regular exercise, 2 = cool-down */
+  function slotRank(exerciseId: string) {
+    const type = exercises.find((ex) => ex.id === exerciseId)?.exercise_type
+    return type === 'warm_up' ? 0 : type === 'cool_down' ? 2 : 1
   }
 
-  /** Ask whether existing exercises should move below pasted warm-ups (which would otherwise land at the end) */
-  function requestWarmupOrder(groups: PasteGroup[]) {
-    const needsAsk = groups.some((group) =>
-      group.entries.some((e) => isWarmup(e.exercise_id)) &&
-      getEntriesForDateSession(group.date, group.session).some((e) => !isWarmup(e.exercise_id)),
-    )
-    if (needsAsk) setPendingWarmupOrder(groups)
-    else runPaste(groups, false)
-  }
-
-  async function runPaste(groups: PasteGroup[], warmupsFirst: boolean) {
+  async function runPaste(groups: PasteGroup[]) {
     try {
       for (const group of groups) {
         const existing = getEntriesForDateSession(group.date, group.session)
@@ -506,13 +539,12 @@ export default function WeeklyPlanPage() {
             set_markers: e.set_markers,
           },
         })), group.session)
-        if (warmupsFirst && added.some((e) => isWarmup(e.exercise_id))) {
-          // Warm-ups (existing, then pasted) first, then everything else (existing, then pasted)
-          const ordered = [...existing, ...added]
-          await reorderEntries([
-            ...ordered.filter((e) => isWarmup(e.exercise_id)),
-            ...ordered.filter((e) => !isWarmup(e.exercise_id)),
-          ].map((e) => e.id))
+        // Pasted entries land at the end; keep warm-ups first and cool-downs last
+        // (each group stays in existing-then-pasted order, since the sort is stable)
+        const combined = [...existing, ...added]
+        const ordered = [...combined].sort((a, b) => slotRank(a.exercise_id) - slotRank(b.exercise_id))
+        if (ordered.some((e, i) => e.id !== combined[i].id)) {
+          await reorderEntries(ordered.map((e) => e.id))
         }
       }
     } catch (err) {
@@ -795,6 +827,8 @@ export default function WeeklyPlanPage() {
           getEntriesForDateSession={getEntriesForDateSession}
           onUpdateEntry={updateEntry}
           onRemoveEntry={removeEntry}
+          entryActions={programCreditActions}
+          programNameFor={programNameFor}
           onSessionDragOver={handleSessionDragOver}
           onSessionDragLeave={handleSessionDragLeave}
           onSessionDrop={handleSessionDrop}
@@ -943,7 +977,7 @@ export default function WeeklyPlanPage() {
                     key={exercise.id}
                     onClick={() => handleMobileTapExercise(exercise.id)}
                     className={cn(
-                      'w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
+                      'ui-ex-card w-full rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary-300',
                       justAdded ? 'border-success-400 bg-success-50' : exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                     )}
                   >
@@ -1091,6 +1125,8 @@ export default function WeeklyPlanPage() {
                 getEntriesForDateSession={getEntriesForDateSession}
                 onUpdateEntry={updateEntry}
                 onRemoveEntry={removeEntry}
+                entryActions={programCreditActions}
+                programNameFor={programNameFor}
                 onSessionDragOver={handleSessionDragOver}
                 onSessionDragLeave={handleSessionDragLeave}
                 onSessionDrop={handleSessionDrop}
@@ -1230,7 +1266,7 @@ export default function WeeklyPlanPage() {
                         onDragStart={(e) => handlePoolDragStart(e, exercise.id)}
                         onDragEnd={handleDragEnd}
                         className={cn(
-                          'rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
+                          'ui-ex-card [--ex-cut:7px] rounded-lg border px-2.5 py-1.5 cursor-grab active:cursor-grabbing hover:border-primary-300 transition-colors',
                           exercise.color ? `${poolColor.bg} ${poolColor.border} force-light` : 'border-surface-200 bg-surface-50',
                         )}
                       >
@@ -1381,19 +1417,8 @@ export default function WeeklyPlanPage() {
             : 'Skip them to paste only the rest, or add them anyway as extra copies.',
         ].join('\n\n') : ''}
         actions={[
-          { label: 'Add anyway', variant: 'secondary', onClick: () => { if (pendingPaste) requestWarmupOrder(pendingPaste.groups) } },
-          { label: 'Skip duplicates', onClick: () => { if (pendingPaste) requestWarmupOrder(pendingPaste.deduped) } },
-        ]}
-      />
-      {/* Paste adds warm-ups to slots that already have exercises */}
-      <ConfirmDialog
-        open={pendingWarmupOrder !== null}
-        onClose={() => setPendingWarmupOrder(null)}
-        title="Put warm-ups first?"
-        message={'You\'re pasting warm-ups into a time slot that already has exercises. Pasted exercises normally go at the end, after what\'s already there.\n\nMove the existing exercises after the warm-ups?'}
-        actions={[
-          { label: 'Keep current order', variant: 'secondary', onClick: () => { if (pendingWarmupOrder) runPaste(pendingWarmupOrder, false) } },
-          { label: 'Warm-ups first', onClick: () => { if (pendingWarmupOrder) runPaste(pendingWarmupOrder, true) } },
+          { label: 'Add anyway', variant: 'secondary', onClick: () => { if (pendingPaste) runPaste(pendingPaste.groups) } },
+          { label: 'Skip duplicates', onClick: () => { if (pendingPaste) runPaste(pendingPaste.deduped) } },
         ]}
       />
       {/* Move template workout: just this one or every future one on that weekday */}

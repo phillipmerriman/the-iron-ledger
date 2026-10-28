@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Minus, Plus, TrendingUp } from 'lucide-react'
+import { Minus, OctagonX, Plus, TrendingUp } from 'lucide-react'
 import type { TemplateProgramStatus } from '@/hooks/useProgramProgression'
 import type useProgramProgression from '@/hooks/useProgramProgression'
 import type { WeightUnit } from '@/types/common'
@@ -9,9 +9,9 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 
-type Progression = Pick<ReturnType<typeof useProgramProgression>, 'advance' | 'adjust' | 'finishCycle'>
+type Progression = Pick<ReturnType<typeof useProgramProgression>, 'advance' | 'adjust' | 'finishCycle' | 'cancel'>
 
-type Step = 'idle' | 'confirm' | 'how_many' | 'cycle_end' | 'done'
+type Step = 'idle' | 'confirm' | 'how_many' | 'cycle_end' | 'cancel' | 'done'
 
 interface ProgramProgressControlsProps {
   status: TemplateProgramStatus
@@ -58,7 +58,7 @@ export default function ProgramProgressControls({ status, progression, variant }
     setStep(isFinalStage ? 'cycle_end' : 'confirm')
   }
 
-  const label = (s: typeof stage) => stageLabel(s, config.rep_type)
+  const label = (s: typeof stage) => stageLabel(s, config)
 
   return (
     <div className="space-y-2">
@@ -83,6 +83,28 @@ export default function ProgramProgressControls({ status, progression, variant }
           <Button size="sm" disabled={busy} onClick={startProgress}>
             <TrendingUp className="h-3.5 w-3.5" /> {auto ? 'Progress now' : 'Progress to next stage'}
           </Button>
+          <Button size="sm" variant="ghost" disabled={busy} title="Stop this program and remove its upcoming workouts"
+            onClick={() => { setMessage(null); setStep('cancel') }}>
+            <OctagonX className="h-3.5 w-3.5" /> Cancel program
+          </Button>
+        </div>
+      )}
+
+      {step === 'cancel' && (
+        <div className="rounded-lg border border-danger-500/40 bg-danger-500/10 p-3">
+          <p className="text-sm font-semibold text-surface-800">Cancel {status.program.name}?</p>
+          <p className="mt-0.5 text-xs text-surface-600">
+            Upcoming workouts will be removed from your plan, including today's if it isn't completed. Workouts you've completed stay.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="danger" disabled={busy}
+              onClick={() => run(() => progression.cancel(status))}>
+              Cancel program
+            </Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setStep('idle')}>
+              Keep program
+            </Button>
+          </div>
         </div>
       )}
 

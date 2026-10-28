@@ -278,7 +278,7 @@ export default function WorkoutRunnerModal({
 
               {/* Exercise details card */}
               <div className={cn(
-                'mb-5 rounded-xl border p-4',
+                'ui-ex-card mb-5 rounded-xl border p-4',
                 exercise?.color ? `${colorClasses.bg} ${colorClasses.border}` : 'border-surface-200 bg-surface-50',
               )}>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

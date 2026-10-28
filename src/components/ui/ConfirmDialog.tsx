@@ -6,6 +6,8 @@ interface ConfirmDialogProps {
   onClose: () => void
   title: string
   message: string
+  /** Label for the button that just closes the dialog (default "Cancel") */
+  cancelLabel?: string
   /** Labels and handlers for action buttons (displayed left to right) */
   actions: {
     label: string
@@ -14,13 +16,13 @@ interface ConfirmDialogProps {
   }[]
 }
 
-export default function ConfirmDialog({ open, onClose, title, message, actions }: ConfirmDialogProps) {
+export default function ConfirmDialog({ open, onClose, title, message, cancelLabel = 'Cancel', actions }: ConfirmDialogProps) {
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <p className="text-sm text-surface-600 whitespace-pre-line">{message}</p>
       <div className="mt-4 flex justify-end gap-2">
         <Button size="sm" variant="ghost" onClick={onClose}>
-          Cancel
+          {cancelLabel}
         </Button>
         {actions.map((action) => (
           <Button

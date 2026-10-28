@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils'
 import DayDetailModal from './DayDetailModal'
 import WorkoutCompleteModal from './WorkoutCompleteModal'
 import TemplateProgressPrompts from '@/components/programs/TemplateProgressPrompts'
+import { programNameLookup } from '@/lib/program-names'
 
 interface MonthlyCalendarProps {
   /** Shown month, when the parent controls it (e.g. to display it in a panel heading) */
@@ -43,7 +44,7 @@ interface MonthlyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
 }
 
-export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs: _programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
   const { user, profile } = useAuth()
   const { skinDef } = useTheme()
   const cells = skinDef.monthLayout === 'cells'
@@ -402,6 +403,7 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
         onRemoveEntry={handleRemoveEntry}
         onUpdateEntry={handleUpdateEntry}
+        programNameFor={programNameLookup(programs, activations)}
       />
 
       <WorkoutCompleteModal
