@@ -19,7 +19,7 @@ export interface SkinDef {
 
 export const SKINS: Record<SkinId, SkinDef> = {
   classic: { id: 'classic', label: 'Classic', mode: 'switchable', nav: 'sidebar', weekLayout: 'grid', monthLayout: 'dots', splitCalendars: false, heroHeader: false },
-  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'dark', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells', splitCalendars: true, heroHeader: true },
+  'command-deck': { id: 'command-deck', label: 'Command Deck', mode: 'switchable', nav: 'tabs', weekLayout: 'list', monthLayout: 'cells', splitCalendars: true, heroHeader: true },
 }
 
 /** Active skin. Becomes a user setting once the design picker is added. */

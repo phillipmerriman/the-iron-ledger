@@ -1,0 +1,330 @@
+/*
+ * Command Deck skin — soft light mode.
+ * Layered on top of skin-command-deck.css: every rule adds :not(.dark) to the skin's selector, so it
+ * outranks the dark rule it replaces and drops out as soon as the dark theme is picked.
+ * Low-contrast on purpose: a misty sage background instead of white, deep teal-slate text instead of
+ * black, muted teal/amber accents, and no glows.
+ */
+
+:root[data-skin="command-deck"]:not(.dark),
+:root[data-skin="command-deck"]:not(.dark) .force-light {
+  color-scheme: light;
+
+  --cd-teal: #2a9a87;
+  --cd-amber: #e3a03a;
+  --cd-amber-hi: #ebb35a;
+  --cd-edge: #c3d3ce;
+  --cd-panel-top: #f6f9f7;
+  --cd-panel-bottom: #eef3f1;
+
+  /* Semantic tokens */
+  --color-bg: #e6ecea;
+  --color-card: #f4f7f5;
+  --color-card-alt: #edf2f0;
+  --color-text: #263d3a;
+  --color-text-secondary: #4d6762;
+  --color-text-muted: #71898a;
+  --color-border: #c3d3ce;
+  --color-border-light: #d8e3df;
+  --color-hover: #e1e9e6;
+  --color-input-bg: #f9fbfa;
+  --color-input-border: #bccdc8;
+  --color-nav-active-bg: #cfe9e2;
+  --color-nav-active-text: #165e53;
+  --color-on-primary: #ffffff;
+
+  --color-chart-primary: #3aa896;
+  --color-chart-primary-strong: #1a7466;
+  --color-chart-muted: #c3d3ce;
+
+  /* Surface scale back in light order (50 = lightest tint, 900 = darkest text) */
+  --color-surface-50: #eff4f2;
+  --color-surface-100: #e4ebe8;
+  --color-surface-200: #d3dfdb;
+  --color-surface-300: #b8c9c4;
+  --color-surface-400: #8aa29c;
+  --color-surface-500: #66807a;
+  --color-surface-600: #4d6762;
+  --color-surface-700: #38504c;
+  --color-surface-800: #2b423f;
+  --color-surface-900: #263d3a;
+  --color-surface-950: #182927;
+
+  /* Primary = muted teal */
+  --color-primary-50: #e2f2ee;
+  --color-primary-100: #cfe9e2;
+  --color-primary-200: #a6d8cc;
+  --color-primary-300: #70c0ae;
+  --color-primary-400: #3aa896;
+  --color-primary-500: #2a9a87;
+  --color-primary-600: #208a78;
+  --color-primary-700: #1a7466;
+  --color-primary-800: #165e53;
+  --color-primary-900: #134d45;
+  --color-primary-950: #0b2e29;
+
+  --color-danger-500: #c9505b;
+  --color-danger-600: #b4434e;
+  --color-warning-500: #c98a12;
+  --color-warning-600: #a87208;
+  --color-info-500: #5b6ccf;
+  --color-info-600: #4a5abb;
+
+  scrollbar-color: #b8c9c4 transparent;
+}
+
+/* ---------- Base ---------- */
+
+:root[data-skin="command-deck"]:not(.dark) body {
+  background-image:
+    linear-gradient(rgba(42, 154, 135, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 154, 135, 0.045) 1px, transparent 1px),
+    radial-gradient(1000px 500px at 50% -15%, rgba(120, 200, 185, 0.28), transparent);
+}
+
+:root[data-skin="command-deck"]:not(.dark) ::selection {
+  background: rgba(42, 154, 135, 0.22);
+}
+
+/* ---------- Panels ---------- */
+
+:root[data-skin="command-deck"]:not(.dark) .ui-card.bg-card {
+  --cd-panel-fill: var(--color-card);
+  --cd-panel-edge: #7fc4b6;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-stat-alert {
+  --cd-panel-edge: var(--cd-amber);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-modal-backdrop {
+  background: rgba(38, 61, 58, 0.35);
+}
+
+/* ---------- Buttons ---------- */
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-primary {
+  color: #3a2500;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-secondary {
+  color: var(--color-primary-700);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-secondary:hover {
+  background: rgba(42, 154, 135, 0.08);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-danger {
+  background: rgba(201, 80, 91, 0.08);
+  border-color: rgba(201, 80, 91, 0.4);
+  color: var(--color-danger-600);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-danger:hover {
+  background: rgba(201, 80, 91, 0.15);
+}
+
+/* ---------- Navigation chrome ---------- */
+
+:root[data-skin="command-deck"]:not(.dark) .ui-header,
+:root[data-skin="command-deck"]:not(.dark) .ui-topnav {
+  background: rgba(240, 245, 243, 0.75);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-sidebar,
+:root[data-skin="command-deck"]:not(.dark) .ui-drawer {
+  background: linear-gradient(180deg, #eef3f1, #e4ebe8);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-bottomnav {
+  background: rgba(240, 245, 243, 0.92);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-brand-mark {
+  background: linear-gradient(135deg, #3aa896, #1f7f86);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-brand-mark svg {
+  color: #f4fbf9;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-brand-name,
+:root[data-skin="command-deck"]:not(.dark) .ui-hero-title {
+  color: var(--color-text);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-menu {
+  border-color: #7fc4b6;
+  box-shadow: 0 10px 30px rgba(38, 61, 58, 0.14), 0 0 0 1px rgba(42, 154, 135, 0.08);
+}
+
+/* ---------- Text accents ----------
+ * The bright HUD teal and amber are too light to read as text on a pale background, so text uses deeper shades.
+ */
+
+:root[data-skin="command-deck"]:not(.dark) .ui-section-title {
+  color: var(--color-primary-700);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-stat-rest,
+:root[data-skin="command-deck"]:not(.dark) .ui-hero-date,
+:root[data-skin="command-deck"]:not(.dark) .ui-date {
+  color: #a86b0c;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-week-today {
+  background: rgba(227, 160, 58, 0.1);
+  box-shadow: none;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-primary.ui-btn-hero {
+  color: #3a2500;
+  background: linear-gradient(180deg, var(--cd-amber-hi), #d38d22);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-btn-hero:focus-visible {
+  outline-color: #3a2500;
+}
+
+/* ---------- Icons: no glows in light mode ---------- */
+
+:root[data-skin="command-deck"]:not(.dark) svg.lucide {
+  filter: none !important;
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-stat-label svg.lucide {
+  color: var(--color-primary-600);
+}
+
+:root[data-skin="command-deck"]:not(.dark) .ui-stat-alert .ui-stat-label svg.lucide {
+  color: #c48418;
+}
+
+:root[data-skin="command-deck"]:not(.dark) button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled) > svg.lucide:only-child {
+  color: #6f9a92;
+}
+
+:root[data-skin="command-deck"]:not(.dark) button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child {
+  color: var(--color-primary-700);
+}
+
+:root[data-skin="command-deck"]:not(.dark) button:not(.ui-btn, .ui-tab, :is(.ui-sidebar, .ui-drawer, .ui-topnav, .ui-bottomnav) button):not(:disabled):hover > svg.lucide:only-child:is(.lucide-trash-2, .lucide-trash2, .lucide-trash) {
+  color: var(--color-danger-500);
+}
+
+/* ---------- Palette remap ----------
+ * Pastels become soft washes over the card color; 600/700 become deep, slightly muted hues
+ * (mixed toward the text color) so exercise names and chips read without being loud.
+ */
+
+:root[data-skin="command-deck"]:not(.dark) {
+  --color-slate-50: color-mix(in oklab, var(--color-slate-400) 10%, #f4f7f5);
+  --color-slate-100: color-mix(in oklab, var(--color-slate-400) 18%, #f4f7f5);
+  --color-slate-200: color-mix(in oklab, var(--color-slate-400) 30%, #f4f7f5);
+  --color-slate-300: color-mix(in oklab, var(--color-slate-400) 50%, #f4f7f5);
+  --color-slate-600: color-mix(in oklab, var(--color-slate-400) 72%, #263d3a);
+  --color-slate-700: color-mix(in oklab, var(--color-slate-400) 58%, #263d3a);
+
+  --color-red-50: color-mix(in oklab, var(--color-red-400) 10%, #f4f7f5);
+  --color-red-100: color-mix(in oklab, var(--color-red-400) 18%, #f4f7f5);
+  --color-red-200: color-mix(in oklab, var(--color-red-400) 30%, #f4f7f5);
+  --color-red-300: color-mix(in oklab, var(--color-red-400) 50%, #f4f7f5);
+  --color-red-600: color-mix(in oklab, var(--color-red-400) 72%, #263d3a);
+  --color-red-700: color-mix(in oklab, var(--color-red-400) 58%, #263d3a);
+
+  --color-orange-50: color-mix(in oklab, var(--color-orange-400) 10%, #f4f7f5);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-400) 18%, #f4f7f5);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-400) 30%, #f4f7f5);
+  --color-orange-300: color-mix(in oklab, var(--color-orange-400) 50%, #f4f7f5);
+  --color-orange-600: color-mix(in oklab, var(--color-orange-400) 72%, #263d3a);
+  --color-orange-700: color-mix(in oklab, var(--color-orange-400) 58%, #263d3a);
+
+  --color-amber-50: color-mix(in oklab, var(--color-amber-400) 10%, #f4f7f5);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-400) 18%, #f4f7f5);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-400) 30%, #f4f7f5);
+  --color-amber-300: color-mix(in oklab, var(--color-amber-400) 50%, #f4f7f5);
+  --color-amber-600: color-mix(in oklab, var(--color-amber-400) 72%, #263d3a);
+  --color-amber-700: color-mix(in oklab, var(--color-amber-400) 58%, #263d3a);
+
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-400) 10%, #f4f7f5);
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-400) 18%, #f4f7f5);
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-400) 30%, #f4f7f5);
+  --color-yellow-300: color-mix(in oklab, var(--color-yellow-400) 50%, #f4f7f5);
+  --color-yellow-600: color-mix(in oklab, var(--color-yellow-400) 72%, #263d3a);
+  --color-yellow-700: color-mix(in oklab, var(--color-yellow-400) 58%, #263d3a);
+
+  --color-lime-50: color-mix(in oklab, var(--color-lime-400) 10%, #f4f7f5);
+  --color-lime-100: color-mix(in oklab, var(--color-lime-400) 18%, #f4f7f5);
+  --color-lime-200: color-mix(in oklab, var(--color-lime-400) 30%, #f4f7f5);
+  --color-lime-300: color-mix(in oklab, var(--color-lime-400) 50%, #f4f7f5);
+  --color-lime-600: color-mix(in oklab, var(--color-lime-400) 72%, #263d3a);
+  --color-lime-700: color-mix(in oklab, var(--color-lime-400) 58%, #263d3a);
+
+  --color-green-50: color-mix(in oklab, var(--color-green-400) 10%, #f4f7f5);
+  --color-green-100: color-mix(in oklab, var(--color-green-400) 18%, #f4f7f5);
+  --color-green-200: color-mix(in oklab, var(--color-green-400) 30%, #f4f7f5);
+  --color-green-300: color-mix(in oklab, var(--color-green-400) 50%, #f4f7f5);
+  --color-green-600: color-mix(in oklab, var(--color-green-400) 72%, #263d3a);
+  --color-green-700: color-mix(in oklab, var(--color-green-400) 58%, #263d3a);
+
+  --color-teal-50: color-mix(in oklab, var(--color-teal-400) 10%, #f4f7f5);
+  --color-teal-100: color-mix(in oklab, var(--color-teal-400) 18%, #f4f7f5);
+  --color-teal-200: color-mix(in oklab, var(--color-teal-400) 30%, #f4f7f5);
+  --color-teal-300: color-mix(in oklab, var(--color-teal-400) 50%, #f4f7f5);
+  --color-teal-600: color-mix(in oklab, var(--color-teal-400) 72%, #263d3a);
+  --color-teal-700: color-mix(in oklab, var(--color-teal-400) 58%, #263d3a);
+
+  --color-cyan-50: color-mix(in oklab, var(--color-cyan-400) 10%, #f4f7f5);
+  --color-cyan-100: color-mix(in oklab, var(--color-cyan-400) 18%, #f4f7f5);
+  --color-cyan-200: color-mix(in oklab, var(--color-cyan-400) 30%, #f4f7f5);
+  --color-cyan-300: color-mix(in oklab, var(--color-cyan-400) 50%, #f4f7f5);
+  --color-cyan-600: color-mix(in oklab, var(--color-cyan-400) 72%, #263d3a);
+  --color-cyan-700: color-mix(in oklab, var(--color-cyan-400) 58%, #263d3a);
+
+  --color-blue-50: color-mix(in oklab, var(--color-blue-400) 10%, #f4f7f5);
+  --color-blue-100: color-mix(in oklab, var(--color-blue-400) 18%, #f4f7f5);
+  --color-blue-200: color-mix(in oklab, var(--color-blue-400) 30%, #f4f7f5);
+  --color-blue-300: color-mix(in oklab, var(--color-blue-400) 50%, #f4f7f5);
+  --color-blue-600: color-mix(in oklab, var(--color-blue-400) 72%, #263d3a);
+  --color-blue-700: color-mix(in oklab, var(--color-blue-400) 58%, #263d3a);
+
+  --color-indigo-50: color-mix(in oklab, var(--color-indigo-400) 10%, #f4f7f5);
+  --color-indigo-100: color-mix(in oklab, var(--color-indigo-400) 18%, #f4f7f5);
+  --color-indigo-200: color-mix(in oklab, var(--color-indigo-400) 30%, #f4f7f5);
+  --color-indigo-300: color-mix(in oklab, var(--color-indigo-400) 50%, #f4f7f5);
+  --color-indigo-600: color-mix(in oklab, var(--color-indigo-400) 72%, #263d3a);
+  --color-indigo-700: color-mix(in oklab, var(--color-indigo-400) 58%, #263d3a);
+
+  --color-violet-50: color-mix(in oklab, var(--color-violet-400) 10%, #f4f7f5);
+  --color-violet-100: color-mix(in oklab, var(--color-violet-400) 18%, #f4f7f5);
+  --color-violet-200: color-mix(in oklab, var(--color-violet-400) 30%, #f4f7f5);
+  --color-violet-300: color-mix(in oklab, var(--color-violet-400) 50%, #f4f7f5);
+  --color-violet-600: color-mix(in oklab, var(--color-violet-400) 72%, #263d3a);
+  --color-violet-700: color-mix(in oklab, var(--color-violet-400) 58%, #263d3a);
+
+  --color-purple-50: color-mix(in oklab, var(--color-purple-400) 10%, #f4f7f5);
+  --color-purple-100: color-mix(in oklab, var(--color-purple-400) 18%, #f4f7f5);
+  --color-purple-200: color-mix(in oklab, var(--color-purple-400) 30%, #f4f7f5);
+  --color-purple-300: color-mix(in oklab, var(--color-purple-400) 50%, #f4f7f5);
+  --color-purple-600: color-mix(in oklab, var(--color-purple-400) 72%, #263d3a);
+  --color-purple-700: color-mix(in oklab, var(--color-purple-400) 58%, #263d3a);
+
+  --color-pink-50: color-mix(in oklab, var(--color-pink-400) 10%, #f4f7f5);
+  --color-pink-100: color-mix(in oklab, var(--color-pink-400) 18%, #f4f7f5);
+  --color-pink-200: color-mix(in oklab, var(--color-pink-400) 30%, #f4f7f5);
+  --color-pink-300: color-mix(in oklab, var(--color-pink-400) 50%, #f4f7f5);
+  --color-pink-600: color-mix(in oklab, var(--color-pink-400) 72%, #263d3a);
+  --color-pink-700: color-mix(in oklab, var(--color-pink-400) 58%, #263d3a);
+
+  --color-rose-50: color-mix(in oklab, var(--color-rose-400) 10%, #f4f7f5);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-400) 18%, #f4f7f5);
+  --color-rose-200: color-mix(in oklab, var(--color-rose-400) 30%, #f4f7f5);
+  --color-rose-300: color-mix(in oklab, var(--color-rose-400) 50%, #f4f7f5);
+  --color-rose-600: color-mix(in oklab, var(--color-rose-400) 72%, #263d3a);
+  --color-rose-700: color-mix(in oklab, var(--color-rose-400) 58%, #263d3a);
+}

@@ -13,13 +13,18 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-const STORAGE_KEY = 'iron-ledger-theme'
+// v2: the old key stored 'light' for everyone while Command Deck was dark-only, so it can't tell who chose light
+const STORAGE_KEY = 'iron-ledger-theme-v2'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'dark' || stored === 'light') return stored
-    return 'light'
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored === 'dark' || stored === 'light') return stored
+    } catch {
+      // Storage blocked: fall back to the default
+    }
+    return 'dark'
   })
 
   const skin = ACTIVE_SKIN
@@ -34,7 +39,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [isDark, skin])
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, theme)
+    try {
+      localStorage.setItem(STORAGE_KEY, theme)
+    } catch {
+      // Storage blocked: the choice just won't persist
+    }
   }, [theme])
 
   function setTheme(t: Theme) {
