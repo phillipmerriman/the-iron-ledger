@@ -17,12 +17,15 @@ import useWorkouts from '@/hooks/useWorkouts'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import { stageLabel } from '@/lib/program-templates/wildman'
 import { isEntryDone } from '@/lib/program-templates/progress'
+import NextIncrement from '@/components/programs/NextIncrement'
+import ProgramProgressControls from '@/components/programs/ProgramProgressControls'
 
 export default function ProgramsPage() {
   const programsApi = usePrograms()
   const { programs, activations, loading, create, update, remove, activate, deactivate } = programsApi
   const { sessions: workoutSessions, loading: workoutsLoading } = useWorkouts()
-  const { statusForActivation, doneKeys } = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
+  const progression = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
+  const { statusForActivation, doneKeys } = progression
   const navigate = useNavigate()
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -109,6 +112,12 @@ export default function ProgramsPage() {
                       {status.config.increment_mode === 'auto' && ` · ${Math.min(status.completedInStage, status.requiredInStage)}/${status.requiredInStage} sessions`}
                       {status.progress.cycle > 1 && ` · Cycle ${status.progress.cycle}`}
                     </p>
+                  )}
+                  {status && progression.ready && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <NextIncrement status={status} />
+                      <ProgramProgressControls status={status} progression={progression} variant="compact" />
+                    </div>
                   )}
                 </div>
                 <button

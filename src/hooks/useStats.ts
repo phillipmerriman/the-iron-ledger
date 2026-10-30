@@ -300,5 +300,5 @@ export default function useStats(options: UseStatsOptions = {}) {
     }
   }, [sessions, entries, programs, exercises, preferredUnit])
 
-  return { ...stats, loading, exercises, entries }
+  return { ...stats, loading, exercises, entries, refetch: fetch }
 }

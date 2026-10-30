@@ -36,11 +36,24 @@ export interface TemplateProgramStatus {
   requiredInStage: number
   /** Auto mode: the stage's sessions are all done and the user should be asked to progress */
   isDue: boolean
+  /**
+   * Auto mode: when the next step up happens — the first workout at the next stage, or for the
+   * final stage the last workout of the cycle. Null in manual mode or when nothing is scheduled.
+   */
+  nextIncrement: { date: string; kind: 'stage' | 'cycle_end' } | null
 }
 
 export type AdvanceResult = 'advanced' | 'cycle_end'
 
 const todayKey = () => format(new Date(), 'yyyy-MM-dd')
+
+/** First date the schedule may be rewritten from: today, unless today's workout is already done */
+function scheduleFromDate(activation: ProgramActivation, entries: PlannedEntry[], doneKeys: Set<string>) {
+  const today = todayKey()
+  const todayDone = entries.some((e) => e.date === today && isEntryDone(e, doneKeys))
+  const from = todayDone ? format(addDays(parseISO(today), 1), 'yyyy-MM-dd') : today
+  return from < activation.start_date ? activation.start_date : from
+}
 
 /** Activation id → date of last daily resync, shared by every hook instance so pages don't race */
 const resyncedOn = new Map<string, string>()
@@ -95,6 +108,16 @@ export default function useProgramProgression(
         (e) => e.date >= progress.stage_started_on && isEntryDone(e, doneKeys),
       ).length
       const requiredInStage = sessionsForStage(stage, progress.extra_sessions, config)
+      const isFinalStage = progress.stage_index >= stages.length - 1
+      let nextIncrement: TemplateProgramStatus['nextIncrement'] = null
+      if (config.increment_mode === 'auto' && completedInStage < requiredInStage) {
+        // Same layout regenerate() writes, so the date matches the plan
+        const schedule = generateSchedule(config, progress, scheduleFromDate(activation, entries, doneKeys), completedInStage)
+        const date = isFinalStage
+          ? schedule.filter((w) => w.stageIndex === progress.stage_index).at(-1)?.date
+          : schedule.find((w) => w.stageIndex > progress.stage_index)?.date
+        if (date) nextIncrement = { date, kind: isFinalStage ? 'cycle_end' : 'stage' }
+      }
       list.push({
         activation,
         program,
@@ -103,21 +126,18 @@ export default function useProgramProgression(
         stages,
         stage,
         nextStage: stages[progress.stage_index + 1] ?? null,
-        isFinalStage: progress.stage_index >= stages.length - 1,
+        isFinalStage,
         completedInStage,
         requiredInStage,
         isDue: config.increment_mode === 'auto' && completedInStage >= requiredInStage,
+        nextIncrement,
       })
     }
     return list
   }, [templateActivations, programs, entriesByActivation, doneKeys])
 
-  /** First date the schedule may be rewritten from: today, unless today's workout is already done */
   function regenFromDate(status: TemplateProgramStatus, entries = entriesByActivation[status.activation.id] ?? []) {
-    const today = todayKey()
-    const todayDone = entries.some((e) => e.date === today && isEntryDone(e, doneKeys))
-    const from = todayDone ? format(addDays(parseISO(today), 1), 'yyyy-MM-dd') : today
-    return from < status.activation.start_date ? status.activation.start_date : from
+    return scheduleFromDate(status.activation, entries, doneKeys)
   }
 
   async function regenerate(
