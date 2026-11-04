@@ -56,6 +56,8 @@ export interface WildmanProgress {
   /** First day of the current cycle (missing = the activation's start date) */
   cycle_started_on?: string
   overrides: ScheduleOverride[]
+  /** Days the user skipped — never scheduled, so the remaining workouts move to later training days */
+  skipped_dates: string[]
   /** Last date the schedule was regenerated — used to reschedule missed days */
   synced_on: string
 }

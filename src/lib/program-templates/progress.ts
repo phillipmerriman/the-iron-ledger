@@ -1,4 +1,4 @@
-import { addDays, endOfWeek, format, startOfWeek } from 'date-fns'
+import { addDays, endOfWeek, format, parseISO, startOfWeek } from 'date-fns'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
@@ -34,6 +34,55 @@ export function completedSlotKeys(sessions: WorkoutSession[]): Set<string> {
 
 export function isEntryDone(entry: Pick<PlannedEntry, 'date' | 'session'>, keys: Set<string>) {
   return keys.has(`${entry.date}|${entry.session}`) || keys.has(`${entry.date}|all`)
+}
+
+/**
+ * The workout days a skip shifts: the skipped day, then every upcoming day of the program that
+ * isn't done yet. Earlier missed days and completed days stay where they are.
+ */
+function shiftChain(entries: PlannedEntry[], skippedDate: string, doneKeys: Set<string>, today: Date) {
+  const todayKey = format(today, 'yyyy-MM-dd')
+  const doneDates = new Set(entries.filter((e) => isEntryDone(e, doneKeys)).map((e) => e.date))
+  const later = [...new Set(entries.map((e) => e.date))]
+    .filter((d) => d > skippedDate && d >= todayKey && !doneDates.has(d))
+    .sort()
+  return [skippedDate, ...later]
+}
+
+/**
+ * Push a program back one workout after a skipped day: that day's workouts move to the next
+ * workout day, those move to the one after, and so on. The last moves to the next day that
+ * falls on one of the program's usual weekdays.
+ */
+export function pushBackMoves(
+  entries: PlannedEntry[],
+  skippedDate: string,
+  doneKeys: Set<string>,
+  today: Date = new Date(),
+): { id: string; date: string }[] {
+  const chain = shiftChain(entries, skippedDate, doneKeys, today)
+  const weekdays = new Set(entries.map((e) => parseISO(e.date).getDay()))
+  let next = addDays(parseISO(chain[chain.length - 1]), 1)
+  for (let i = 0; i < 7 && !weekdays.has(next.getDay()); i++) next = addDays(next, 1)
+  chain.push(format(next, 'yyyy-MM-dd'))
+  const target = new Map(chain.slice(0, -1).map((d, i) => [d, chain[i + 1]]))
+  return entries
+    .filter((e) => target.has(e.date) && !isEntryDone(e, doneKeys))
+    .map((e) => ({ id: e.id, date: target.get(e.date)! }))
+}
+
+/** Undo pushBackMoves: every upcoming workout day moves forward one, the first onto the skipped day */
+export function pullForwardMoves(
+  entries: PlannedEntry[],
+  skippedDate: string,
+  doneKeys: Set<string>,
+  today: Date = new Date(),
+): { id: string; date: string }[] {
+  const chain = shiftChain(entries, skippedDate, doneKeys, today)
+  const target = new Map(chain.slice(1).map((d, i) => [d, chain[i]]))
+  return entries
+    .filter((e) => target.has(e.date) && !isEntryDone(e, doneKeys))
+    .map((e) => ({ id: e.id, date: target.get(e.date)! }))
 }
 
 export interface ProgressCount {

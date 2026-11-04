@@ -797,6 +797,27 @@ export interface Database {
         }
         Relationships: []
       }
+      skipped_days: {
+        Row: {
+          id: string
+          user_id: string
+          date: string
+          /** Active programs whose schedule this skip pushed back */
+          activation_ids: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          date: string
+          activation_ids?: string[]
+          created_at?: string
+        }
+        Update: {
+          activation_ids?: string[]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -840,6 +861,7 @@ export type MealIngredientRow = Tables<'meal_ingredients'>
 export type DietRow = Tables<'diets'>
 export type NutritionCacheRow = Tables<'nutrition_cache'>
 export type ProgramCompletion = Tables<'program_completions'>
+export type SkippedDay = Tables<'skipped_days'>
 
 /** A single activation of a program template with a specific start date */
 export interface ProgramActivation {

@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react'
 import { format, addDays, isToday } from 'date-fns'
-import { ChevronLeft, ChevronRight, CirclePlay, Clock, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CirclePlay, Clock, CheckCircle2, SkipForward, Undo2, X } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, Session } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
 import useTimers, { type TimerWithIntervals } from '@/hooks/useTimers'
 import usePrograms from '@/hooks/usePrograms'
 import useWorkouts from '@/hooks/useWorkouts'
+import useProgramProgression from '@/hooks/useProgramProgression'
+import useSkippedDays from '@/hooks/useSkippedDays'
 import { useAuth } from '@/contexts/AuthContext'
 import { getExerciseColorClasses, formatReps, formatWeightWithConversion, calcEntryVolume } from '@/types/common'
 import TimerRunnerModal from '@/components/timers/TimerRunnerModal'
@@ -24,9 +26,10 @@ export default function TodaysWorkoutsPage() {
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
   const { exercises, loading: exercisesLoading } = useExercises()
   const { timers } = useTimers()
-  const { programs, activations } = usePrograms()
+  const programsApi = usePrograms()
+  const { programs, activations } = programsApi
   const programNameFor = programNameLookup(programs, activations)
-  const { sessions: workoutSessions, create: createSession } = useWorkouts()
+  const { sessions: workoutSessions, loading: workoutsLoading, create: createSession } = useWorkouts()
 
   const [dayOffset, setDayOffset] = useState(0)
   const [runningTimer, setRunningTimer] = useState<TimerWithIntervals | null>(null)
@@ -37,6 +40,7 @@ export default function TodaysWorkoutsPage() {
   function navigateDay(offset: number | ((d: number) => number)) {
     setDayOffset(offset)
     setLocalCompleted(new Set())
+    setSkipError(null)
   }
 
   const viewDate = useMemo(() => addDays(new Date(), dayOffset), [dayOffset])
@@ -45,12 +49,31 @@ export default function TodaysWorkoutsPage() {
 
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
 
-  const { entries } = useWeeklyPlan({
+  const { entries, refetch: refetchPlan } = useWeeklyPlan({
     startDate: viewDate,
     weekOffset: 0,
     programIds: activationIds.length > 0 ? activationIds : undefined,
     includeUnscoped: true,
   })
+
+  const progression = useProgramProgression(programsApi, workoutSessions, workoutsLoading, () => { refetchPlan() })
+  const skippedDays = useSkippedDays(progression)
+  const skipped = skippedDays.byDate.get(dateKey) ?? null
+  const [skipBusy, setSkipBusy] = useState(false)
+  const [skipError, setSkipError] = useState<string | null>(null)
+
+  async function runSkip(action: (date: string) => Promise<void>, failure: string) {
+    setSkipBusy(true)
+    setSkipError(null)
+    try {
+      await action(dateKey)
+    } catch (err) {
+      console.error('Failed to update skipped day', err)
+      setSkipError(failure)
+    } finally {
+      setSkipBusy(false)
+    }
+  }
 
   const loading = exercisesLoading
 
@@ -185,8 +208,37 @@ export default function TodaysWorkoutsPage() {
         </div>
       </div>
 
+      {skipped && (
+        <div className="flex items-center gap-3 rounded-xl border border-surface-300 bg-surface-100 p-4">
+          <SkipForward className="h-5 w-5 shrink-0 text-surface-500" />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-surface-800">Day skipped</p>
+            {skipped.activation_ids.length > 0 && (
+              <p className="mt-0.5 text-sm text-surface-500">Program workouts were pushed back to later days.</p>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={skipBusy}
+            onClick={() => runSkip(skippedDays.unskip, 'Could not undo the skip. Check your connection and try again.')}
+          >
+            <Undo2 className="h-3.5 w-3.5" /> Undo
+          </Button>
+        </div>
+      )}
+
+      {skipError && (
+        <div className="flex items-start gap-2 rounded-xl border border-danger-500/40 bg-danger-500/10 p-3 text-sm text-danger-600">
+          <p className="flex-1">{skipError}</p>
+          <button onClick={() => setSkipError(null)} className="rounded p-0.5 hover:text-danger-700" aria-label="Dismiss">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* No workouts */}
-      {dayEntries.length === 0 && (
+      {dayEntries.length === 0 && !skipped && (
         <div className="rounded-xl border-2 border-dashed border-surface-200 py-16 text-center">
           <Clock className="mx-auto h-10 w-10 text-surface-300" />
           <p className="mt-3 text-lg font-medium text-surface-600">No workouts {dayLabel.toLowerCase()}!</p>
@@ -222,6 +274,7 @@ export default function TodaysWorkoutsPage() {
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
+                  disabled={!!skipped}
                   onClick={() => setRunningWorkout({ session, entries: sessionEntries })}
                 >
                   <CirclePlay className="mr-1 h-3.5 w-3.5" />
@@ -231,6 +284,7 @@ export default function TodaysWorkoutsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
+                    disabled={!!skipped}
                     onClick={() => handleCompleteSessionGroup(session, sessionEntries)}
                   >
                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
@@ -328,10 +382,29 @@ export default function TodaysWorkoutsPage() {
             All workouts complete{allDoneTime && ` at ${allDoneTime}`}
           </div>
         ) : (
-          <Button onClick={handleCompleteAll} className="w-full">
-            <CheckCircle2 className="mr-1.5 h-4 w-4" />
-            Complete Workout
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={handleCompleteAll}
+              disabled={!!skipped}
+              title={skipped ? 'Undo the skip to complete this day' : undefined}
+              className="w-full"
+            >
+              <CheckCircle2 className="mr-1.5 h-4 w-4" />
+              Complete Workout
+            </Button>
+            {/* Skip — pushes program workouts back */}
+            {!skipped && completedSessions.size === 0 && (
+              <Button
+                variant="secondary"
+                disabled={skipBusy}
+                onClick={() => runSkip(skippedDays.skip, 'Could not skip this day. Check your connection and try again.')}
+                className="w-full"
+              >
+                <SkipForward className="mr-1.5 h-4 w-4" />
+                {skipBusy ? 'Skipping…' : 'Skip Day'}
+              </Button>
+            )}
+          </div>
         )
       })()}
 

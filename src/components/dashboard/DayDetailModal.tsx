@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { Check, Undo2, Pencil, Trash2 } from 'lucide-react'
+import { Check, Undo2, Pencil, Trash2, SkipForward, X } from 'lucide-react'
 import { SESSIONS, SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry, PlannedEntryUpdate } from '@/hooks/useWeeklyPlan'
 import type { Exercise, WorkoutSession } from '@/types/database'
@@ -29,6 +29,10 @@ interface DayDetailModalProps {
   onUpdateEntry?: (id: string, values: PlannedEntryUpdate) => Promise<void>
   /** Marks workouts that belong to a program */
   programNameFor?: ProgramNameFor
+  /** The day was marked skipped; `pushedBack` = it moved program workouts later */
+  skipped?: { pushedBack: boolean } | null
+  onSkipDay?: (day: Date) => Promise<void>
+  onUnskipDay?: (day: Date) => Promise<void>
 }
 
 export default function DayDetailModal({
@@ -46,10 +50,15 @@ export default function DayDetailModal({
   onRemoveEntry,
   onUpdateEntry,
   programNameFor,
+  skipped,
+  onSkipDay,
+  onUnskipDay,
 }: DayDetailModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<{ sets: string; reps: string; weight: string }>({ sets: '', reps: '', weight: '' })
   const [saving, setSaving] = useState(false)
+  const [skipBusy, setSkipBusy] = useState(false)
+  const [skipError, setSkipError] = useState<string | null>(null)
 
   function getExercise(exerciseId: string) {
     return exercises.find((e) => e.id === exerciseId)
@@ -91,6 +100,27 @@ export default function DayDetailModal({
     }
   }
 
+  async function runSkip(action: (day: Date) => Promise<void>, failure: string) {
+    if (!selectedDay) return
+    setSkipBusy(true)
+    setSkipError(null)
+    try {
+      await action(selectedDay)
+    } catch (err) {
+      console.error('Failed to update skipped day', err)
+      setSkipError(failure)
+    } finally {
+      setSkipBusy(false)
+    }
+  }
+
+  function handleClose() {
+    setSkipError(null)
+    onClose()
+  }
+
+  const hasCompleted = daySessions.some((s) => s.completed_at)
+
   async function handleRemove(id: string) {
     if (!onRemoveEntry) return
     await onRemoveEntry(id)
@@ -99,11 +129,42 @@ export default function DayDetailModal({
   return (
     <Modal
       open={!!selectedDay}
-      onClose={onClose}
+      onClose={handleClose}
       title={selectedDay ? <span className="ui-date">{format(selectedDay, 'EEEE, MMM d')}</span> : ''}
     >
+      {skipped && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-surface-300 bg-surface-100 p-3">
+          <SkipForward className="h-4 w-4 shrink-0 text-surface-500" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-surface-800">Day skipped</p>
+            {skipped.pushedBack && (
+              <p className="mt-0.5 text-xs text-surface-500">Program workouts were pushed back to later days.</p>
+            )}
+          </div>
+          {onUnskipDay && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={skipBusy}
+              onClick={() => runSkip(onUnskipDay, 'Could not undo the skip. Check your connection and try again.')}
+            >
+              <Undo2 className="h-3.5 w-3.5" /> Undo
+            </Button>
+          )}
+        </div>
+      )}
+
+      {skipError && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-danger-500/40 bg-danger-500/10 p-3 text-sm text-danger-600">
+          <p className="flex-1">{skipError}</p>
+          <button onClick={() => setSkipError(null)} className="rounded p-0.5 hover:text-danger-700" aria-label="Dismiss">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {daySessions.length === 0 && dayPlanned.length === 0 ? (
-        <p className="py-4 text-center text-sm text-surface-400">No workouts on this day</p>
+        !skipped && <p className="py-4 text-center text-sm text-surface-400">No workouts on this day</p>
       ) : (
         <div className="space-y-4">
           {/* Workout sessions — only show completed ones */}
@@ -316,9 +377,24 @@ export default function DayDetailModal({
             <Button
               size="sm"
               onClick={() => onMarkDayComplete(selectedDay)}
+              disabled={!!skipped}
+              title={skipped ? 'Undo the skip to mark this day complete' : undefined}
               className="mt-2 w-full"
             >
               <Check className="h-3.5 w-3.5" /> Mark Day Complete
+            </Button>
+          )}
+
+          {/* Skip Day button — pushes program workouts back */}
+          {onSkipDay && selectedDay && !skipped && !hasCompleted && dayPlanned.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={skipBusy}
+              onClick={() => runSkip(onSkipDay, 'Could not skip this day. Check your connection and try again.')}
+              className="w-full"
+            >
+              <SkipForward className="h-3.5 w-3.5" /> {skipBusy ? 'Skipping…' : 'Skip Day'}
             </Button>
           )}
         </div>

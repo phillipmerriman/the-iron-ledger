@@ -12,6 +12,7 @@ import useWorkouts from '@/hooks/useWorkouts'
 import usePrograms from '@/hooks/usePrograms'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import useStats from '@/hooks/useStats'
+import useSkippedDays from '@/hooks/useSkippedDays'
 import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import type { Session } from '@/hooks/useWeeklyPlan'
 import type { WorkoutSession } from '@/types/database'
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const activationIds = useMemo(() => activations.map((a) => a.id), [activations])
   const chartStats = useStats({ sessions, programs, activationIds })
   const progression = useProgramProgression(programsApi, sessions, workoutsLoading, () => { chartStats.refetch() })
+  const skipped = useSkippedDays(progression)
   const { recipes } = useRecipes()
   const recipeNames = useMemo(() => Object.fromEntries(recipes.map((r) => [r.id, r.name])), [recipes])
   const mealSummary = useMealSummary(recipeNames)
@@ -131,6 +133,9 @@ export default function DashboardPage() {
     onUpdateSession: updateSession,
     onCreateSession: createSession,
     onDeleteSession: deleteSession,
+    skippedDays: skipped.byDate,
+    onSkipDay: skipped.skip,
+    onUnskipDay: skipped.unskip,
   }
 
   const dashSections: Section[] = [

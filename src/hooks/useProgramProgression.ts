@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import type usePrograms from '@/hooks/usePrograms'
-import { assignEntryToProgram, loadProgramEntries, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import { assignEntryToProgram, loadProgramEntries, moveEntriesToDates, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Json, Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
@@ -16,7 +16,7 @@ import {
   parseWildmanProgress,
   sessionsForStage,
 } from '@/lib/program-templates/wildman'
-import { completedSlotKeys, isEntryDone } from '@/lib/program-templates/progress'
+import { completedSlotKeys, isEntryDone, pullForwardMoves, pushBackMoves } from '@/lib/program-templates/progress'
 
 export { completedSlotKeys }
 
@@ -245,6 +245,46 @@ export default function useProgramProgression(
     await regenerate(status, status.progress, config)
   }
 
+  /**
+   * Skip a day. Template programs leave it out of their schedule; other programs push every
+   * upcoming workout back one workout day. Returns the activations whose schedule changed.
+   */
+  async function skipDay(date: string): Promise<string[]> {
+    if (!user) return []
+    const changed: string[] = []
+    for (const activation of activations) {
+      const status = statusForActivation(activation.id)
+      const entries = status ? (entriesByActivation[activation.id] ?? []) : await loadProgramEntries(user.id, activation.id)
+      if (!entries.some((e) => e.date === date && !isEntryDone(e, doneKeys))) continue
+      if (status) {
+        const skipped = [...new Set([...(status.progress.skipped_dates ?? []), date])]
+        await regenerate(status, { ...status.progress, skipped_dates: skipped })
+      } else {
+        await moveEntriesToDates(user.id, pushBackMoves(entries, date, doneKeys))
+      }
+      changed.push(activation.id)
+    }
+    if (changed.length > 0) onScheduleChanged?.()
+    return changed
+  }
+
+  /** Undo skipDay for the activations it changed */
+  async function unskipDay(date: string, activationIds: string[]) {
+    if (!user) return
+    for (const id of activationIds) {
+      if (!activations.some((a) => a.id === id)) continue
+      const status = statusForActivation(id)
+      if (status) {
+        const skipped = (status.progress.skipped_dates ?? []).filter((d) => d !== date)
+        await regenerate(status, { ...status.progress, skipped_dates: skipped })
+      } else {
+        const entries = await loadProgramEntries(user.id, id)
+        await moveEntriesToDates(user.id, pullForwardMoves(entries, date, doneKeys))
+      }
+    }
+    if (activationIds.length > 0) onScheduleChanged?.()
+  }
+
   // Missed days: once a day, rebuild the schedule so unfinished sessions move to the next training days
   const syncingRef = useRef(false)
   useEffect(() => {
@@ -286,6 +326,8 @@ export default function useProgramProgression(
     moveWeekday,
     creditEntry,
     cancel,
+    skipDay,
+    unskipDay,
     refresh: loadEntries,
   }
 }
