@@ -71,24 +71,27 @@ export function initialProgress(config: WildmanConfig, startDate: string): Wildm
     weight_unit: config.weight_unit,
     cycle: 1,
     overrides: [],
+    skipped_dates: [],
     synced_on: format(new Date(), 'yyyy-MM-dd'),
   }
 }
 
 /**
  * The next `count` training dates on/after `fromDate`, following the selected weekdays.
- * One-off moves (overrides) replace the date the generator would have used.
+ * One-off moves (overrides) replace the date the generator would have used; skipped days are left out.
  */
 export function trainingDates(
   daysOfWeek: number[],
   fromDate: string,
   count: number,
   overrides: ScheduleOverride[] = [],
+  skippedDates: string[] = [],
 ): string[] {
   if (daysOfWeek.length === 0 || count <= 0) return []
   const start = parseISO(fromDate)
   // Generous window: enough weeks for `count` sessions plus room for moved workouts
-  const windowDays = Math.ceil(count / daysOfWeek.length) * 7 + 14
+  const windowDays = Math.ceil((count + skippedDates.length) / daysOfWeek.length) * 7 + 14
+  const skipped = new Set(skippedDates)
   const overrideMap = new Map(overrides.map((o) => [o.from, o.to]))
   const dates: string[] = []
   for (let i = 0; i < windowDays; i++) {
@@ -96,7 +99,7 @@ export function trainingDates(
     if (!daysOfWeek.includes(d.getDay())) continue
     const key = format(d, 'yyyy-MM-dd')
     const date = overrideMap.get(key) ?? key
-    if (date >= fromDate) dates.push(date)
+    if (date >= fromDate && !skipped.has(date)) dates.push(date)
   }
   return dates.sort().slice(0, count)
 }
@@ -134,7 +137,7 @@ export function generateSchedule(
   }
 
   const total = plan.reduce((sum, p) => sum + p.count, 0)
-  const dates = trainingDates(config.days_of_week, fromDate, total, progress.overrides)
+  const dates = trainingDates(config.days_of_week, fromDate, total, progress.overrides, progress.skipped_dates)
   const result: ScheduledWorkout[] = []
   let cursor = 0
   for (const { stageIndex, count } of plan) {

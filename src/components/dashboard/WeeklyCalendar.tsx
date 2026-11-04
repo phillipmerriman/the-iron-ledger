@@ -5,7 +5,7 @@ import { formatWeekLabel } from '@/lib/week-label'
 import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 import useWeeklyPlan, { SESSIONS } from '@/hooks/useWeeklyPlan'
 import useExercises from '@/hooks/useExercises'
-import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Exercise, Program, ProgramActivation, SkippedDay, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { cn } from '@/lib/utils'
 import { getExerciseColorClasses, calcEntryVolume } from '@/types/common'
 import { useAuth } from '@/contexts/AuthContext'
@@ -28,9 +28,13 @@ interface WeeklyCalendarProps {
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
+  /** Skipped days by yyyy-MM-dd */
+  skippedDays?: Map<string, SkippedDay>
+  onSkipDay?: (date: string) => Promise<void>
+  onUnskipDay?: (date: string) => Promise<void>
 }
 
-export default function WeeklyCalendar({ hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, skippedDays, onSkipDay, onUnskipDay }: WeeklyCalendarProps) {
   const { profile } = useAuth()
   const { skinDef } = useTheme()
   const preferredUnit = profile?.preferred_weight_unit ?? 'lbs'
@@ -169,6 +173,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
   const dayPlanned = selectedDay ? getEntriesForDate(format(selectedDay, 'yyyy-MM-dd')) : []
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
+  const selectedSkip = selectedDay ? skippedDays?.get(format(selectedDay, 'yyyy-MM-dd')) : undefined
 
   // Compute weekly total volume across completed session slots from planned entries
   let weekTotal = 0
@@ -305,6 +310,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
           const today = isToday(day)
           const status = dayStatus(day)
           const planned = getEntriesForDate(dateKey)
+          const skipped = status !== 'completed' && !!skippedDays?.has(dateKey)
 
           return (
             <div
@@ -319,6 +325,7 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
                 today ? 'border-primary-300 bg-surface-100' : 'border-surface-300 bg-surface-50',
                 status === 'completed' && !today && 'border-primary-400 bg-surface-100',
                 list && today && 'ui-week-today',
+                skipped && 'border-dashed opacity-60',
               )}
             >
               {list ? (
@@ -410,7 +417,10 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
                 })()}
 
                 {planned.length === 0 && list && (
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-400">Rest</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-400">{skipped ? 'Skipped' : 'Rest'}</span>
+                )}
+                {planned.length > 0 && skipped && list && (
+                  <span className="ml-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-surface-400">Skipped</span>
                 )}
               </div>
 
@@ -428,8 +438,11 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
 
               {planned.length === 0 && !list && (
                 <div className="flex flex-1 items-center justify-center">
-                  <span className="text-[10px] text-surface-300">Rest</span>
+                  <span className="text-[10px] text-surface-300">{skipped ? 'Skipped' : 'Rest'}</span>
                 </div>
+              )}
+              {planned.length > 0 && skipped && !list && (
+                <span className="mt-auto pt-1 text-center text-[9px] font-medium text-surface-400">Skipped</span>
               )}
             </div>
           )
@@ -457,6 +470,9 @@ export default function WeeklyCalendar({ hideTitle, sessions, activations = [], 
         onToggleComplete={onUpdateSession ? handleToggleComplete : undefined}
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
         onRemoveEntry={removeEntry}
+        skipped={selectedSkip ? { pushedBack: selectedSkip.activation_ids.length > 0 } : null}
+        onSkipDay={onSkipDay ? (d) => onSkipDay(format(d, 'yyyy-MM-dd')) : undefined}
+        onUnskipDay={onUnskipDay ? (d) => onUnskipDay(format(d, 'yyyy-MM-dd')) : undefined}
         onUpdateEntry={updateEntry}
         programNameFor={programNameFor}
       />

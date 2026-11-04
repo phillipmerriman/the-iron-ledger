@@ -667,6 +667,23 @@ export async function assignEntryToProgram(userId: string, entryId: string, prog
   if (error) throw error
 }
 
+/** Give each entry a new date (e.g. when a program's schedule is pushed back) */
+export async function moveEntriesToDates(userId: string, moves: { id: string; date: string }[]) {
+  if (moves.length === 0) return
+  if (isDev) {
+    const target = new Map(moves.map((m) => [m.id, m.date]))
+    saveAll(loadAll().map((e) => (e.user_id === userId && target.has(e.id) ? { ...e, date: target.get(e.id)! } : e)))
+    return
+  }
+  // One update per target date
+  const idsByDate = new Map<string, string[]>()
+  for (const m of moves) idsByDate.set(m.date, [...(idsByDate.get(m.date) ?? []), m.id])
+  for (const [date, ids] of idsByDate) {
+    const { error } = await supabase.from('planned_entries').update({ date }).eq('user_id', userId).in('id', ids)
+    if (error) throw error
+  }
+}
+
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
 export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
   const hasActivations = activationIds && activationIds.length > 0

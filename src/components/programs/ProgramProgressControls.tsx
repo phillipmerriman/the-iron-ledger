@@ -8,6 +8,7 @@ import { stageLabel } from '@/lib/program-templates/wildman'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import { cn } from '@/lib/utils'
 
 type Progression = Pick<ReturnType<typeof useProgramProgression>, 'advance' | 'adjust' | 'finishCycle' | 'cancel'>
 
@@ -19,8 +20,9 @@ interface ProgramProgressControlsProps {
   /**
    * panel: compact controls on the Plan page.
    * complete: shown after a workout. In auto mode it opens on "Ready to progress?" when the stage is due.
+   * compact: just a "Progress now" button, for program cards elsewhere in the app.
    */
-  variant: 'panel' | 'complete'
+  variant: 'panel' | 'complete' | 'compact'
 }
 
 export default function ProgramProgressControls({ status, progression, variant }: ProgramProgressControlsProps) {
@@ -61,7 +63,8 @@ export default function ProgramProgressControls({ status, progression, variant }
   const label = (s: typeof stage) => stageLabel(s, config)
 
   return (
-    <div className="space-y-2">
+    // Compact: once a prompt opens it takes its own row below the card's other details
+    <div className={cn('space-y-2', variant === 'compact' && (step !== 'idle' || message || error) && 'basis-full')}>
       {step === 'idle' && variant === 'panel' && (
         <div className="flex flex-wrap items-center gap-1.5">
           {auto && (
@@ -88,6 +91,12 @@ export default function ProgramProgressControls({ status, progression, variant }
             <OctagonX className="h-3.5 w-3.5" /> Cancel program
           </Button>
         </div>
+      )}
+
+      {step === 'idle' && variant === 'compact' && (
+        <Button size="sm" variant="ghost" disabled={busy} onClick={startProgress} className="-ml-2.5">
+          <TrendingUp className="h-3.5 w-3.5" /> Progress now
+        </Button>
       )}
 
       {step === 'cancel' && (
@@ -193,7 +202,7 @@ export default function ProgramProgressControls({ status, progression, variant }
               onClick={() => run(() => progression.finishCycle(status, 'complete'), 'Program complete — nice work!')}>
               Complete program
             </Button>
-            {variant === 'panel' && (
+            {variant !== 'complete' && (
               <Button size="sm" variant="ghost" onClick={() => setStep('idle')}>Cancel</Button>
             )}
           </div>

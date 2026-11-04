@@ -9,6 +9,7 @@ import ProgramProgressControls from './ProgramProgressControls'
 import ProgramProgressBars from './ProgramProgressBars'
 import { programProgress, programStats } from '@/lib/program-templates/progress'
 import ProgramStatsTiles from './ProgramStatsTiles'
+import NextIncrement from './NextIncrement'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface ProgramProgressPanelProps {
@@ -114,6 +115,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                       <span className="md:hidden"> · {stageLabel(stage, config)}</span>
                       {!auto && ` · ${completedInStage} ${completedInStage === 1 ? 'session' : 'sessions'} at this stage`}
                     </p>
+                    <NextIncrement status={status} />
                     <ProgramStatsTiles
                       narrow
                       preferredUnit={preferredUnit}

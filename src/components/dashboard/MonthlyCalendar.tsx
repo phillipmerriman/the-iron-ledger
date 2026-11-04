@@ -20,7 +20,7 @@ import { supabase, isDev } from '@/lib/supabase'
 import useExercises from '@/hooks/useExercises'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { Exercise, Program, ProgramActivation, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
+import type { Exercise, Program, ProgramActivation, SkippedDay, WorkoutSession, UpdateDto, InsertDto } from '@/types/database'
 import { calcEntryVolume } from '@/types/common'
 import { cn } from '@/lib/utils'
 import DayDetailModal from './DayDetailModal'
@@ -42,9 +42,13 @@ interface MonthlyCalendarProps {
   onUpdateSession?: (id: string, values: UpdateDto<'workout_sessions'>) => Promise<unknown>
   onCreateSession?: (values: Omit<InsertDto<'workout_sessions'>, 'user_id'>) => Promise<unknown>
   onDeleteSession?: (id: string) => Promise<unknown>
+  /** Skipped days by yyyy-MM-dd */
+  skippedDays?: Map<string, SkippedDay>
+  onSkipDay?: (date: string) => Promise<void>
+  onUnskipDay?: (date: string) => Promise<void>
 }
 
-export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
+export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessions, activations = [], programs = [], exercises: exercisesProp, plannedEntries: entriesProp, onUpdateSession, onCreateSession, skippedDays, onSkipDay, onUnskipDay, onDeleteSession: _onDeleteSession }: MonthlyCalendarProps) {
   const { user, profile } = useAuth()
   const { skinDef } = useTheme()
   const cells = skinDef.monthLayout === 'cells'
@@ -226,6 +230,7 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
   const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
   const dayPlanned = selectedDay ? getPlannedForDay(selectedDay) : []
   const isFutureDay = selectedDay ? isFuture(selectedDay) : false
+  const selectedSkip = selectedDay ? skippedDays?.get(format(selectedDay, 'yyyy-MM-dd')) : undefined
 
   return (
     <div>
@@ -294,6 +299,7 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
           const completed = isCompleted(day)
           const planned = isPlanned(day)
           const isSelected = selectedDay && isSameDay(day, selectedDay)
+          const skipped = !completed && !!skippedDays?.has(format(day, 'yyyy-MM-dd'))
 
           if (cells) {
             const inProgress = worked && !completed && today
@@ -308,7 +314,8 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
                   'flex min-h-[48px] flex-col items-center justify-center gap-0.5 border transition-colors',
                   !inMonth && 'border-surface-100 text-surface-300',
                   inMonth && 'cursor-pointer border-surface-200 text-surface-700 hover:border-primary-300',
-                  inMonth && planned && !worked && 'border-info-500/50',
+                  inMonth && planned && !worked && !skipped && 'border-info-500/50',
+                  inMonth && skipped && 'border-dashed text-surface-400',
                   inMonth && partial && 'border-primary-300 bg-primary-100 text-primary-700',
                   inMonth && inProgress && 'bg-warning-500/15',
                   inMonth && today && !completed && 'border-warning-500 text-warning-500',
@@ -321,6 +328,8 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
                   <span className="flex h-2.5 items-center text-[9px] font-semibold uppercase leading-none tracking-[0.14em]">
                     {completed ? (
                       <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                    ) : skipped ? (
+                      <span className="text-surface-400">Skip</span>
                     ) : today ? (
                       'Today'
                     ) : planned || partial ? (
@@ -361,6 +370,8 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
               {/* Checkmark for completed, dot for planned, Rest for empty days */}
               {completed && inMonth ? (
                 <Check className="mt-0.5 h-2.5 w-2.5 text-primary-500" strokeWidth={3} />
+              ) : skipped && inMonth ? (
+                <span className="mt-0.5 text-[8px] font-medium text-surface-400">Skip</span>
               ) : (planned || (worked && !completed && !today)) && inMonth ? (
                 <div className="mt-0.5 h-1 w-1 rounded-full bg-primary-400" />
               ) : inMonth && !worked ? (
@@ -402,6 +413,9 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
         onToggleComplete={onUpdateSession ? handleToggleComplete : undefined}
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
         onRemoveEntry={handleRemoveEntry}
+        skipped={selectedSkip ? { pushedBack: selectedSkip.activation_ids.length > 0 } : null}
+        onSkipDay={onSkipDay ? (d) => onSkipDay(format(d, 'yyyy-MM-dd')) : undefined}
+        onUnskipDay={onUnskipDay ? (d) => onUnskipDay(format(d, 'yyyy-MM-dd')) : undefined}
         onUpdateEntry={handleUpdateEntry}
         programNameFor={programNameLookup(programs, activations)}
       />

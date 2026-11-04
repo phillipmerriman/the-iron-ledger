@@ -10,6 +10,10 @@ import ProgramProgressBars from '@/components/programs/ProgramProgressBars'
 import Badge from '@/components/ui/Badge'
 import { SESSION_LABELS } from '@/hooks/useWeeklyPlan'
 import { formatTrainingDays, parseWildmanConfig } from '@/lib/program-templates/wildman'
+import type useProgramProgression from '@/hooks/useProgramProgression'
+import type { TemplateProgramStatus } from '@/hooks/useProgramProgression'
+import NextIncrement from '@/components/programs/NextIncrement'
+import ProgramProgressControls from '@/components/programs/ProgramProgressControls'
 
 interface ActiveProgramCardProps {
   program: Program
@@ -17,9 +21,12 @@ interface ActiveProgramCardProps {
   sessions: WorkoutSession[]
   /** This activation's planned entries */
   entries: PlannedEntry[]
+  /** Template program progression, for the next-increment date and "Progress now" */
+  status?: TemplateProgramStatus | null
+  progression?: ReturnType<typeof useProgramProgression>
 }
 
-export default function ActiveProgramCard({ program, activation, sessions, entries }: ActiveProgramCardProps) {
+export default function ActiveProgramCard({ program, activation, sessions, entries, status, progression }: ActiveProgramCardProps) {
   const start = parseISO(activation.start_date)
   // Template programs have a fixed weekly schedule; they're managed from the Plan page, not the designer
   const templateConfig = program.template_type === 'wildman_reverse_ladder' ? parseWildmanConfig(program.template_config) : null
@@ -38,9 +45,10 @@ export default function ActiveProgramCard({ program, activation, sessions, entri
   const weeks = templateConfig ? Math.max(1, Math.ceil((differenceInCalendarDays(end, start) + 1) / 7)) : program.weeks
 
   return (
+    <div className="rounded-xl border border-surface-200 bg-card shadow-sm transition-colors hover:border-primary-300">
     <Link
       to={templateConfig ? '/plan' : `/programs/${program.id}`}
-      className="block rounded-xl border border-surface-200 bg-card p-4 shadow-sm transition-colors hover:border-primary-300"
+      className="block p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
@@ -68,5 +76,13 @@ export default function ActiveProgramCard({ program, activation, sessions, entri
       <ProgramProgressBars progress={progress} className="mt-3 sm:pl-11" />
       <ProgramStatsTiles stats={stats} preferredUnit={preferredUnit} className="mt-3 sm:pl-11" />
     </Link>
+    {/* Outside the link so the button doesn't navigate */}
+    {status && progression?.ready && (
+      <div className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-3 sm:pl-15">
+        <NextIncrement status={status} />
+        <ProgramProgressControls status={status} progression={progression} variant="compact" />
+      </div>
+    )}
+    </div>
   )
 }

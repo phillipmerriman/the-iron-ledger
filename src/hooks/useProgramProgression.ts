@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import type usePrograms from '@/hooks/usePrograms'
-import { assignEntryToProgram, loadProgramEntries, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import { assignEntryToProgram, loadProgramEntries, moveEntriesToDates, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Json, Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
@@ -16,7 +16,7 @@ import {
   parseWildmanProgress,
   sessionsForStage,
 } from '@/lib/program-templates/wildman'
-import { completedSlotKeys, isEntryDone } from '@/lib/program-templates/progress'
+import { completedSlotKeys, isEntryDone, pullForwardMoves, pushBackMoves } from '@/lib/program-templates/progress'
 
 export { completedSlotKeys }
 
@@ -36,11 +36,24 @@ export interface TemplateProgramStatus {
   requiredInStage: number
   /** Auto mode: the stage's sessions are all done and the user should be asked to progress */
   isDue: boolean
+  /**
+   * Auto mode: when the next step up happens — the first workout at the next stage, or for the
+   * final stage the last workout of the cycle. Null in manual mode or when nothing is scheduled.
+   */
+  nextIncrement: { date: string; kind: 'stage' | 'cycle_end' } | null
 }
 
 export type AdvanceResult = 'advanced' | 'cycle_end'
 
 const todayKey = () => format(new Date(), 'yyyy-MM-dd')
+
+/** First date the schedule may be rewritten from: today, unless today's workout is already done */
+function scheduleFromDate(activation: ProgramActivation, entries: PlannedEntry[], doneKeys: Set<string>) {
+  const today = todayKey()
+  const todayDone = entries.some((e) => e.date === today && isEntryDone(e, doneKeys))
+  const from = todayDone ? format(addDays(parseISO(today), 1), 'yyyy-MM-dd') : today
+  return from < activation.start_date ? activation.start_date : from
+}
 
 /** Activation id → date of last daily resync, shared by every hook instance so pages don't race */
 const resyncedOn = new Map<string, string>()
@@ -95,6 +108,16 @@ export default function useProgramProgression(
         (e) => e.date >= progress.stage_started_on && isEntryDone(e, doneKeys),
       ).length
       const requiredInStage = sessionsForStage(stage, progress.extra_sessions, config)
+      const isFinalStage = progress.stage_index >= stages.length - 1
+      let nextIncrement: TemplateProgramStatus['nextIncrement'] = null
+      if (config.increment_mode === 'auto' && completedInStage < requiredInStage) {
+        // Same layout regenerate() writes, so the date matches the plan
+        const schedule = generateSchedule(config, progress, scheduleFromDate(activation, entries, doneKeys), completedInStage)
+        const date = isFinalStage
+          ? schedule.filter((w) => w.stageIndex === progress.stage_index).at(-1)?.date
+          : schedule.find((w) => w.stageIndex > progress.stage_index)?.date
+        if (date) nextIncrement = { date, kind: isFinalStage ? 'cycle_end' : 'stage' }
+      }
       list.push({
         activation,
         program,
@@ -103,21 +126,18 @@ export default function useProgramProgression(
         stages,
         stage,
         nextStage: stages[progress.stage_index + 1] ?? null,
-        isFinalStage: progress.stage_index >= stages.length - 1,
+        isFinalStage,
         completedInStage,
         requiredInStage,
         isDue: config.increment_mode === 'auto' && completedInStage >= requiredInStage,
+        nextIncrement,
       })
     }
     return list
   }, [templateActivations, programs, entriesByActivation, doneKeys])
 
-  /** First date the schedule may be rewritten from: today, unless today's workout is already done */
   function regenFromDate(status: TemplateProgramStatus, entries = entriesByActivation[status.activation.id] ?? []) {
-    const today = todayKey()
-    const todayDone = entries.some((e) => e.date === today && isEntryDone(e, doneKeys))
-    const from = todayDone ? format(addDays(parseISO(today), 1), 'yyyy-MM-dd') : today
-    return from < status.activation.start_date ? status.activation.start_date : from
+    return scheduleFromDate(status.activation, entries, doneKeys)
   }
 
   async function regenerate(
@@ -225,6 +245,46 @@ export default function useProgramProgression(
     await regenerate(status, status.progress, config)
   }
 
+  /**
+   * Skip a day. Template programs leave it out of their schedule; other programs push every
+   * upcoming workout back one workout day. Returns the activations whose schedule changed.
+   */
+  async function skipDay(date: string): Promise<string[]> {
+    if (!user) return []
+    const changed: string[] = []
+    for (const activation of activations) {
+      const status = statusForActivation(activation.id)
+      const entries = status ? (entriesByActivation[activation.id] ?? []) : await loadProgramEntries(user.id, activation.id)
+      if (!entries.some((e) => e.date === date && !isEntryDone(e, doneKeys))) continue
+      if (status) {
+        const skipped = [...new Set([...(status.progress.skipped_dates ?? []), date])]
+        await regenerate(status, { ...status.progress, skipped_dates: skipped })
+      } else {
+        await moveEntriesToDates(user.id, pushBackMoves(entries, date, doneKeys))
+      }
+      changed.push(activation.id)
+    }
+    if (changed.length > 0) onScheduleChanged?.()
+    return changed
+  }
+
+  /** Undo skipDay for the activations it changed */
+  async function unskipDay(date: string, activationIds: string[]) {
+    if (!user) return
+    for (const id of activationIds) {
+      if (!activations.some((a) => a.id === id)) continue
+      const status = statusForActivation(id)
+      if (status) {
+        const skipped = (status.progress.skipped_dates ?? []).filter((d) => d !== date)
+        await regenerate(status, { ...status.progress, skipped_dates: skipped })
+      } else {
+        const entries = await loadProgramEntries(user.id, id)
+        await moveEntriesToDates(user.id, pullForwardMoves(entries, date, doneKeys))
+      }
+    }
+    if (activationIds.length > 0) onScheduleChanged?.()
+  }
+
   // Missed days: once a day, rebuild the schedule so unfinished sessions move to the next training days
   const syncingRef = useRef(false)
   useEffect(() => {
@@ -266,6 +326,8 @@ export default function useProgramProgression(
     moveWeekday,
     creditEntry,
     cancel,
+    skipDay,
+    unskipDay,
     refresh: loadEntries,
   }
 }
