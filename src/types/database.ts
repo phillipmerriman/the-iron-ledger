@@ -804,6 +804,8 @@ export interface Database {
           date: string
           /** Active programs whose schedule this skip pushed back */
           activation_ids: string[]
+          /** Optional note on why the day was skipped */
+          reason: string | null
           created_at: string
         }
         Insert: {
@@ -811,10 +813,12 @@ export interface Database {
           user_id: string
           date: string
           activation_ids?: string[]
+          reason?: string | null
           created_at?: string
         }
         Update: {
           activation_ids?: string[]
+          reason?: string | null
         }
         Relationships: []
       }

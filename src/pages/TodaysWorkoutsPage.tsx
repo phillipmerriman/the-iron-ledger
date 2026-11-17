@@ -18,6 +18,7 @@ import TemplateProgressPrompts from '@/components/programs/TemplateProgressPromp
 import ProgramMark from '@/components/programs/ProgramMark'
 import { programNameLookup } from '@/lib/program-names'
 import Button from '@/components/ui/Button'
+import SkipDayForm from '@/components/dashboard/SkipDayForm'
 import Spinner from '@/components/ui/Spinner'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +42,7 @@ export default function TodaysWorkoutsPage() {
     setDayOffset(offset)
     setLocalCompleted(new Set())
     setSkipError(null)
+    setAskingSkipReason(false)
   }
 
   const viewDate = useMemo(() => addDays(new Date(), dayOffset), [dayOffset])
@@ -61,12 +63,14 @@ export default function TodaysWorkoutsPage() {
   const skipped = skippedDays.byDate.get(dateKey) ?? null
   const [skipBusy, setSkipBusy] = useState(false)
   const [skipError, setSkipError] = useState<string | null>(null)
+  const [askingSkipReason, setAskingSkipReason] = useState(false)
 
   async function runSkip(action: (date: string) => Promise<void>, failure: string) {
     setSkipBusy(true)
     setSkipError(null)
     try {
       await action(dateKey)
+      setAskingSkipReason(false)
     } catch (err) {
       console.error('Failed to update skipped day', err)
       setSkipError(failure)
@@ -213,6 +217,9 @@ export default function TodaysWorkoutsPage() {
           <SkipForward className="h-5 w-5 shrink-0 text-surface-500" />
           <div className="min-w-0 flex-1">
             <p className="font-medium text-surface-800">Day skipped</p>
+            {skipped.reason && (
+              <p className="mt-0.5 break-words text-surface-600">“{skipped.reason}”</p>
+            )}
             {skipped.activation_ids.length > 0 && (
               <p className="mt-0.5 text-sm text-surface-500">Program workouts were pushed back to later days.</p>
             )}
@@ -394,15 +401,19 @@ export default function TodaysWorkoutsPage() {
             </Button>
             {/* Skip — pushes program workouts back */}
             {!skipped && completedSessions.size === 0 && (
-              <Button
-                variant="secondary"
-                disabled={skipBusy}
-                onClick={() => runSkip(skippedDays.skip, 'Could not skip this day. Check your connection and try again.')}
-                className="w-full"
-              >
-                <SkipForward className="mr-1.5 h-4 w-4" />
-                {skipBusy ? 'Skipping…' : 'Skip Day'}
-              </Button>
+              askingSkipReason ? (
+                <SkipDayForm
+                  size="md"
+                  busy={skipBusy}
+                  onConfirm={(reason) => runSkip((d) => skippedDays.skip(d, reason), 'Could not skip this day. Check your connection and try again.')}
+                  onCancel={() => setAskingSkipReason(false)}
+                />
+              ) : (
+                <Button variant="secondary" onClick={() => setAskingSkipReason(true)} className="w-full">
+                  <SkipForward className="mr-1.5 h-4 w-4" />
+                  Skip Day
+                </Button>
+              )
             )}
           </div>
         )

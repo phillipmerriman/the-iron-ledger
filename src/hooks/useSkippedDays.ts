@@ -33,7 +33,7 @@ export default function useSkippedDays(progression: ProgramScheduler) {
 
   const byDate = useMemo(() => new Map(skippedDays.map((d) => [d.date, d])), [skippedDays])
 
-  async function add(date: string, activationIds: string[]) {
+  async function add(date: string, activationIds: string[], reason: string | null) {
     if (!user) return
     if (isDev) {
       const row: SkippedDay = {
@@ -41,6 +41,7 @@ export default function useSkippedDays(progression: ProgramScheduler) {
         user_id: user.id,
         date,
         activation_ids: activationIds,
+        reason,
         created_at: new Date().toISOString(),
       }
       localDb.setAll('skipped_days', [...localDb.getAll('skipped_days').filter((d) => !(d.user_id === user.id && d.date === date)), row])
@@ -49,7 +50,7 @@ export default function useSkippedDays(progression: ProgramScheduler) {
     }
     const { data, error } = await supabase
       .from('skipped_days')
-      .upsert({ user_id: user.id, date, activation_ids: activationIds }, { onConflict: 'user_id,date' })
+      .upsert({ user_id: user.id, date, activation_ids: activationIds, reason }, { onConflict: 'user_id,date' })
       .select()
       .single()
     if (error) throw error
@@ -67,13 +68,13 @@ export default function useSkippedDays(progression: ProgramScheduler) {
     setSkippedDays((prev) => prev.filter((d) => d.date !== date))
   }
 
-  /** Mark the day skipped and push back the programs that had a workout on it */
-  async function skip(date: string) {
+  /** Mark the day skipped (with an optional reason) and push back the programs that had a workout on it */
+  async function skip(date: string, reason: string | null = null) {
     // Save the skip first, so a failure here leaves the schedule untouched
-    await add(date, [])
+    await add(date, [], reason)
     try {
       const activationIds = await progression.skipDay(date)
-      if (activationIds.length > 0) await add(date, activationIds)
+      if (activationIds.length > 0) await add(date, activationIds, reason)
     } catch (err) {
       await remove(date).catch((e) => console.error('Failed to roll back skipped day', e))
       throw err
