@@ -44,7 +44,7 @@ interface MonthlyCalendarProps {
   onDeleteSession?: (id: string) => Promise<unknown>
   /** Skipped days by yyyy-MM-dd */
   skippedDays?: Map<string, SkippedDay>
-  onSkipDay?: (date: string) => Promise<void>
+  onSkipDay?: (date: string, reason: string | null) => Promise<void>
   onUnskipDay?: (date: string) => Promise<void>
 }
 
@@ -413,8 +413,8 @@ export default function MonthlyCalendar({ month, onMonthChange, hideTitle, sessi
         onToggleComplete={onUpdateSession ? handleToggleComplete : undefined}
         onMarkDayComplete={(onCreateSession || onUpdateSession) ? handleMarkDayComplete : undefined}
         onRemoveEntry={handleRemoveEntry}
-        skipped={selectedSkip ? { pushedBack: selectedSkip.activation_ids.length > 0 } : null}
-        onSkipDay={onSkipDay ? (d) => onSkipDay(format(d, 'yyyy-MM-dd')) : undefined}
+        skipped={selectedSkip ? { pushedBack: selectedSkip.activation_ids.length > 0, reason: selectedSkip.reason ?? null } : null}
+        onSkipDay={onSkipDay ? (d, reason) => onSkipDay(format(d, 'yyyy-MM-dd'), reason) : undefined}
         onUnskipDay={onUnskipDay ? (d) => onUnskipDay(format(d, 'yyyy-MM-dd')) : undefined}
         onUpdateEntry={handleUpdateEntry}
         programNameFor={programNameLookup(programs, activations)}

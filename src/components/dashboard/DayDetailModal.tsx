@@ -11,6 +11,7 @@ import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import { useState } from 'react'
 import ProgramMark from '@/components/programs/ProgramMark'
+import SkipDayForm from '@/components/dashboard/SkipDayForm'
 import type { ProgramNameFor } from '@/lib/program-names'
 
 interface DayDetailModalProps {
@@ -30,8 +31,8 @@ interface DayDetailModalProps {
   /** Marks workouts that belong to a program */
   programNameFor?: ProgramNameFor
   /** The day was marked skipped; `pushedBack` = it moved program workouts later */
-  skipped?: { pushedBack: boolean } | null
-  onSkipDay?: (day: Date) => Promise<void>
+  skipped?: { pushedBack: boolean; reason: string | null } | null
+  onSkipDay?: (day: Date, reason: string | null) => Promise<void>
   onUnskipDay?: (day: Date) => Promise<void>
 }
 
@@ -59,6 +60,7 @@ export default function DayDetailModal({
   const [saving, setSaving] = useState(false)
   const [skipBusy, setSkipBusy] = useState(false)
   const [skipError, setSkipError] = useState<string | null>(null)
+  const [askingSkipReason, setAskingSkipReason] = useState(false)
 
   function getExercise(exerciseId: string) {
     return exercises.find((e) => e.id === exerciseId)
@@ -106,6 +108,7 @@ export default function DayDetailModal({
     setSkipError(null)
     try {
       await action(selectedDay)
+      setAskingSkipReason(false)
     } catch (err) {
       console.error('Failed to update skipped day', err)
       setSkipError(failure)
@@ -116,6 +119,7 @@ export default function DayDetailModal({
 
   function handleClose() {
     setSkipError(null)
+    setAskingSkipReason(false)
     onClose()
   }
 
@@ -137,6 +141,9 @@ export default function DayDetailModal({
           <SkipForward className="h-4 w-4 shrink-0 text-surface-500" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-surface-800">Day skipped</p>
+            {skipped.reason && (
+              <p className="mt-0.5 break-words text-sm text-surface-600">“{skipped.reason}”</p>
+            )}
             {skipped.pushedBack && (
               <p className="mt-0.5 text-xs text-surface-500">Program workouts were pushed back to later days.</p>
             )}
@@ -387,15 +394,17 @@ export default function DayDetailModal({
 
           {/* Skip Day button — pushes program workouts back */}
           {onSkipDay && selectedDay && !skipped && !hasCompleted && dayPlanned.length > 0 && (
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={skipBusy}
-              onClick={() => runSkip(onSkipDay, 'Could not skip this day. Check your connection and try again.')}
-              className="w-full"
-            >
-              <SkipForward className="h-3.5 w-3.5" /> {skipBusy ? 'Skipping…' : 'Skip Day'}
-            </Button>
+            askingSkipReason ? (
+              <SkipDayForm
+                busy={skipBusy}
+                onConfirm={(reason) => runSkip((d) => onSkipDay(d, reason), 'Could not skip this day. Check your connection and try again.')}
+                onCancel={() => setAskingSkipReason(false)}
+              />
+            ) : (
+              <Button size="sm" variant="secondary" onClick={() => setAskingSkipReason(true)} className="w-full">
+                <SkipForward className="h-3.5 w-3.5" /> Skip Day
+              </Button>
+            )
           )}
         </div>
       )}
