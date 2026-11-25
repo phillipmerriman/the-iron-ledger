@@ -121,7 +121,7 @@ export default function ProgramProgressPanel({ progression, exercises }: Program
                       preferredUnit={preferredUnit}
                       stats={programStats(status.program, status.activation, progression.entriesFor(status.activation.id), progression.doneKeys, preferredUnit, bodyWeight)}
                     />
-                    <ProgramProgressControls status={status} progression={progression} variant="panel" />
+                    <ProgramProgressControls status={status} progression={progression} variant="panel" exerciseName={exerciseName} />
                   </div>
                 )}
               </div>

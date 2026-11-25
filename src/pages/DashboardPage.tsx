@@ -154,9 +154,13 @@ export default function DashboardPage() {
                     program={prog}
                     activation={act}
                     sessions={sessions}
-                    entries={plannedEntries.filter((e) => e.program_id === act.id)}
+                    entries={plannedEntries.filter((e) => e.program_id === act.id && !skipped.byDate.get(e.date)?.activation_ids.includes(act.id))}
                     status={progression.statusForActivation(act.id)}
                     progression={progression}
+                    exerciseName={(() => {
+                      const id = progression.statusForActivation(act.id)?.config.exercise_id
+                      return chartStats.exercises.find((e) => e.id === id)?.name
+                    })()}
                   />
                 ) : null
               })}

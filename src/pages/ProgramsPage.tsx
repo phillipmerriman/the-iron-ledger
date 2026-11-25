@@ -14,6 +14,7 @@ import StartDatePicker from '@/components/programs/StartDatePicker'
 import ProgramWizard from '@/components/programs/ProgramWizard'
 import Input from '@/components/ui/Input'
 import useWorkouts from '@/hooks/useWorkouts'
+import useExercises from '@/hooks/useExercises'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import { stageLabel } from '@/lib/program-templates/wildman'
 import { isEntryDone } from '@/lib/program-templates/progress'
@@ -24,6 +25,7 @@ export default function ProgramsPage() {
   const programsApi = usePrograms()
   const { programs, activations, loading, create, update, remove, activate, deactivate } = programsApi
   const { sessions: workoutSessions, loading: workoutsLoading } = useWorkouts()
+  const { exercises } = useExercises()
   const progression = useProgramProgression(programsApi, workoutSessions, workoutsLoading)
   const { statusForActivation, doneKeys } = progression
   const navigate = useNavigate()
@@ -116,7 +118,8 @@ export default function ProgramsPage() {
                   {status && progression.ready && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                       <NextIncrement status={status} />
-                      <ProgramProgressControls status={status} progression={progression} variant="compact" />
+                      <ProgramProgressControls status={status} progression={progression} variant="compact"
+                        exerciseName={exercises.find((e) => e.id === status.config.exercise_id)?.name} />
                     </div>
                   )}
                 </div>

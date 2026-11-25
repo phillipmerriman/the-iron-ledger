@@ -1,5 +1,6 @@
 import usePrograms from '@/hooks/usePrograms'
 import useWorkouts from '@/hooks/useWorkouts'
+import useExercises from '@/hooks/useExercises'
 import useProgramProgression from '@/hooks/useProgramProgression'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import { stageLabel } from '@/lib/program-templates/wildman'
@@ -18,6 +19,7 @@ interface TemplateProgressPromptsProps {
 export default function TemplateProgressPrompts({ entries, onScheduleChanged }: TemplateProgressPromptsProps) {
   const programsApi = usePrograms()
   const { sessions, loading } = useWorkouts()
+  const { exercises } = useExercises()
   const progression = useProgramProgression(programsApi, sessions, loading, onScheduleChanged)
 
   if (!progression.ready) return null
@@ -36,7 +38,8 @@ export default function TemplateProgressPrompts({ entries, onScheduleChanged }: 
               {status.config.increment_mode === 'auto' &&
                 ` · ${Math.min(status.completedInStage, status.requiredInStage)}/${status.requiredInStage} sessions`}
             </p>
-            <ProgramProgressControls status={status} progression={progression} variant="complete" />
+            <ProgramProgressControls status={status} progression={progression} variant="complete"
+              exerciseName={exercises.find((e) => e.id === status.config.exercise_id)?.name} />
           </div>
         )
       })}
