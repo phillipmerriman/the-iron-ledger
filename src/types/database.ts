@@ -806,6 +806,8 @@ export interface Database {
           activation_ids: string[]
           /** Optional note on why the day was skipped */
           reason: string | null
+          /** What the skip changed in the plan (moved, added and removed entries), so undo can reverse exactly that */
+          changes: Json | null
           created_at: string
         }
         Insert: {
@@ -814,11 +816,13 @@ export interface Database {
           date: string
           activation_ids?: string[]
           reason?: string | null
+          changes?: Json | null
           created_at?: string
         }
         Update: {
           activation_ids?: string[]
           reason?: string | null
+          changes?: Json | null
         }
         Relationships: []
       }

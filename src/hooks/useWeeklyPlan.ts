@@ -684,6 +684,31 @@ export async function moveEntriesToDates(userId: string, moves: { id: string; da
   }
 }
 
+/** Delete entries by id */
+export async function deleteEntries(userId: string, ids: string[]) {
+  if (ids.length === 0) return
+  if (isDev) {
+    const remove = new Set(ids)
+    saveAll(loadAll().filter((e) => !(e.user_id === userId && remove.has(e.id))))
+    return
+  }
+  const { error } = await supabase.from('planned_entries').delete().eq('user_id', userId).in('id', ids)
+  if (error) throw error
+}
+
+/** Add copies of entries to a program, each on its own `date` */
+export async function insertProgramEntries(userId: string, programId: string, entries: PlannedEntry[]) {
+  const generated: GeneratedEntry[] = entries.map((e) => {
+    const values: Partial<PlannedEntry> = { ...e }
+    delete values.id
+    delete values.user_id
+    delete values.program_id
+    delete values.sort_order
+    return values as GeneratedEntry
+  })
+  return insertGenerated(userId, programId, generated)
+}
+
 /** Load all entries for a user — includes program entries and unscoped (program_id: null) entries */
 export async function loadUserEntries(userId: string, activationIds?: string[]): Promise<PlannedEntry[]> {
   const hasActivations = activationIds && activationIds.length > 0
@@ -768,34 +793,50 @@ export type GeneratedEntry = Omit<PlannedEntry, 'id' | 'user_id' | 'program_id' 
 
 /**
  * Replace a program's entries dated on/after `fromDate` with freshly generated ones.
- * Used by template programs whenever their schedule changes.
+ * Used by template programs whenever their schedule changes. Entries on `keepDates`
+ * (skipped days, which stay on the calendar as skipped) are left alone.
  */
 export async function replaceProgramEntriesFrom(
   userId: string,
   programId: string,
   fromDate: string,
   generated: GeneratedEntry[],
+  keepDates: string[] = [],
 ) {
+  const keep = new Set(keepDates)
+  if (isDev) {
+    const kept = loadAll().filter((e) =>
+      !(e.user_id === userId && e.program_id === programId && e.date >= fromDate && !keep.has(e.date)))
+    saveAll(kept)
+  } else {
+    let del = supabase
+      .from('planned_entries')
+      .delete()
+      .eq('user_id', userId)
+      .eq('program_id', programId)
+      .gte('date', fromDate)
+    if (keep.size > 0) del = del.not('date', 'in', `(${[...keep].join(',')})`)
+    const { error: delErr } = await del
+    if (delErr) throw delErr
+  }
+  await insertGenerated(userId, programId, generated)
+}
+
+/** Insert generated entries into a program; returns the new entry ids */
+async function insertGenerated(userId: string, programId: string, generated: GeneratedEntry[]): Promise<string[]> {
+  if (generated.length === 0) return []
   if (isDev) {
     const all = loadAll()
-    const kept = all.filter((e) => !(e.user_id === userId && e.program_id === programId && e.date >= fromDate))
+    const ids: string[] = []
     for (const g of generated) {
-      const sortOrder = kept.filter((e) => e.user_id === userId && e.date === g.date && e.session === g.session).length
-      kept.push({ ...g, id: crypto.randomUUID(), user_id: userId, program_id: programId, sort_order: sortOrder })
+      const sortOrder = all.filter((e) => e.user_id === userId && e.date === g.date && e.session === g.session).length
+      const id = crypto.randomUUID()
+      ids.push(id)
+      all.push({ ...g, id, user_id: userId, program_id: programId, sort_order: sortOrder })
     }
-    saveAll(kept)
-    return
+    saveAll(all)
+    return ids
   }
-
-  const { error: delErr } = await supabase
-    .from('planned_entries')
-    .delete()
-    .eq('user_id', userId)
-    .eq('program_id', programId)
-    .gte('date', fromDate)
-  if (delErr) throw delErr
-
-  if (generated.length === 0) return
   const { data: existing } = await supabase
     .from('planned_entries')
     .select('date, session')
@@ -812,6 +853,7 @@ export async function replaceProgramEntriesFrom(
     program_id: programId,
     sort_order: counts.get(`${g.date}|${g.session}`) ?? 0,
   }))
-  const { error } = await supabase.from('planned_entries').insert(rows)
+  const { data, error } = await supabase.from('planned_entries').insert(rows).select('id')
   if (error) throw error
+  return (data ?? []).map((r) => r.id as string)
 }

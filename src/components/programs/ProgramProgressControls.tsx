@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Minus, OctagonX, Plus, TrendingUp } from 'lucide-react'
+import { Hourglass, Minus, OctagonX, Plus, TrendingUp } from 'lucide-react'
 import type { TemplateProgramStatus } from '@/hooks/useProgramProgression'
 import type useProgramProgression from '@/hooks/useProgramProgression'
 import type { WeightUnit } from '@/types/common'
@@ -23,15 +23,22 @@ interface ProgramProgressControlsProps {
    * compact: just a "Progress now" button, for program cards elsewhere in the app.
    */
   variant: 'panel' | 'complete' | 'compact'
+  /** The program's exercise, for "Ready to increment …?" (falls back to the program name) */
+  exerciseName?: string
 }
 
-export default function ProgramProgressControls({ status, progression, variant }: ProgramProgressControlsProps) {
+export default function ProgramProgressControls({ status, progression, variant, exerciseName }: ProgramProgressControlsProps) {
   const { config, progress, stage, nextStage, isFinalStage, isDue } = status
   const auto = config.increment_mode === 'auto'
-  const initialStep: Step = variant === 'complete' && auto && isDue ? (isFinalStage ? 'cycle_end' : 'confirm') : 'idle'
+  const name = exerciseName ?? status.program.name
 
-  const [step, setStep] = useState<Step>(initialStep)
-  const [moreSessions, setMoreSessions] = useState(2)
+  const [step, setStep] = useState<Step>('idle')
+  // Auto mode: once the stage is due, ask "Ready to increment?" until it's answered
+  const [dueAnswered, setDueAnswered] = useState(false)
+  const current: Step = step === 'idle' && auto && isDue && !dueAnswered ? (isFinalStage ? 'cycle_end' : 'confirm') : step
+  const [moreSessions, setMoreSessions] = useState('2')
+  const sessionsToAdd = Number(moreSessions)
+  const validSessions = Number.isInteger(sessionsToAdd) && sessionsToAdd >= 1 && sessionsToAdd <= 50
   const [newWeight, setNewWeight] = useState(progress.weight != null ? String(progress.weight) : '')
   const [newUnit, setNewUnit] = useState<WeightUnit>(progress.weight_unit)
   const [busy, setBusy] = useState(false)
@@ -43,6 +50,7 @@ export default function ProgramProgressControls({ status, progression, variant }
     setError(null)
     try {
       await action()
+      setDueAnswered(true)
       if (doneMessage) {
         setMessage(doneMessage)
         setStep(variant === 'complete' ? 'done' : 'idle')
@@ -60,12 +68,31 @@ export default function ProgramProgressControls({ status, progression, variant }
     setStep(isFinalStage ? 'cycle_end' : 'confirm')
   }
 
+  /** "No" / Delay: ask how many more sessions to do at this stage */
+  function startDelay() {
+    setMessage(null)
+    setDueAnswered(true)
+    setStep('how_many')
+  }
+
+  function closePrompt() {
+    setDueAnswered(true)
+    setStep('idle')
+  }
+
+  const delayButton = (
+    <Button size="sm" variant={variant === 'compact' ? 'ghost' : 'secondary'} disabled={busy} onClick={startDelay}
+      title="Stay at this stage for more sessions and push the next increment back">
+      <Hourglass className="h-3.5 w-3.5" /> Delay
+    </Button>
+  )
+
   const label = (s: typeof stage) => stageLabel(s, config)
 
   return (
     // Compact: once a prompt opens it takes its own row below the card's other details
-    <div className={cn('space-y-2', variant === 'compact' && (step !== 'idle' || message || error) && 'basis-full')}>
-      {step === 'idle' && variant === 'panel' && (
+    <div className={cn('space-y-2', variant === 'compact' && (current !== 'idle' || message || error) && 'basis-full')}>
+      {current === 'idle' && variant === 'panel' && (
         <div className="flex flex-wrap items-center gap-1.5">
           {auto && (
             <>
@@ -86,6 +113,7 @@ export default function ProgramProgressControls({ status, progression, variant }
           <Button size="sm" disabled={busy} onClick={startProgress}>
             <TrendingUp className="h-3.5 w-3.5" /> {auto ? 'Progress now' : 'Progress to next stage'}
           </Button>
+          {auto && delayButton}
           <Button size="sm" variant="ghost" disabled={busy} title="Stop this program and remove its upcoming workouts"
             onClick={() => { setMessage(null); setStep('cancel') }}>
             <OctagonX className="h-3.5 w-3.5" /> Cancel program
@@ -93,13 +121,16 @@ export default function ProgramProgressControls({ status, progression, variant }
         </div>
       )}
 
-      {step === 'idle' && variant === 'compact' && (
-        <Button size="sm" variant="ghost" disabled={busy} onClick={startProgress} className="-ml-2.5">
-          <TrendingUp className="h-3.5 w-3.5" /> Progress now
-        </Button>
+      {current === 'idle' && variant === 'compact' && (
+        <div className="-ml-2.5 flex flex-wrap items-center">
+          <Button size="sm" variant="ghost" disabled={busy} onClick={startProgress}>
+            <TrendingUp className="h-3.5 w-3.5" /> Progress now
+          </Button>
+          {auto && delayButton}
+        </div>
       )}
 
-      {step === 'cancel' && (
+      {current === 'cancel' && (
         <div className="rounded-lg border border-danger-500/40 bg-danger-500/10 p-3">
           <p className="text-sm font-semibold text-surface-800">Cancel {status.program.name}?</p>
           <p className="mt-0.5 text-xs text-surface-600">
@@ -117,52 +148,71 @@ export default function ProgramProgressControls({ status, progression, variant }
         </div>
       )}
 
-      {step === 'idle' && variant === 'complete' && !auto && (
+      {current === 'idle' && variant === 'complete' && !auto && (
         <Button size="sm" variant="secondary" className="w-full" onClick={startProgress}>
           <TrendingUp className="h-3.5 w-3.5" /> Progress to next stage
         </Button>
       )}
 
-      {step === 'confirm' && nextStage && (
+      {current === 'confirm' && nextStage && (
         <div className="rounded-lg border border-primary-200 bg-primary-50 p-3">
-          <p className="text-sm font-semibold text-primary-800">Ready to progress?</p>
+          <p className="text-sm font-semibold text-primary-800">Ready to increment {name}?</p>
           <p className="mt-0.5 text-xs text-primary-700">
             {label(stage)} → <span className="font-semibold">{label(nextStage)}</span>
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button size="sm" disabled={busy}
               onClick={() => run(async () => { await progression.advance(status) }, `Moved up to ${label(nextStage)}.`)}>
-              Yes, progress
+              Yes
             </Button>
-            <Button size="sm" variant="secondary" disabled={busy}
-              onClick={() => (variant === 'complete' && auto ? setStep('how_many') : setStep('idle'))}>
-              Not yet
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 'how_many' && (
-        <div className="rounded-lg border border-surface-200 bg-surface-50 p-3">
-          <p className="text-sm font-semibold text-surface-800">How many more sessions at this stage?</p>
-          <div className="mt-2 flex items-center gap-2">
-            <Button size="sm" variant="secondary" disabled={moreSessions <= 1} onClick={() => setMoreSessions((n) => n - 1)} aria-label="Fewer sessions">
-              <Minus className="h-3.5 w-3.5" />
-            </Button>
-            <span className="w-8 text-center font-display text-lg font-bold text-surface-800">{moreSessions}</span>
-            <Button size="sm" variant="secondary" onClick={() => setMoreSessions((n) => n + 1)} aria-label="More sessions">
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <Button size="sm" disabled={busy} className="ml-auto"
-              onClick={() => run(() => progression.adjust(status, moreSessions),
-                `Staying at ${label(stage)} for ${moreSessions} more ${moreSessions === 1 ? 'session' : 'sessions'}.`)}>
-              Confirm
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => (auto ? startDelay() : closePrompt())}>
+              No
             </Button>
           </div>
         </div>
       )}
 
-      {step === 'cycle_end' && (
+      {current === 'how_many' && (
+        <form
+          className="rounded-lg border border-surface-200 bg-surface-50 p-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!validSessions || busy) return
+            run(() => progression.adjust(status, sessionsToAdd),
+              `Added ${sessionsToAdd} more ${label(stage)} ${sessionsToAdd === 1 ? 'session' : 'sessions'}. The next increment moved back.`)
+          }}
+        >
+          <p className="text-sm font-semibold text-surface-800">How many more {label(stage)} sessions?</p>
+          <p className="mt-0.5 text-xs text-surface-500">
+            They're added from today on, and every later workout moves back to make room.
+          </p>
+          <div className="mt-2 flex items-start gap-2">
+            <div className="w-24">
+              <Input
+                id={`delay-sessions-${status.activation.id}`}
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={50}
+                step={1}
+                aria-label="Sessions to add"
+                value={moreSessions}
+                autoFocus
+                onChange={(e) => setMoreSessions(e.target.value)}
+                error={moreSessions !== '' && !validSessions ? 'Enter a whole number from 1 to 50' : undefined}
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={busy || !validSessions} className="mt-0.5">
+              Add sessions
+            </Button>
+            <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={closePrompt} className="mt-0.5">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {current === 'cycle_end' && (
         <div className="rounded-lg border border-primary-200 bg-primary-50 p-3">
           <p className="text-sm font-semibold text-primary-800">You finished the final stage! 🎉</p>
           <p className="mt-0.5 text-xs text-primary-700">
@@ -202,8 +252,13 @@ export default function ProgramProgressControls({ status, progression, variant }
               onClick={() => run(() => progression.finishCycle(status, 'complete'), 'Program complete — nice work!')}>
               Complete program
             </Button>
+            {auto && (
+              <Button size="sm" variant="secondary" disabled={busy} onClick={startDelay}>
+                Not yet
+              </Button>
+            )}
             {variant !== 'complete' && (
-              <Button size="sm" variant="ghost" onClick={() => setStep('idle')}>Cancel</Button>
+              <Button size="sm" variant="ghost" onClick={closePrompt}>Cancel</Button>
             )}
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
 import type usePrograms from '@/hooks/usePrograms'
-import { assignEntryToProgram, loadProgramEntries, moveEntriesToDates, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
+import { assignEntryToProgram, deleteEntries, insertProgramEntries, loadProgramEntries, moveEntriesToDates, replaceProgramEntriesFrom } from '@/hooks/useWeeklyPlan'
 import type { PlannedEntry } from '@/hooks/useWeeklyPlan'
 import type { Json, Program, ProgramActivation, WorkoutSession } from '@/types/database'
 import type { WeightUnit } from '@/types/common'
@@ -16,7 +16,8 @@ import {
   parseWildmanProgress,
   sessionsForStage,
 } from '@/lib/program-templates/wildman'
-import { completedSlotKeys, isEntryDone, pullForwardMoves, pushBackMoves } from '@/lib/program-templates/progress'
+import { completedSlotKeys, isEntryDone, pushBackPlan, withoutSkippedDays } from '@/lib/program-templates/progress'
+import type { PushBackPlan } from '@/lib/program-templates/progress'
 
 export { completedSlotKeys }
 
@@ -45,6 +46,59 @@ export interface TemplateProgramStatus {
 
 export type AdvanceResult = 'advanced' | 'cycle_end'
 
+/** What a skip changed in the plan, stored with the skipped day so undo reverses exactly that */
+export interface SkipChanges {
+  /** Workouts moved to a later day */
+  moved: { id: string; from: string; to: string }[]
+  /** Ids of the copies added on the next workout day */
+  added: string[]
+  /** Workouts removed (template programs rebuild them from today on); restored on undo */
+  removed: PlannedEntry[]
+  /** Template programs whose stage the skip changed: the stage before and after, restored on undo */
+  progress?: { activationId: string; before: StageState; after: StageState }[]
+}
+
+type StageState = Pick<WildmanProgress, 'stage_index' | 'stage_started_on' | 'extra_sessions'>
+
+function stageState(p: WildmanProgress): StageState {
+  return { stage_index: p.stage_index, stage_started_on: p.stage_started_on, extra_sessions: p.extra_sessions }
+}
+
+/** Done workouts of a template program on/after `since` (its stage's completed sessions) */
+function completedSince(entries: PlannedEntry[], since: string, doneKeys: Set<string>) {
+  return entries.filter((e) => e.date >= since && isEntryDone(e, doneKeys)).length
+}
+
+/**
+ * A skipped past workout pushed into the schedule that's rebuilt from `from`: if the rebuilt
+ * schedule doesn't already start with that workout's stage, owe one session of it first.
+ * Same stage → one more session of the current stage. An earlier stage (auto mode, nothing done
+ * yet at the current stage) → step back to it for one session; "Ready to increment?" follows.
+ */
+function oweWorkout(status: TemplateProgramStatus, progress: WildmanProgress, workout: PlannedEntry, from: string): WildmanProgress {
+  const { config, stages, completedInStage } = status
+  const owed = stages.findIndex((s) => s.sets === workout.sets && s.topReps === workout.reps)
+  if (owed < 0) return progress
+  const first = generateSchedule(config, progress, from, completedInStage)[0]
+  if (first?.stageIndex === owed) return progress
+  if (config.increment_mode !== 'auto') return progress
+  if (owed === progress.stage_index) return { ...progress, extra_sessions: progress.extra_sessions + 1 }
+  if (owed < progress.stage_index && completedInStage === 0) {
+    return {
+      ...progress,
+      stage_index: owed,
+      stage_started_on: from,
+      extra_sessions: 1 - defaultSessionsForStage(stages[owed], config),
+    }
+  }
+  return progress
+}
+
+export interface SkipResult {
+  activationIds: string[]
+  changes: SkipChanges
+}
+
 const todayKey = () => format(new Date(), 'yyyy-MM-dd')
 
 /** First date the schedule may be rewritten from: today, unless today's workout is already done */
@@ -71,13 +125,17 @@ export default function useProgramProgression(
   const { user } = useAuth()
   const { programs, activations, updateActivation, update: updateProgram, deactivate, recordCompletion } = programsApi
   const [entriesByActivation, setEntriesByActivation] = useState<Record<string, PlannedEntry[]>>({})
-  const [entriesLoaded, setEntriesLoaded] = useState(false)
+  // The template programs whose entries are loaded. Loaded only once it matches the current ones:
+  // programs arrive after the first (empty) load, and counting completions before their entries
+  // are in would make the daily resync reschedule a whole stage.
+  const [loadedIds, setLoadedIds] = useState<string | null>(null)
 
   const templateActivations = useMemo(
     () => activations.filter((a) => programs.find((p) => p.id === a.program_id)?.template_type === 'wildman_reverse_ladder'),
     [activations, programs],
   )
   const templateIds = templateActivations.map((a) => a.id).join(',')
+  const entriesLoaded = !programsApi.loading && loadedIds === templateIds
 
   const loadEntries = useCallback(async () => {
     if (!user) return
@@ -86,7 +144,7 @@ export default function useProgramProgression(
       result[act.id] = await loadProgramEntries(user.id, act.id)
     }
     setEntriesByActivation(result)
-    setEntriesLoaded(true)
+    setLoadedIds(templateIds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, templateIds])
 
@@ -151,7 +209,10 @@ export default function useProgramProgression(
     const from = regenFromDate(status, entries)
     const next: WildmanProgress = { ...progress, synced_on: todayKey() }
     const schedule = generateSchedule(config, next, from, completedInStage)
-    await replaceProgramEntriesFrom(user.id, status.activation.id, from, schedule.map((w) => entryValuesFor(config, next, w)))
+    // Skipped days keep their workout on the calendar (shown as skipped)
+    await replaceProgramEntriesFrom(
+      user.id, status.activation.id, from, schedule.map((w) => entryValuesFor(config, next, w)), next.skipped_dates ?? [],
+    )
     await updateActivation(status.activation.id, { progress: next as unknown as Json })
     await loadEntries()
     onScheduleChanged?.()
@@ -246,43 +307,108 @@ export default function useProgramProgression(
   }
 
   /**
-   * Skip a day. Template programs leave it out of their schedule; other programs push every
-   * upcoming workout back one workout day. Returns the activations whose schedule changed.
+   * Skip a day. The skipped day keeps its workouts (shown as skipped); each program with a
+   * workout on it repeats that workout on its next workout day and pushes everything after it
+   * back one workout day. Template programs do this by leaving the day out of their schedule.
+   * `otherSkippedDates` are earlier skips, which stay where they are. Returns the activations
+   * whose schedule changed and exactly what changed, so unskipDay can reverse just that.
    */
-  async function skipDay(date: string): Promise<string[]> {
-    if (!user) return []
+  async function skipDay(date: string, otherSkippedDates: string[] = []): Promise<SkipResult> {
+    const changes: SkipChanges = { moved: [], added: [], removed: [] }
+    if (!user) return { activationIds: [], changes }
     const changed: string[] = []
+
+    async function apply(activationId: string, entries: PlannedEntry[], plan: PushBackPlan, keepBefore?: string) {
+      if (!user) return
+      const byId = new Map(entries.map((e) => [e.id, e]))
+      // Template programs rebuild everything from `keepBefore` on, so a workout pushed past it is
+      // already in the new schedule: remove it (and put it back on undo)
+      const spill = plan.moves.filter((m) => keepBefore != null && m.date >= keepBefore)
+      const moves = plan.moves.filter((m) => !spill.includes(m))
+      await moveEntriesToDates(user.id, moves)
+      changes.moved.push(...moves.map((m) => ({ id: m.id, from: byId.get(m.id)!.date, to: m.date })))
+      await deleteEntries(user.id, spill.map((m) => m.id))
+      changes.removed.push(...spill.map((m) => byId.get(m.id)!))
+      changes.added.push(...await insertProgramEntries(user.id, activationId, plan.copies))
+    }
+
     for (const activation of activations) {
       const status = statusForActivation(activation.id)
       const entries = status ? (entriesByActivation[activation.id] ?? []) : await loadProgramEntries(user.id, activation.id)
       if (!entries.some((e) => e.date === date && !isEntryDone(e, doneKeys))) continue
       if (status) {
+        const from = regenFromDate(status, entries)
         const skipped = [...new Set([...(status.progress.skipped_dates ?? []), date])]
-        await regenerate(status, { ...status.progress, skipped_dates: skipped })
+        let next: WildmanProgress = { ...status.progress, skipped_dates: skipped }
+        if (date < from) {
+          // A past day: shift the missed workouts after it like a basic program. The workout pushed
+          // into the rebuilt schedule (from `from` on) must come first there.
+          const past = entries.filter((e) => e.date < from)
+          const plan = pushBackPlan(past, date, doneKeys, otherSkippedDates)
+          const pushedIn = plan.copies.find((c) => c.date >= from)
+            ?? past.find((e) => plan.moves.some((m) => m.id === e.id && m.date >= from))
+          await apply(activation.id, past, plan, from)
+          if (pushedIn) next = oweWorkout(status, next, pushedIn, from)
+          const before = stageState(status.progress)
+          const after = stageState(next)
+          if (JSON.stringify(before) !== JSON.stringify(after)) {
+            changes.progress = [...(changes.progress ?? []), { activationId: activation.id, before, after }]
+          }
+        }
+        await regenerate(status, next, status.config, completedSince(entries, next.stage_started_on, doneKeys))
       } else {
-        await moveEntriesToDates(user.id, pushBackMoves(entries, date, doneKeys))
+        await apply(activation.id, entries, pushBackPlan(entries, date, doneKeys, otherSkippedDates))
       }
       changed.push(activation.id)
     }
     if (changed.length > 0) onScheduleChanged?.()
-    return changed
+    return { activationIds: changed, changes }
   }
 
-  /** Undo skipDay for the activations it changed */
-  async function unskipDay(date: string, activationIds: string[]) {
+  /**
+   * Undo skipDay: reverse the recorded changes (remove the copies, move workouts back, restore
+   * removed ones) and put the day back into template schedules. Workouts changed since the skip
+   * (completed, moved or deleted by hand) are left as they are. Without a record (skips saved
+   * before changes were recorded) the plan is left alone.
+   */
+  async function unskipDay(date: string, activationIds: string[], recorded: SkipChanges | null) {
     if (!user) return
-    for (const id of activationIds) {
-      if (!activations.some((a) => a.id === id)) continue
-      const status = statusForActivation(id)
-      if (status) {
-        const skipped = (status.progress.skipped_dates ?? []).filter((d) => d !== date)
-        await regenerate(status, { ...status.progress, skipped_dates: skipped })
-      } else {
-        const entries = await loadProgramEntries(user.id, id)
-        await moveEntriesToDates(user.id, pullForwardMoves(entries, date, doneKeys))
+    if (recorded) {
+      await deleteEntries(user.id, recorded.added)
+      const current = new Map<string, PlannedEntry>()
+      for (const id of activationIds) {
+        for (const e of await loadProgramEntries(user.id, id)) current.set(e.id, e)
       }
+      await moveEntriesToDates(user.id, recorded.moved
+        .filter((m) => {
+          const e = current.get(m.id)
+          return e && e.date === m.to && !isEntryDone(e, doneKeys)
+        })
+        .map((m) => ({ id: m.id, date: m.from })))
+      const byProgram = new Map<string, PlannedEntry[]>()
+      for (const e of recorded.removed) {
+        if (!e.program_id || current.has(e.id)) continue
+        byProgram.set(e.program_id, [...(byProgram.get(e.program_id) ?? []), e])
+      }
+      for (const [programId, removed] of byProgram) await insertProgramEntries(user.id, programId, removed)
     }
-    if (activationIds.length > 0) onScheduleChanged?.()
+    for (const id of activationIds) {
+      const status = statusForActivation(id)
+      if (!status) continue
+      const skipped = (status.progress.skipped_dates ?? []).filter((d) => d !== date)
+      let next: WildmanProgress = { ...status.progress, skipped_dates: skipped }
+      // Put the stage back as it was before the skip, unless it has changed since (e.g. progressed)
+      const stageChange = recorded?.progress?.find((p) => p.activationId === id)
+      if (stageChange && JSON.stringify(stageState(status.progress)) === JSON.stringify(stageChange.after)) {
+        next = { ...next, ...stageChange.before }
+      }
+      const entries = await loadProgramEntries(user.id, id)
+      await regenerate(status, next, status.config, completedSince(entries, next.stage_started_on, doneKeys), entries)
+    }
+    if (activationIds.length > 0) {
+      await loadEntries()
+      onScheduleChanged?.()
+    }
   }
 
   // Missed days: once a day, rebuild the schedule so unfinished sessions move to the next training days
@@ -317,7 +443,10 @@ export default function useProgramProgression(
     ready: !workoutsLoading && entriesLoaded,
     statusForActivation,
     /** This activation's planned entries (for progress bars) */
-    entriesFor: (activationId: string) => entriesByActivation[activationId] ?? [],
+    entriesFor: (activationId: string) => withoutSkippedDays(
+      entriesByActivation[activationId] ?? [],
+      statusForActivation(activationId)?.progress.skipped_dates ?? [],
+    ),
     doneKeys,
     advance,
     adjust,

@@ -24,9 +24,11 @@ interface ActiveProgramCardProps {
   /** Template program progression, for the next-increment date and "Progress now" */
   status?: TemplateProgramStatus | null
   progression?: ReturnType<typeof useProgramProgression>
+  /** Template program's exercise name, for "Ready to increment …?" */
+  exerciseName?: string
 }
 
-export default function ActiveProgramCard({ program, activation, sessions, entries, status, progression }: ActiveProgramCardProps) {
+export default function ActiveProgramCard({ program, activation, sessions, entries, status, progression, exerciseName }: ActiveProgramCardProps) {
   const start = parseISO(activation.start_date)
   // Template programs have a fixed weekly schedule; they're managed from the Plan page, not the designer
   const templateConfig = program.template_type === 'wildman_reverse_ladder' ? parseWildmanConfig(program.template_config) : null
@@ -80,7 +82,7 @@ export default function ActiveProgramCard({ program, activation, sessions, entri
     {status && progression?.ready && (
       <div className="-mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pb-3 sm:pl-15">
         <NextIncrement status={status} />
-        <ProgramProgressControls status={status} progression={progression} variant="compact" />
+        <ProgramProgressControls status={status} progression={progression} variant="compact" exerciseName={exerciseName} />
       </div>
     )}
     </div>
